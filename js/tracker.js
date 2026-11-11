@@ -3,6 +3,7 @@ import * as api from './supa.js';
 import { EXERCISES, EX, CATS, BIG_FOUR } from './exercises.js';
 import { t, getLang, fmtDay, fmtLongToday } from './i18n.js';
 import { cleanPlan, dayFocus, focusName } from './plan.js';
+import { openExercise } from './exsheet.js';
 
 const $app = () => document.getElementById('app');
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -76,12 +77,12 @@ export async function logScreen(user) {
     $app().innerHTML = `
       <header class="page-head"><div><h2>${t('Today’s workout', '今日訓練')}</h2>
         <p class="muted">${esc(fmtLongToday())} · ${esc(focusName(dayFocus(todayPlan)))}${draft.saved ? ` · ${t('saved, edit and save again', '已儲存，可以改完再儲')}` : draft.fromPlan ? ` · ${t('from your plan', '跟你嘅計劃')}` : ''}</p></div>
-        <a class="link" href="#/plan">${t('Plan', '計劃')} ›</a></header>
+        <div class="head-links"><a class="link" href="#/plan">${t('Plan', '計劃')} ›</a><a class="link" href="#/lib">${t('Library', '動作庫')} ›</a></div></header>
       ${draft.items.length ? `<p class="muted small">${t(`${draft.items.length} exercise${draft.items.length === 1 ? '' : 's'} · ${nSets} set${nSets === 1 ? '' : 's'} · kept on this phone until you save`, `${draft.items.length} 個動作 · ${nSets} 組 · 未儲存之前會暫存喺呢部手機`)}</p>` : ''}
       ${draft.items.map((it, i) => {
         const last = past(it.id).at(-1);
         return `<section class="card ex" data-i="${i}">
-          <div class="ex-head"><div><h3>${esc(exName(it.id))}</h3><span class="muted">${esc(exSub(it.id))}</span></div>
+          <div class="ex-head"><button class="ex-name" data-open="${it.id}"><h3>${esc(exName(it.id))}</h3><span class="muted">${esc(exSub(it.id))} · ${t('how to', '教學')} ›</span></button>
             <button class="ghost x" data-act="drop" aria-label="${t('Remove', '移除')} ${esc(exName(it.id))}">✕</button></div>
           <p class="muted last">${last ? `${t('Last time', '上次')} (${esc(fmtDay(last.date))}): ${esc(setsText(last.sets))}` : t('First time logging this', '第一次記錄呢個動作')}</p>
           <div class="sets">
@@ -113,6 +114,7 @@ export async function logScreen(user) {
         keep(); draw();
       });
     });
+    $app().querySelectorAll('[data-open]').forEach(b => b.onclick = () => openExercise(user, b.dataset.open, 'how'));
     $app().querySelector('#addex').onclick = () => picker(id => {
       const last = past(id).at(-1);
       draft.items.push({ id, sets: last ? last.sets.map(s => ({ kg: s.kg, reps: s.reps })) : [{ kg: null, reps: null }] });
@@ -203,11 +205,12 @@ export async function progressScreen(user, who) {
     ${order.length ? order.map(id => {
       const list = sessions[id], pr = prOf(list), last = list.at(-1);
       const series = list.map(s => bestKg(s.sets));
-      return `<section class="card"><div class="ex-head"><div><h3>${esc(exName(id))}</h3><span class="muted">${esc(exSub(id))}</span></div>
+      return `<section class="card"><div class="ex-head"><button class="ex-name" data-open="${id}"><h3>${esc(exName(id))}</h3><span class="muted">${esc(exSub(id))} · ${t('details', '詳情')} ›</span></button>
           <div class="pr"><span class="muted">PR</span><b>${pr.kg ? kg(pr.kg) : '—'}</b></div></div>
         ${spark(series, t(`Best set per session, ${kg(series[0])} to ${kg(series.at(-1))}`, `每次最重一組，由 ${kg(series[0])} 到 ${kg(series.at(-1))}`))}
         <p class="muted">${t('Last', '上次')} (${esc(fmtDay(last.date))}): ${esc(setsText(last.sets))} · ${t(`${list.length} session${list.length === 1 ? '' : 's'}`, `${list.length} 次`)}</p></section>`;
     }).join('') : `<section class="card empty"><p class="muted">${mine ? t('Nothing logged yet. Log your first workout.', '仲未有記錄，記低你第一次訓練啦。') : t('Nothing logged yet.', '仲未有記錄。')}</p></section>`}`;
+  $app().querySelectorAll('[data-open]').forEach(b => b.onclick = () => openExercise(user, b.dataset.open, 'prog', uid));
 }
 
 // PB board for the group page: rows = members, columns = the four lifts + total

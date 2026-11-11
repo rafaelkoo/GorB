@@ -4,6 +4,7 @@ import { EX, CATS, WD, DEFAULT_PLAN } from './exercises.js';
 import { t } from './i18n.js';
 import { exName, picker } from './tracker.js';
 import { esc, render, showError, toast } from './ui.js';
+import { openExercise } from './exsheet.js';
 
 const DAY_EN = { Mon: 'Monday', Tue: 'Tuesday', Wed: 'Wednesday', Thu: 'Thursday', Fri: 'Friday', Sat: 'Saturday', Sun: 'Sunday' };
 const DAY_ZH = { Mon: '星期一', Tue: '星期二', Wed: '星期三', Thu: '星期四', Fri: '星期五', Sat: '星期六', Sun: '星期日' };
@@ -53,7 +54,7 @@ export async function planScreen(user, day) {
       <section class="card">
         <div class="card-head"><h3>${dayLong(day)} · ${esc(focusName(dayFocus(list)))}</h3></div>
         ${list.length ? `<ol class="plan-list">${list.map((e, i) => `<li data-i="${i}">
-            <div class="pl-name"><b>${esc(exName(e.id))}</b><span class="muted small">${esc(t(CATS[EX[e.id].cat], CAT_ZH[EX[e.id].cat]))}</span></div>
+            <button class="pl-name ex-name" data-open="${e.id}"><b>${esc(exName(e.id))}</b><span class="muted small">${esc(t(CATS[EX[e.id].cat], CAT_ZH[EX[e.id].cat]))} · ${t('how to', '教學')} ›</span></button>
             <div class="stepper st-sets" aria-label="${t('Sets', '組數')}"><button class="ghost" data-act="sets" data-v="-1" aria-label="${t('One less set', '減一組')}">−</button><span><b>${e.sets}</b><small>${t('sets', '組')}</small></span><button class="ghost" data-act="sets" data-v="1" aria-label="${t('One more set', '加一組')}">+</button></div>
             <div class="stepper st-reps" aria-label="${t('Reps', '次數')}"><button class="ghost" data-act="reps" data-v="-1" aria-label="${t('One less rep', '減一次')}">−</button><span><b>${e.reps}</b><small>${t('reps', '次')}</small></span><button class="ghost" data-act="reps" data-v="1" aria-label="${t('One more rep', '加一次')}">+</button></div>
             <div class="pl-move"><button class="ghost x" data-act="up" aria-label="${t('Move up', '上移')}" ${i ? '' : 'disabled'}>↑</button><button class="ghost x" data-act="down" aria-label="${t('Move down', '下移')}" ${i < list.length - 1 ? '' : 'disabled'}>↓</button><button class="ghost x" data-act="del" aria-label="${t('Remove', '移除')}">✕</button></div>
@@ -68,6 +69,7 @@ export async function planScreen(user, day) {
 
     el.querySelectorAll('[data-day]').forEach(b => b.onclick = () => { day = b.dataset.day; history.replaceState(null, '', `#/plan/${day}`); redraw(); });
     el.querySelector('#usedefault')?.addEventListener('click', () => { plan = cleanPlan(DEFAULT_PLAN); save(); toast(t('FitTrack plan added. Change anything you like.', '已加入 FitTrack 計劃，想改就改。')); redraw(); });
+    el.querySelectorAll('[data-open]').forEach(b => b.onclick = () => openExercise(user, b.dataset.open, 'how'));
     el.querySelector('#add').onclick = () => picker(id => { plan[day].push({ id, sets: 3, reps: 10 }); save(); redraw(); });
     el.querySelectorAll('.plan-list li').forEach(li => {
       const i = +li.dataset.i;
