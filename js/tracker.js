@@ -4,6 +4,7 @@ import { EXERCISES, EX, CATS, BIG_FOUR } from './exercises.js';
 import { t, getLang, fmtDay, fmtLongToday } from './i18n.js';
 import { cleanPlan, dayFocus, focusName } from './plan.js';
 import { openExercise } from './exsheet.js';
+import { nextLoad } from './coach.js';
 
 const $app = () => document.getElementById('app');
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -55,8 +56,10 @@ export async function logScreen(user) {
   const today = api.ukToday(), weekday = api.ukWeekday();
   const [rows, savedPlan] = await Promise.all([api.liftHistory(user.id), api.getPlan(user.id)]);
   const history = bySession(rows);
-  const todayPlan = savedPlan ? cleanPlan(savedPlan)[weekday] : [];
+  const fullPlan = savedPlan ? cleanPlan(savedPlan) : null, todayPlan = fullPlan ? fullPlan[weekday] : [];
   const past = id => (history[id] || []).filter(s => s.date < today);
+  const planReps = id => (todayPlan.find(e => e.id === id) || Object.values(fullPlan || {}).flat().find(e => e.id === id))?.reps || 10;
+  const coach = id => nextLoad(id, history[id], today, planReps(id));
   // start from: unsaved draft → what was already saved today → today's plan → empty
   let draft = loadDraft(user.id);
   if (!draft) {
@@ -65,9 +68,9 @@ export async function logScreen(user) {
       .map(([id, list]) => ({ id, sets: list.at(-1).sets.map(s => ({ kg: s.kg, reps: s.reps })) }));
     if (items.length) draft = { items, saved: true };
     else draft = { saved: false, fromPlan: todayPlan.length > 0, items: todayPlan.map(e => {
-      // plan gives sets × reps; weights come from last time, set by set
-      const last = past(e.id).at(-1)?.sets || [];
-      return { id: e.id, sets: Array.from({ length: e.sets }, (_, j) => ({ kg: (last[j] || last.at(-1))?.kg ?? null, reps: e.reps })) };
+      // plan gives sets; the coach's next load gives kg × reps; otherwise last time's weights
+      const c = coach(e.id), last = past(e.id).at(-1)?.sets || [];
+      return { id: e.id, sets: Array.from({ length: e.sets }, (_, j) => c ? { kg: c.kg, reps: c.reps } : { kg: (last[j] || last.at(-1))?.kg ?? null, reps: e.reps }) };
     }) };
   }
   const keep = () => saveDraft(user.id, draft);
@@ -85,6 +88,8 @@ export async function logScreen(user) {
           <div class="ex-head"><button class="ex-name" data-open="${it.id}"><h3>${esc(exName(it.id))}</h3><span class="muted">${esc(exSub(it.id))} · ${t('how to', '教學')} ›</span></button>
             <button class="ghost x" data-act="drop" aria-label="${t('Remove', '移除')} ${esc(exName(it.id))}">✕</button></div>
           <p class="muted last">${last ? `${t('Last time', '上次')} (${esc(fmtDay(last.date))}): ${esc(setsText(last.sets))}` : t('First time logging this', '第一次記錄呢個動作')}</p>
+          ${(() => { const c = coach(it.id); return c ? `<div class="coach ${c.kind}"><p><b>${t('Next', '下次')}: ${c.kg ? kg(c.kg) + ' × ' : ''}${c.reps}</b> ${esc(t(c.en, c.zh))}</p>
+            <button class="ghost small-btn" data-act="usecoach">${t('Use', '套用')}</button></div>` : ''; })()}
           <div class="sets">
             <div class="set head"><span>${t('Set', '組')}</span><span>kg</span><span>${t('Reps', '次數')}</span><span></span></div>
             ${it.sets.map((s, j) => `<div class="set" data-j="${j}"><span>${j + 1}</span>
@@ -111,6 +116,7 @@ export async function logScreen(user) {
         if (act === 'drop') draft.items.splice(+card.dataset.i, 1);
         if (act === 'addset') { const l = it.sets.at(-1) || {}; it.sets.push({ kg: l.kg ?? null, reps: l.reps ?? null }); }
         if (act === 'unset') it.sets.splice(+b.closest('.set').dataset.j, 1);
+        if (act === 'usecoach') { const c = coach(it.id); if (c) it.sets.forEach(x => { x.kg = c.kg; x.reps = c.reps; }); }
         keep(); draw();
       });
     });

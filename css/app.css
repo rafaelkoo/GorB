@@ -264,3 +264,15 @@ button:disabled { opacity: .55; cursor: default; }
 .mistakes .on { border-color: #ff4d4d; color: #ff9c96; }
 .hist { margin: 0; padding-left: 1.4em; display: grid; gap: 4px; font-variant-numeric: tabular-nums; }
 .hist li { display: flex; justify-content: space-between; }
+/* coach */
+.coach { display: flex; gap: 10px; align-items: center; justify-content: space-between; background: var(--mat-2); border-left: 3px solid var(--blue); border-radius: 8px; padding: 8px 10px; font-size: .9rem; }
+.coach.up { border-left-color: var(--green); }
+.coach.down { border-left-color: var(--yellow); }
+.coach p { flex: 1; }
+.bar.warn i { background: var(--red); }
+.state.done, .state.ontrack, .state.improving { color: var(--green); }
+.state.behind, .state.late { color: #ff9c96; }
+.state.flat { color: var(--yellow); }
+.advice { font-size: .9rem; background: var(--mat-2); border-radius: 8px; padding: 10px 12px; border-left: 3px solid var(--blue); }
+.advice.ontrack, .advice.done { border-left-color: var(--green); }
+.advice.behind { border-left-color: var(--yellow); }

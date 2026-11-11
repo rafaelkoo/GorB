@@ -7,6 +7,7 @@ import { exName, kg, picker, spark, bySession, prOf } from './tracker.js';
 import { pushSupported, pushState, enablePush, disablePush, testNotification } from './push.js';
 import { esc, render, busy, showError, toast, wireLangSwitch } from './ui.js';
 import { importFitTrack } from './importer.js';
+import { targetStatus, targetAdvice, bodyAdvice, e1rm } from './coach.js';
 
 // FitTrack goals (same ids)
 export const GOALS = [
@@ -31,18 +32,26 @@ const tdee = (w, h, a, sex) => Math.round((10 * w + 6.25 * h - 5 * a + (sex === 
 
 const num = v => (v === '' || v == null ? null : Number(String(v).replace(',', '.')));
 
-// small bottom sheet asking for a kg number; resolves null when cancelled
-function askKg(title, hint, value) {
+// bottom sheet for a lift target: kg × reps, optional deadline; resolves null when cancelled
+function askTarget(title, hint, value) {
   return new Promise(done => {
     const box = document.createElement('div');
     box.className = 'sheet'; box.setAttribute('role', 'dialog'); box.setAttribute('aria-label', title);
     box.innerHTML = `<form class="sheet-in"><div class="ex-head"><h3>${esc(title)}</h3><button type="button" class="ghost x" id="close" aria-label="${t('Close', '關閉')}">✕</button></div>
       <p class="muted">${esc(hint)}</p>
-      <label class="field">kg<input id="kg" inputmode="decimal" value="${value}" required></label>
+      <div class="grid2"><label class="field">kg<input id="kg" inputmode="decimal" value="${value.kg ?? ''}" required></label>
+        <label class="field">${t('Reps', '次數')}<input id="reps" inputmode="numeric" value="${value.reps ?? 1}" required></label>
+        <label class="field full">${t('By (optional)', '期限（可以唔填）')}<input id="by" type="date" value="${value.by ?? ''}"></label></div>
+      <p class="muted small">${t('Progress is measured with est. 1RM, so 100 kg × 5 counts lighter sets with more reps too.', '進度用估算 1RM 計，所以 100 kg × 5 都會計埋輕啲但多次嘅組。')}</p>
       <button>${t('Save target', '儲存目標')}</button></form>`;
     const end = v => { box.remove(); done(v); };
     box.querySelector('#close').onclick = () => end(null);
-    box.querySelector('form').onsubmit = e => { e.preventDefault(); end(num(box.querySelector('#kg').value)); };
+    box.querySelector('form').onsubmit = e => {
+      e.preventDefault();
+      const kg = num(box.querySelector('#kg').value), reps = parseInt(box.querySelector('#reps').value);
+      if (!(kg > 0) || !(reps >= 1 && reps <= 30)) return;
+      end({ kg, reps, by: box.querySelector('#by').value || null });
+    };
     document.body.append(box);
     box.querySelector('#kg').select();
   });
@@ -84,11 +93,13 @@ export async function meScreen(user) {
     <section class="card">
       <div class="card-head"><h3>${t('Lift targets', '舉重目標')}</h3><button id="addtarget" class="ghost small-btn">+ ${t('Add', '加')}</button></div>
       ${targets.length ? `<ul class="targets">${targets.map(tg => {
-        const pr = prOf(sessions[tg.exercise_id] || []).kg, goal = +tg.target_kg, pct = Math.min(100, Math.round(pr / goal * 100));
-        return `<li><div class="t-row"><b>${esc(exName(tg.exercise_id))}</b><span>${pr ? kg(pr) : '—'} / ${kg(goal)}</span>
+        const st = targetStatus(tg, sessions[tg.exercise_id], api.ukToday()), adv = targetAdvice(tg.exercise_id, st);
+        const label = { done: t('Reached', '達標'), ontrack: t('On track', '進度良好'), behind: t('Behind', '落後'), late: t('Past date', '過咗期限'), improving: t('Improving', '進步緊'), flat: t('Stalled', '停滯') }[st.state];
+        return `<li><div class="t-row"><b>${esc(exName(tg.exercise_id))}</b><span>${kg(tg.target_kg)} × ${tg.target_reps || 1}${tg.by_date ? ` · ${esc(fmtDay(tg.by_date))}` : ''}</span>
           <button class="ghost x" data-drop="${esc(tg.exercise_id)}" aria-label="${t('Remove target', '刪除目標')}">✕</button></div>
-          <span class="bar ${pct >= 100 ? 'hit' : ''}"><i style="width:${pct}%"></i></span>
-          <span class="muted small">${pct >= 100 ? t('Target hit 🎯', '達標 🎯') : pr ? t(`${kg(goal - pr)} to go`, `仲差 ${kg(goal - pr)}`) : t('No lifts logged yet', '仲未有記錄')}</span></li>`;
+          <span class="bar ${st.state === 'done' ? 'hit' : st.state === 'behind' || st.state === 'late' ? 'warn' : ''}"><i style="width:${st.pct}%"></i></span>
+          <span class="muted small">${st.pct}%${label ? ` · <b class="state ${st.state}">${label}</b>` : ''}${st.cur ? ` · ${t('best est. 1RM', '最佳估算 1RM')} ${kg(Math.round(st.cur * 10) / 10)} / ${kg(Math.round(st.goal * 10) / 10)}` : ''}</span>
+          ${adv ? `<span class="small">${esc(t(adv.en, adv.zh))}</span>` : ''}</li>`;
       }).join('')}</ul>` : `<p class="muted">${t('Set a weight to aim for, e.g. bench 100 kg.', '定個目標重量，例如臥推 100 kg。')}</p>`}
       <label class="switch"><input type="checkbox" id="sharetargets" ${profile.share_targets ? 'checked' : ''}>
         <span>${t('Show my lift targets to my groups', '俾 group 睇我嘅舉重目標')}<small class="muted">${t('Off: only you see them.', '關：得你自己睇到。')}</small></span></label>
@@ -105,6 +116,7 @@ export async function meScreen(user) {
       </div>
       ${spark(weights.map(w => +w.weight_kg), t('Body weight over time', '體重走勢'))}
       ${latest && goalW ? `<p class="muted small">${Math.abs(latest - goalW) < 0.05 ? t('At your goal weight 🎯', '到咗目標體重 🎯') : t(`${+Math.abs(latest - goalW).toFixed(1)} kg to go`, `仲差 ${+Math.abs(latest - goalW).toFixed(1)} kg`)}${weights.length ? ` · ${t('last logged', '上次記錄')} ${esc(fmtDay(weights.at(-1).logged_on))}` : ''}</p>` : ''}
+      ${(() => { const a = bodyAdvice(weights, goalW, b.goal_date, maint, api.ukToday()); return a ? `<p class="advice ${a.state}">${esc(t(a.en, a.zh))}</p>` : ''; })()}
       <form id="wlog" class="inline"><input id="w" inputmode="decimal" placeholder="${t('Today’s weight (kg)', '今日體重（kg）')}" aria-label="${t('Today’s weight in kg', '今日體重 kg')}"><button>${t('Log', '記錄')}</button></form>
     </section>
 
@@ -129,6 +141,7 @@ export async function meScreen(user) {
         <label class="field">${t('Sex (for calories)', '性別（計卡路里用）')}<select name="sex"><option value="">${t('Not set', '未填')}</option>
           <option value="male" ${b.sex === 'male' ? 'selected' : ''}>${t('Male', '男')}</option><option value="female" ${b.sex === 'female' ? 'selected' : ''}>${t('Female', '女')}</option></select></label>
         <label class="field">${t('Goal weight (kg)', '目標體重（kg）')}<input name="goal_weight_kg" inputmode="decimal" value="${b.goal_weight_kg ?? ''}"></label>
+        <label class="field">${t('Goal date (optional)', '目標日期（可以唔填）')}<input name="goal_date" type="date" value="${b.goal_date ?? ''}"></label>
         <label class="switch full"><input type="checkbox" name="share_body" ${b.share_body ? 'checked' : ''}>
           <span>${t('Show my body details to my groups', '俾 group 睇我嘅身體資料')}<small class="muted">${t('Off: only you see height, age, weight and goal. On: groupmates see them and you join the weight change ranking.', '關：得你自己睇到身高、年齡、體重同目標。開：group 入面嘅人睇到，你亦會加入體重變化排名。')}</small></span></label>
         <button class="full">${t('Save details', '儲存資料')}</button>
@@ -158,11 +171,13 @@ export async function meScreen(user) {
   };
   el.querySelector('#addtarget').onclick = () => picker(async id => {
     const pr = prOf(sessions[id] || []).kg;
-    const v = await askKg(t(`Target for ${exName(id)}`, `${exName(id)} 目標`),
+    const v = await askTarget(t(`Target for ${exName(id)}`, `${exName(id)} 目標`),
       pr ? t(`Your PR is ${kg(pr)}`, `你嘅 PR 係 ${kg(pr)}`) : t('No lifts logged yet', '仲未有記錄'),
-      pr ? Math.ceil((pr * 1.1) / 2.5) * 2.5 : '');
-    if (!(v > 0)) return;
-    try { await api.setLiftTarget(user.id, id, v); again(); } catch (err) { showError(err); }
+      { kg: pr ? Math.ceil((pr * 1.1) / 2.5) * 2.5 : '', reps: 1 });
+    if (!v) return;
+    const best = Math.max(0, ...(sessions[id] || []).flatMap(x => x.sets.filter(y => y.reps >= 1).map(y => e1rm(y.kg, y.reps))));
+    try { await api.upsertTargets([{ user_id: user.id, exercise_id: id, target_kg: v.kg, target_reps: v.reps, by_date: v.by, set_on: api.ukToday(), base_e1rm: best ? Math.round(best * 100) / 100 : null }]); again(); }
+    catch (err) { showError(err); }
   }, null);
   el.querySelectorAll('[data-drop]').forEach(btn => btn.onclick = async () => {
     try { await api.dropLiftTarget(user.id, btn.dataset.drop); again(); } catch (err) { showError(err); }
@@ -180,7 +195,7 @@ export async function meScreen(user) {
     e.preventDefault();
     const f = new FormData(e.target);
     const fields = { height_cm: num(f.get('height_cm')), age: num(f.get('age')), sex: f.get('sex') || null,
-      goal_weight_kg: num(f.get('goal_weight_kg')), share_body: f.get('share_body') === 'on' };
+      goal_weight_kg: num(f.get('goal_weight_kg')), goal_date: f.get('goal_date') || null, share_body: f.get('share_body') === 'on' };
     if (fields.height_cm != null && !(fields.height_cm >= 100 && fields.height_cm <= 250)) return showError({ message: t('Height must be 100–250 cm.', '身高要喺 100 至 250 cm 之間。') });
     if (fields.age != null && !(Number.isInteger(fields.age) && fields.age >= 12 && fields.age <= 100)) return showError({ message: t('Age must be a whole number, 12–100.', '年齡要係 12 至 100 嘅整數。') });
     if (fields.goal_weight_kg != null && !(fields.goal_weight_kg >= 30 && fields.goal_weight_kg <= 300)) return showError({ message: t('Goal weight must be 30–300 kg.', '目標體重要喺 30 至 300 kg 之間。') });
