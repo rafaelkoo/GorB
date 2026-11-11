@@ -22,22 +22,23 @@ export function notConfigured() {
 
 export function signIn(onDone) {
   const el = render(`<section class="card"><h2>Sign in</h2>
-    <p class="muted">We email you a 6-digit code. No password.</p>
-    <form id="f1"><input id="email" type="email" required autocomplete="email" placeholder="you@email.com">
-      <button>Send code</button></form>
-    <form id="f2" hidden><input id="code" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" required placeholder="123456">
-      <button>Sign in</button></form></section>`);
-  let email = '';
-  el.querySelector('#f1').onsubmit = async e => {
-    e.preventDefault(); const b = e.submitter; email = el.querySelector('#email').value.trim();
-    busy(b, true, 'Sending…');
-    try { await api.sendCode(email); el.querySelector('#f1').hidden = true; el.querySelector('#f2').hidden = false; el.querySelector('#code').focus(); }
-    catch (err) { showError(err); busy(b, false, 'Send code'); }
-  };
-  el.querySelector('#f2').onsubmit = async e => {
-    e.preventDefault(); const b = e.submitter; busy(b, true, 'Checking…');
-    try { await api.verifyCode(email, el.querySelector('#code').value.trim()); onDone(); }
-    catch (err) { showError(err); busy(b, false, 'Sign in'); }
+    <form id="auth">
+      <input id="email" type="email" required autocomplete="email" placeholder="you@email.com">
+      <input id="pw" type="password" required minlength="6" autocomplete="current-password" placeholder="Password (6+ characters)">
+      <button id="login" value="login">Log in</button>
+      <button id="register" value="register" class="ghost">New here? Make an account</button>
+    </form>
+    <p class="muted">Forgot your password? Ask the group admin to reset it.</p></section>`);
+  el.querySelector('#auth').onsubmit = async e => {
+    e.preventDefault();
+    const b = e.submitter, isNew = b.value === 'register', label = b.textContent;
+    const email = el.querySelector('#email').value.trim(), pw = el.querySelector('#pw').value;
+    busy(b, true, isNew ? 'Making account…' : 'Logging in…');
+    try { await (isNew ? api.register(email, pw) : api.logIn(email, pw)); onDone(); }
+    catch (err) {
+      const msg = /invalid login/i.test(err.message) ? 'Wrong email or password. New? Use "Make an account".' : err.message;
+      showError({ message: msg }); busy(b, false, label);
+    }
   };
 }
 

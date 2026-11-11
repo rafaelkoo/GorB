@@ -7,9 +7,13 @@ export const sb = configured ? createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : n
 
 const must = ({ data, error }) => { if (error) throw error; return data; };
 
-// ---------- auth (6-digit email code, no passwords) ----------
-export const sendCode = email => sb.auth.signInWithOtp({ email, options: { shouldCreateUser: true } }).then(must);
-export const verifyCode = (email, token) => sb.auth.verifyOtp({ email, token, type: 'email' }).then(must);
+// ---------- auth (email + password; "Confirm email" is OFF in Supabase so no emails are sent) ----------
+export const logIn = (email, password) => sb.auth.signInWithPassword({ email, password }).then(must);
+export async function register(email, password) {
+  const data = must(await sb.auth.signUp({ email, password }));
+  if (!data.session) throw new Error('Account made, but Supabase wants email confirmation. Turn off "Confirm email" in Authentication → Sign In / Providers → Email.');
+  return data;
+}
 export const signOut = () => sb.auth.signOut();
 export async function currentUser() { const { data } = await sb.auth.getUser(); return data.user; }
 

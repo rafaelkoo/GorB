@@ -4,7 +4,7 @@ Friends' gym check-in app. Take a photo at the gym, your group sees it, the mont
 Web app (PWA) first, Android app later via TWA.
 
 ## Phase 1 (this version)
-- Sign in with a 6-digit email code (no passwords)
+- Sign in with email + password (no emails sent, so no Supabase email limits)
 - Make a group or join one with an invite code / link
 - Check in with a **live camera photo only** (no gallery upload, so no old photos)
 - Group feed and monthly table (counts distinct days, UK time)
@@ -15,12 +15,12 @@ Next: push notifications (phase 2), sets/reps logging with FitTrack's exercise i
 ## Setup
 1. Make a free project at supabase.com.
 2. **SQL Editor** → paste all of `supabase/schema.sql` → Run.
-3. **Authentication → Email Templates → Magic Link**: put `{{ .Token }}` in the email body so it sends the 6-digit code.
+3. **Authentication → Sign In / Providers → Email**: turn **off** "Confirm email". Forgotten passwords: reset the user in Authentication → Users.
 4. **Authentication → URL Configuration**: Site URL = your GitHub Pages URL.
 5. **Project Settings → API**: copy the Project URL and the `anon` key into `js/config.js`.
 6. Push to GitHub → Settings → Pages → deploy from `main`, root folder.
 
-Supabase's built-in email sender has a low hourly limit. Fine for a few friends; add your own SMTP if sign-ins start failing.
+Later (Play Store): add custom SMTP (e.g. Resend) and switch to email codes / password reset emails.
 
 ## Rules that keep it honest and private
 | Rule | Where it's enforced |
