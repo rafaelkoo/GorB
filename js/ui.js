@@ -2,7 +2,6 @@
 import * as api from './supa.js';
 import { openCamera, stopCamera, snap } from './camera.js';
 import { FEED_PAGE } from './config.js';
-import { pbBoardHtml } from './tracker.js';
 import { pushSupported, pushState, enablePush } from './push.js';
 import { t, setLang, langSwitchHtml, fmtDateTime, monthName } from './i18n.js';
 import { ICON, tally } from './icons.js';
@@ -150,8 +149,8 @@ export async function group(user, groupId, limit = FEED_PAGE) {
   const groups = await api.myGroups();
   const g = groups.find(x => x.id === groupId);
   if (!g) { location.hash = '#/all'; return; }
-  const [board, feed, pbs, doneToday] = await Promise.all([
-    api.leaderboard(groupId), api.groupFeed(groupId, limit + 1), pbBoardHtml(groupId, user.id), api.checkedInToday(user.id)
+  const [board, feed, doneToday] = await Promise.all([
+    api.leaderboard(groupId), api.groupFeed(groupId, limit + 1), api.checkedInToday(user.id)
   ]);
   const more = feed.length > limit; if (more) feed.pop();
   const mine = board.find(r => r.user_id === user.id);
@@ -173,7 +172,6 @@ export async function group(user, groupId, limit = FEED_PAGE) {
     ${pushSupported() && asked ? '<section class="card notif ask" id="notif" hidden></section>' : ''}
     <section class="card"><div class="card-head"><h3>${esc(monthName())} · ${t('days at the gym', '去 gym 日數')}</h3>
       <a class="link" href="#/r/${g.id}">${t('All rankings', '全部排名')} ›</a></div>${boardHtml(board, user)}</section>
-    <section class="card"><h3>${t('Personal bests', '個人最佳')}</h3>${pbs}</section>
     <section class="card"><h3>${t('Latest', '最新')}</h3>
       ${feed.length ? feed.map(r => postHtml(r, user)).join('') : `<p class="muted">${t('Nobody has checked in yet. Be first.', '仲未有人打卡，做第一個啦。')}</p>`}
       ${more ? `<button id="more" class="ghost">${t('Show more', '睇多啲')}</button>` : ''}

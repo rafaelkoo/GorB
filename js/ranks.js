@@ -1,7 +1,8 @@
 // Group rankings: one ranked list per measure, everyone in the group.
 import * as api from './supa.js';
 import { t, monthName } from './i18n.js';
-import { exName } from './tracker.js';
+import { exName, pbBoardHtml } from './tracker.js';
+import { LEVEL_XP } from './score.js';
 import { esc, render } from './ui.js';
 
 const MEDAL = ['🥇', '🥈', '🥉'];
@@ -9,6 +10,9 @@ const MEDAL = ['🥇', '🥈', '🥉'];
 function measures() {
   const m = monthName();
   return [
+    { id: 'points', zero: true, label: t('Points', '分數'), note: t(`Points in ${m}: set 5 · workout 15 · PR 25 · habit 5 · check-in 10`, `${m}分數：每組 5 · 訓練 15 · PR 25 · 習慣 5 · 打卡 10`), get: r => r.points_month, fmt: v => t(`${v.toLocaleString()} pts`, `${v.toLocaleString()} 分`) },
+    { id: 'sets', zero: true, label: t('Sets', '組數'), note: t(`Sets done in ${m}, at least 1 rep`, `${m}做咗嘅組數（最少 1 下）`), get: r => r.sets_month, fmt: v => t(`${v} set${v === 1 ? '' : 's'}`, `${v} 組`) },
+    { id: 'level', zero: true, label: t('Level', '等級'), note: t(`All-time points, a level every ${LEVEL_XP}`, `總分數，每 ${LEVEL_XP} 分升一級`), get: r => r.points_total, fmt: v => t(`Lv ${Math.floor(v / LEVEL_XP) + 1} · ${v.toLocaleString()}`, `第 ${Math.floor(v / LEVEL_XP) + 1} 級 · ${v.toLocaleString()}`) },
     { id: 'days', zero: true, label: t('Gym days', '去 gym 日數'), note: t(`Check-in days in ${m}`, `${m}打卡日數`), get: r => r.days_month, fmt: v => t(`${v} day${v === 1 ? '' : 's'}`, `${v} 日`) },
     { id: 'target', label: t('Weekly target', '每週目標'), note: t('Days each week they aim for', '每星期想去幾多日'), get: r => r.days_target, fmt: v => t(`${v}/week`, `每星期 ${v} 日`) },
     { id: 'workouts', zero: true, label: t('Workouts', '訓練次數'), note: t(`Workouts logged in ${m}`, `${m}記錄嘅訓練`), get: r => r.workouts_month, fmt: v => `${v}` },
@@ -22,11 +26,11 @@ function measures() {
   ];
 }
 
-export async function ranksScreen(user, groupId, measureId = 'days') {
+export async function ranksScreen(user, groupId, measureId = 'points') {
   const groups = await api.myGroups();
   const g = groups.find(x => x.id === groupId) || groups[0];
   if (!g) { location.hash = '#/all'; return; }
-  const rows = await api.groupRankings(g.id);
+  const [rows, pbs] = await Promise.all([api.groupRankings(g.id), pbBoardHtml(g.id, user.id)]);
   const all = measures(), m = all.find(x => x.id === measureId) || all[0];
   const withVal = rows.map(r => ({ r, v: m.get(r) })), has = withVal.filter(x => x.v != null && (x.v !== 0 || m.zero));
   has.sort((a, b) => m.asc ? a.v - b.v : b.v - a.v);
@@ -44,7 +48,8 @@ export async function ranksScreen(user, groupId, measureId = 'days') {
           <b>${esc(m.fmt(x.v))}</b></li>`).join('')}</ol>`
         : `<p class="muted">${t('Nobody on this one yet.', '暫時未有人。')}</p>`}
       ${without.length ? `<p class="muted small">${t('Not on this list yet', '未上榜')}: ${without.map(x => esc(x.r.display_name)).join(', ')}</p>` : ''}
-    </section>`);
+    </section>
+    <section class="card"><h3>${t('Personal bests', '個人最佳')}</h3>${pbs}</section>`);
   el.querySelectorAll('[data-m]').forEach(b => b.onclick = () => { location.hash = `#/r/${g.id}/${b.dataset.m}`; });
   el.querySelector('.chips .on')?.scrollIntoView({ inline: 'center', block: 'nearest' });
 }
