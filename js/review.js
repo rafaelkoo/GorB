@@ -97,7 +97,7 @@ export async function reviewScreen(user) {
       <p class="muted">${esc(fmtDay(rv.from))} – ${esc(fmtDay(rv.to))}</p></div>
       <a class="link" href="#/log">${t('Today', '今日')} ›</a></header>
     <section class="card review-score ${tone}">
-      <div class="score-num"><b>${rv.score}</b><span>/100</span></div>
+      <div class="score-num"><b data-count="${rv.score}">${rv.score}</b><span>/100</span></div>
       <div><h3>${verdict(rv.score)}</h3><p class="muted small">${t('Training days 60 · lifts on track 25 · weighed in 15', '訓練日數 60 · 舉重進度 25 · 有磅重 15')}</p></div>
     </section>
     <section class="card">

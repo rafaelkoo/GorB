@@ -10,7 +10,8 @@ export async function openCamera(videoEl) {
     audio: false
   });
   videoEl.srcObject = stream;
-  await videoEl.play();
+  // don't wait on play(): if the screen was left meanwhile it never settles, and the caller must still get the stream to stop it
+  videoEl.play().catch(() => {});
   return stream;
 }
 

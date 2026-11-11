@@ -9,6 +9,7 @@ import { t } from './i18n.js';
 import { exName, picker } from './tracker.js';
 import { esc, render, showError, toast } from './ui.js';
 import { openExercise } from './exsheet.js';
+import { popAfter } from './motion.js';
 import { schemeOf, schemeFor, schemeChanges, applyScheme, schemeName, restLabel } from './scheme.js';
 
 const DAY_EN = { Mon: 'Monday', Tue: 'Tuesday', Wed: 'Wednesday', Thu: 'Thursday', Fri: 'Friday', Sat: 'Saturday', Sun: 'Sunday' };
@@ -144,7 +145,7 @@ export async function planScreen(user, dayId) {
           <span>${t('Show my plan to my groups', '俾 group 睇我嘅計劃')}<small class="muted">${t('Off: only you see it.', '關：得你自己睇到。')}</small></span></label>
       </section>`);
 
-    el.querySelectorAll('[data-day]').forEach(b => b.onclick = () => go(plan.days.find(d => d.id === b.dataset.day)));
+    el.querySelectorAll('[data-day]').forEach(b => b.onclick = () => { go(plan.days.find(d => d.id === b.dataset.day)); popAfter(`[data-day="${b.dataset.day}"]`, 1.05); });
     el.querySelector('#newday')?.addEventListener('click', () => { const d = { id: newId(plan.days), name: '', on: [], items: [] }; plan.days.push(d); save(); go(d); el.ownerDocument.getElementById('dname')?.focus(); });
     el.querySelector('#usedefault')?.addEventListener('click', () => {
       plan.days = cleanPlan(DEFAULT_PLAN).days; save(); go(plan.days[0]);
@@ -183,7 +184,7 @@ export async function planScreen(user, dayId) {
       const w = b.dataset.wd;
       if (cur.on.includes(w)) cur.on = cur.on.filter(x => x !== w);
       else { plan.days.forEach(d => { d.on = d.on.filter(x => x !== w); }); cur.on = WD.filter(x => x === w || cur.on.includes(x)); }
-      save(); draw();
+      save(); draw(); popAfter(`[data-wd="${w}"]`);
     });
     el.querySelector('#deld').onclick = () => {
       if (cur.items.length && !el.querySelector('#deld').dataset.sure) {

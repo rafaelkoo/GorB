@@ -10,6 +10,7 @@ import { points, coverage, levelCardHtml, coverageHtml, habitList } from './scor
 import { cardioHtml, wireCardio } from './cardio.js';
 import { schemeOf } from './scheme.js';
 import { reviewDue } from './review.js';
+import { btnLoading, btnDone, btnReset, popAfter } from './motion.js';
 
 const $app = () => document.getElementById('app');
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -139,7 +140,7 @@ export async function logScreen(user) {
       const add = itemsFor(day).filter(n => !keepItems.some(k => k.id === n.id));
       draft = { ...draft, dayId: id, items: [...keepItems, ...add] };
       pickMsg = ticked || draft.saved ? t('Kept what you’ve done and added the rest.', '做咗嘅會保留，再加埋其餘動作。') : '';
-      keep(); draw();
+      keep(); draw(); popAfter(`[data-pick="${id || ''}"]`);
     });
 
     $app().querySelectorAll('.ex').forEach(card => {
@@ -154,7 +155,7 @@ export async function logScreen(user) {
         if (act === 'drop') draft.items.splice(+card.dataset.i, 1);
         if (act === 'addset') { const l = it.sets.at(-1) || {}; it.sets.push({ kg: l.kg ?? null, reps: l.reps ?? null }); }
         if (act === 'unset') it.sets.splice(+b.closest('.set').dataset.j, 1);
-        if (act === 'tick') { const x = it.sets[+b.closest('.set').dataset.j]; x.done = !x.done; if (x.done) startRest(restSec); }
+        if (act === 'tick') { const j = +b.closest('.set').dataset.j, x = it.sets[j]; x.done = !x.done; if (x.done) { startRest(restSec); popAfter(`.ex[data-i="${card.dataset.i}"] .set[data-j="${j}"] .tick`, 1.2); } }
         if (act === 'usecoach') { const c = coach(it.id); if (c) it.sets.forEach(x => { x.kg = c.kg; x.reps = c.reps; }); }
         keep(); draw();
       });
@@ -162,7 +163,7 @@ export async function logScreen(user) {
     $app().querySelectorAll('[data-open]').forEach(b => b.onclick = () => openExercise(user, b.dataset.open, 'how'));
     $app().querySelectorAll('[data-habit]').forEach(b => b.onclick = async () => {
       const id = b.dataset.habit, on = !habitsDone.has(id);
-      on ? habitsDone.add(id) : habitsDone.delete(id); draw();
+      on ? habitsDone.add(id) : habitsDone.delete(id); draw(); popAfter(`[data-habit="${id}"] .hcheck`, 1.3);
       try { await api.setHabit(user.id, id, on); } catch (err) { on ? habitsDone.delete(id) : habitsDone.add(id); draw(); showError(err); }
     });
     $app().querySelector('#addex').onclick = () => picker(id => {
@@ -183,10 +184,11 @@ export async function logScreen(user) {
         rows.push({ exercise_id: it.id, set_no: ++n, weight_kg: s.kg, reps: s.reps });
       }
     }
-    btn.disabled = true; btn.textContent = t('Saving…', '儲存緊…');
+    btnLoading(btn);
     try {
       await api.saveWorkout(user.id, rows);
       dropDraft(user.id);
+      await btnDone(btn, t('Saved', '已儲存'));
       const prs = [...new Set(rows.map(r => r.exercise_id))]
         .map(id => ({ id, now: Math.max(...rows.filter(r => r.exercise_id === id && r.reps >= 1).map(r => r.weight_kg), 0), before: prOf(past(id)).kg }))
         .filter(p => p.before > 0 && p.now > p.before);
@@ -194,7 +196,7 @@ export async function logScreen(user) {
       setTimeout(() => note(prs.length
         ? t(`Saved. New PR: ${prs.map(p => `${exName(p.id)} ${kg(p.now)}`).join(', ')} 🏆`, `已儲存。破咗 PR：${prs.map(p => `${exName(p.id)} ${kg(p.now)}`).join('、')} 🏆`)
         : t('Workout saved.', '訓練已儲存。')), 300);
-    } catch (err) { showError(err); btn.disabled = false; btn.textContent = t('Save workout', '儲存訓練'); }
+    } catch (err) { showError(err); btnReset(btn); }
   }
 
   draw();

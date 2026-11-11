@@ -3,6 +3,7 @@
 import * as api from './supa.js';
 import { t } from './i18n.js';
 import { esc, showError } from './ui.js';
+import { popAfter } from './motion.js';
 
 // ids match FitTrack's so the import lines up
 export const CARDIO = [
@@ -41,7 +42,7 @@ export function wireCardio(root, st, user, redraw) {
   root.querySelectorAll('[data-ckind]').forEach(b => b.onclick = () => {
     st.pick = st.pick === b.dataset.ckind ? null : b.dataset.ckind;
     const had = st.logs.find(c => c.performed_on === st.today && c.kind === st.pick); if (had) st.mins = had.minutes;
-    redraw();
+    redraw(); popAfter(`[data-ckind="${b.dataset.ckind}"]`);
   });
   root.querySelectorAll('[data-cmin]').forEach(b => b.onclick = () => { st.mins = Math.min(600, Math.max(5, st.mins + +b.dataset.cmin)); redraw(); });
   root.querySelector('#cadd')?.addEventListener('click', async () => {

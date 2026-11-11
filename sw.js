@@ -1,9 +1,9 @@
 // Service worker: offline app shell + push notifications.
 // Bump VERSION whenever app files change so phones pick up the new copy.
-const VERSION = 'gob-v0.16.0';
+const VERSION = 'gob-v0.17.1';
 const SHELL = [
   './', 'index.html', 'manifest.json', 'css/app.css',
-  'js/main.js', 'js/config.js', 'js/supa.js', 'js/camera.js', 'js/ui.js', 'js/push.js', 'js/tracker.js', 'js/exercises.js', 'js/i18n.js', 'js/icons.js', 'js/me.js', 'js/ranks.js', 'js/plan.js', 'js/importer.js', 'js/exsheet.js', 'js/coach.js', 'js/timer.js', 'js/score.js', 'js/scheme.js', 'js/cardio.js', 'js/review.js',
+  'js/main.js', 'js/config.js', 'js/supa.js', 'js/camera.js', 'js/ui.js', 'js/push.js', 'js/tracker.js', 'js/exercises.js', 'js/i18n.js', 'js/icons.js', 'js/me.js', 'js/ranks.js', 'js/plan.js', 'js/importer.js', 'js/exsheet.js', 'js/coach.js', 'js/timer.js', 'js/score.js', 'js/scheme.js', 'js/cardio.js', 'js/review.js', 'js/motion.js',
   'icons/icon-192.png', 'icons/icon-512.png'
 ];
 

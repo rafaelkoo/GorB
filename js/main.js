@@ -10,6 +10,7 @@ import { libraryScreen, closeExercise } from './exsheet.js';
 import { reviewScreen } from './review.js';
 import { t, getLang, setLang, hasChosenLang } from './i18n.js';
 import { ICON } from './icons.js';
+import { initMotion, markRoute } from './motion.js';
 
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
 
@@ -30,6 +31,7 @@ function drawTabs(page) {
 
 let synced = false;
 async function route() {
+  markRoute();
   ui.releaseCamera();
   closeExercise();
   if (!configured) return ui.notConfigured();
@@ -72,4 +74,5 @@ const safeRoute = () => route().catch(ui.showError);
 window.addEventListener('hashchange', safeRoute);
 window.addEventListener('langchange', safeRoute);
 if (sb) sb.auth.onAuthStateChange(ev => { if (ev === 'SIGNED_OUT') safeRoute(); });
+initMotion(document.getElementById('app'));
 safeRoute();

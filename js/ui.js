@@ -1,4 +1,5 @@
 // Screens: sign in, groups, group page, check-in camera. Each renders into #app.
+import { btnLoading, btnDone, btnReset } from './motion.js';
 import * as api from './supa.js';
 import { openCamera, stopCamera, snap } from './camera.js';
 import { FEED_PAGE } from './config.js';
@@ -164,7 +165,7 @@ export async function group(user, groupId, limit = FEED_PAGE) {
     <section class="hero-card ${doneToday ? 'done' : ''}">
       <div class="hero-text">
         <p class="status">${doneToday ? `${ICON.check(16)} ${t('Checked in today', '今日打咗卡')}` : t('Not checked in today', '今日仲未打卡')}</p>
-        <p class="big-num">${mine?.days ?? 0}<small>${t(`day${(mine?.days ?? 0) === 1 ? '' : 's'} in ${monthName()}`, `日 · ${monthName()}`)}</small></p>
+        <p class="big-num"><span data-count="${mine?.days ?? 0}">${mine?.days ?? 0}</span><small>${t(`day${(mine?.days ?? 0) === 1 ? '' : 's'} in ${monthName()}`, `日 · ${monthName()}`)}</small></p>
         ${tally(mine?.days ?? 0, t(`${mine?.days ?? 0} days this month`, `今個月 ${mine?.days ?? 0} 日`))}
       </div>
       <a class="cta" href="#/checkin/${g.id}">${ICON.camera(22)}<span>${doneToday ? t('Check in again', '再打卡') : t('I’m at the gym', '我喺 gym')}</span></a>
@@ -259,9 +260,16 @@ export async function checkin(user, groupId) {
   const v = el.querySelector('#v'), shot = el.querySelector('#shot');
   const live = el.querySelector('#live'), post = el.querySelector('#post');
   let photo = null;
-  try { liveStream = await openCamera(v); }
-  catch (err) { showError(err.name === 'NotAllowedError' ? { message: t('Camera blocked. Allow camera for this site in Chrome settings.', '相機被封鎖咗。去 Chrome 設定俾呢個網站用相機。') } : err); return; }
+  // the camera can take a while (permission prompt); if you've left the screen by then, switch it off and stop
+  const gone = () => !document.body.contains(v);
+  try {
+    const stream = await openCamera(v);
+    if (gone()) { stopCamera(stream); return; }
+    liveStream = stream;
+  }
+  catch (err) { if (gone()) return; showError(err.name === 'NotAllowedError' ? { message: t('Camera blocked. Allow camera for this site in Chrome settings.', '相機被封鎖咗。去 Chrome 設定俾呢個網站用相機。') } : err); return; }
 
+  if (gone()) return;
   el.querySelector('#snap').onclick = async () => {
     try {
       photo = await snap(v);
@@ -274,8 +282,8 @@ export async function checkin(user, groupId) {
   };
   post.onsubmit = async e => {
     e.preventDefault(); if (!photo) return;
-    const b = el.querySelector('#send'); busy(b, true, t('Posting…', '上載緊…'));
-    try { await api.postCheckin(user.id, photo, el.querySelector('#note').value.trim()); releaseCamera(); try { sessionStorage.setItem(ASK_KEY, '1'); } catch {} location.hash = `#/g/${groupId}`; }
-    catch (err) { showError(err); busy(b, false, t('Post check-in', '打卡')); }
+    const b = el.querySelector('#send'); btnLoading(b);
+    try { await api.postCheckin(user.id, photo, el.querySelector('#note').value.trim()); await btnDone(b, t('Posted', '打咗卡')); releaseCamera(); try { sessionStorage.setItem(ASK_KEY, '1'); } catch {} location.hash = `#/g/${groupId}`; }
+    catch (err) { showError(err); btnReset(b); }
   };
 }

@@ -49,7 +49,7 @@ export function levelCardHtml(p, weekStart) {
   const days = WD.map((d, i) => ({ d, v: p.day[addDays(weekStart, i)] || 0 }));
   const top = Math.max(1, ...days.map(x => x.v));
   return `<section class="card level">
-    <div class="card-head"><h3>${t(`Level ${p.level}`, `第 ${p.level} 級`)}</h3><span class="muted small">${t(`${p.total.toLocaleString()} points`, `${p.total.toLocaleString()} 分`)}</span></div>
+    <div class="card-head"><h3>${t(`Level ${p.level}`, `第 ${p.level} 級`)}</h3><span class="muted small"><span data-count="${p.total}" data-suffix="${t(' points', ' 分')}">${t(`${p.total.toLocaleString()} points`, `${p.total.toLocaleString()} 分`)}</span></span></div>
     <span class="bar xp"><i style="width:${Math.round(p.xp / LEVEL_XP * 100)}%"></i></span>
     <p class="muted small">${t(`${LEVEL_XP - p.xp} to level ${p.level + 1} · ${p.week} this week`, `仲差 ${LEVEL_XP - p.xp} 分升第 ${p.level + 1} 級 · 今個星期 ${p.week} 分`)}</p>
     <div class="dbars" role="img" aria-label="${t('Points per day this week', '今個星期每日分數')}">${days.map(x => `<div><i style="height:${Math.round(x.v / top * 100)}%"></i><b>${x.v || ''}</b><span>${t(x.d.slice(0, 1), DAY_ZH[x.d])}</span></div>`).join('')}</div>

@@ -7,6 +7,7 @@ import { exName, kg, picker, spark, bySession, prOf } from './tracker.js';
 import { pushSupported, pushState, enablePush, disablePush, testNotification } from './push.js';
 import { esc, render, busy, showError, toast, wireLangSwitch } from './ui.js';
 import { importFitTrack } from './importer.js';
+import { pop, popAfter } from './motion.js';
 import { targetStatus, targetAdvice, bodyAdvice, e1rm } from './coach.js';
 
 // FitTrack goals (same ids)
@@ -191,7 +192,7 @@ export async function meScreen(user) {
     try { await api.logWeight(user.id, v); await again(); toast(t('Weight logged.', '體重已記錄。')); } catch (err) { showError(err); }
   };
   el.querySelectorAll('[data-goal]').forEach(btn => btn.onclick = async () => {
-    try { await api.saveBodyProfile(user.id, { goal_id: btn.dataset.goal === b.goal_id ? null : btn.dataset.goal }); again(); } catch (err) { showError(err); }
+    try { await api.saveBodyProfile(user.id, { goal_id: btn.dataset.goal === b.goal_id ? null : btn.dataset.goal }); await again(); popAfter(`[data-goal="${btn.dataset.goal}"]`); } catch (err) { showError(err); }
   });
   el.querySelector('#details').onsubmit = async e => {
     e.preventDefault();
@@ -213,7 +214,7 @@ export async function meScreen(user) {
     try { await api.setName(user.id, v); await again(); toast(t('Name saved.', '名已儲存。')); } catch (err) { showError(err); }
   };
   el.querySelectorAll('[data-rest]').forEach(btn => btn.onclick = async () => {
-    try { await api.saveBodyProfile(user.id, { rest_sec: +btn.dataset.rest }); el.querySelectorAll('[data-rest]').forEach(x => x.classList.toggle('on', x === btn)); } catch (err) { showError(err); }
+    try { await api.saveBodyProfile(user.id, { rest_sec: +btn.dataset.rest }); el.querySelectorAll('[data-rest]').forEach(x => x.classList.toggle('on', x === btn)); pop(btn); } catch (err) { showError(err); }
   });
   el.querySelector('#sharetargets').onchange = async e => {
     try { await api.updateProfile(user.id, { share_targets: e.target.checked }); } catch (err) { showError(err); }
