@@ -1,0 +1,167 @@
+// Screens. Each one renders into #app and wires its own buttons.
+import * as api from './supa.js';
+import { openCamera, stopCamera, snap } from './camera.js';
+
+const $app = () => document.getElementById('app');
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const when = iso => new Date(iso).toLocaleString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+const monthName = () => new Date().toLocaleString('en-GB', { month: 'long' });
+
+function render(html) { $app().innerHTML = html; return $app(); }
+function busy(btn, on, label) { btn.disabled = on; if (label) btn.textContent = label; }
+export function showError(err) {
+  const box = document.querySelector('.error') || $app().insertAdjacentElement('afterbegin', document.createElement('p'));
+  box.className = 'error'; box.textContent = err?.message || String(err);
+}
+
+// ---------- setup / auth ----------
+export function notConfigured() {
+  render(`<section class="card"><h2>Almost there</h2>
+    <p>Open <code>js/config.js</code> and paste your Supabase URL and anon key. See the README.</p></section>`);
+}
+
+export function signIn(onDone) {
+  const el = render(`<section class="card"><h2>Sign in</h2>
+    <p class="muted">We email you a 6-digit code. No password.</p>
+    <form id="f1"><input id="email" type="email" required autocomplete="email" placeholder="you@email.com">
+      <button>Send code</button></form>
+    <form id="f2" hidden><input id="code" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" required placeholder="123456">
+      <button>Sign in</button></form></section>`);
+  let email = '';
+  el.querySelector('#f1').onsubmit = async e => {
+    e.preventDefault(); const b = e.submitter; email = el.querySelector('#email').value.trim();
+    busy(b, true, 'Sending…');
+    try { await api.sendCode(email); el.querySelector('#f1').hidden = true; el.querySelector('#f2').hidden = false; el.querySelector('#code').focus(); }
+    catch (err) { showError(err); busy(b, false, 'Send code'); }
+  };
+  el.querySelector('#f2').onsubmit = async e => {
+    e.preventDefault(); const b = e.submitter; busy(b, true, 'Checking…');
+    try { await api.verifyCode(email, el.querySelector('#code').value.trim()); onDone(); }
+    catch (err) { showError(err); busy(b, false, 'Sign in'); }
+  };
+}
+
+export function pickName(user, onDone) {
+  const el = render(`<section class="card"><h2>What do your mates call you?</h2>
+    <form><input id="name" required maxlength="40" placeholder="e.g. Ryan"><button>Save</button></form></section>`);
+  el.querySelector('form').onsubmit = async e => {
+    e.preventDefault();
+    try { await api.setName(user.id, el.querySelector('#name').value.trim()); onDone(); } catch (err) { showError(err); }
+  };
+}
+
+// ---------- groups ----------
+export async function home(user) {
+  const groups = await api.myGroups();
+  if (groups.length === 1 && !location.hash.includes('all')) { location.hash = `#/g/${groups[0].id}`; return; }
+  const el = render(`
+    <section class="card"><h2>Your groups</h2>
+      ${groups.length ? `<ul class="list">${groups.map(g => `<li><a href="#/g/${g.id}">${esc(g.name)}</a></li>`).join('')}</ul>`
+                      : '<p class="muted">No groups yet. Make one or join with a code.</p>'}
+    </section>
+    <section class="card"><h3>Make a group</h3>
+      <form id="mk"><input id="gname" required maxlength="60" placeholder="Group name"><button>Create</button></form></section>
+    <section class="card"><h3>Join a group</h3>
+      <form id="jn"><input id="gcode" required maxlength="8" placeholder="Invite code" autocapitalize="characters"><button>Join</button></form></section>`);
+  el.querySelector('#mk').onsubmit = async e => {
+    e.preventDefault();
+    try { const g = await api.createGroup(el.querySelector('#gname').value); location.hash = `#/g/${g.id}`; } catch (err) { showError(err); }
+  };
+  el.querySelector('#jn').onsubmit = async e => {
+    e.preventDefault();
+    try { const g = await api.joinGroup(el.querySelector('#gcode').value); location.hash = `#/g/${g.id}`; } catch (err) { showError(err); }
+  };
+}
+
+export async function group(user, groupId) {
+  const groups = await api.myGroups();
+  const g = groups.find(x => x.id === groupId);
+  if (!g) { location.hash = '#/all'; return; }
+  const [board, feed] = await Promise.all([api.leaderboard(groupId), api.groupFeed(groupId)]);
+  const inviteLink = `${location.origin}${location.pathname}#/join/${g.invite_code}`;
+  const el = render(`
+    <nav class="crumbs"><a href="#/all">All groups</a></nav>
+    <section class="hero">
+      <h2>${esc(g.name)}</h2>
+      <a class="big" href="#/checkin/${g.id}">📸 I'm at the gym</a>
+    </section>
+    <section class="card"><h3>${esc(monthName())} — days at the gym</h3>
+      <ol class="board">${board.map((r, i) => `<li class="${r.user_id === user.id ? 'me' : ''}">
+        <span>${esc(r.display_name || '?')}</span><b>${r.days}</b></li>`).join('')}</ol>
+      ${board.length > 1 ? `<p class="muted">Bottom right now: <b>${esc(board[board.length - 1].display_name)}</b></p>` : ''}
+    </section>
+    <section class="card"><h3>Latest</h3>
+      ${feed.length ? feed.map(r => `<article class="post">
+          <img src="${esc(r.url)}" alt="Check-in photo by ${esc(r.profiles?.display_name)}" loading="lazy">
+          <div><b>${esc(r.profiles?.display_name)}</b> <span class="muted">${esc(when(r.created_at))}</span>
+            ${r.note ? `<p>${esc(r.note)}</p>` : ''}
+            ${r.user_id === user.id ? `<button class="ghost del" data-id="${r.id}">Delete</button>` : ''}</div>
+        </article>`).join('') : '<p class="muted">Nobody has checked in yet. Be first.</p>'}
+    </section>
+    <section class="card"><h3>Invite mates</h3>
+      <p>Code: <b class="code">${esc(g.invite_code)}</b></p>
+      <button id="share">Share invite link</button>
+      <button id="leave" class="ghost">Leave group</button>
+    </section>`);
+  el.querySelector('#share').onclick = async () => {
+    const text = `Join "${g.name}" on Gym or Bitch: ${inviteLink}`;
+    try { if (navigator.share) await navigator.share({ title: 'Gym or Bitch', text }); else { await navigator.clipboard.writeText(text); showError({ message: 'Invite link copied' }); } }
+    catch { /* share sheet closed */ }
+  };
+  el.querySelector('#leave').onclick = async () => {
+    if (!confirm(`Leave ${g.name}?`)) return;
+    try { await api.leaveGroup(g.id, user.id); location.hash = '#/all'; } catch (err) { showError(err); }
+  };
+  el.querySelectorAll('.del').forEach(b => b.onclick = async () => {
+    if (!confirm('Delete this check-in and its photo?')) return;
+    try { await api.deleteCheckin(feed.find(r => r.id === b.dataset.id)); group(user, groupId); } catch (err) { showError(err); }
+  });
+}
+
+export async function joinByLink(code) {
+  try { const g = await api.joinGroup(code); location.hash = `#/g/${g.id}`; }
+  catch (err) { location.hash = '#/all'; setTimeout(() => showError(err), 50); }
+}
+
+// ---------- check-in ----------
+let liveStream = null;
+export function releaseCamera() { stopCamera(liveStream); liveStream = null; }
+
+export async function checkin(user, groupId) {
+  const el = render(`
+    <nav class="crumbs"><a href="#/g/${groupId}">Back</a></nav>
+    <section class="cam">
+      <video id="v" playsinline muted></video>
+      <img id="shot" alt="Your photo" hidden>
+      <div class="cam-actions">
+        <button id="snap" class="big">Take photo</button>
+        <button id="retake" class="ghost" hidden>Retake</button>
+      </div>
+      <form id="post" hidden>
+        <input id="note" maxlength="140" placeholder="Leg day? Say something (optional)">
+        <button>Post check-in</button>
+      </form>
+    </section>`);
+  const v = el.querySelector('#v'), shot = el.querySelector('#shot');
+  let blob = null;
+  try { liveStream = await openCamera(v); }
+  catch (err) { showError(err.name === 'NotAllowedError' ? { message: 'Camera blocked. Allow camera for this site in Chrome settings.' } : err); return; }
+
+  el.querySelector('#snap').onclick = async () => {
+    try {
+      blob = await snap(v);
+      shot.src = URL.createObjectURL(blob); shot.hidden = false; v.hidden = true;
+      el.querySelector('#snap').hidden = true; el.querySelector('#retake').hidden = false; el.querySelector('#post').hidden = false;
+    } catch (err) { showError(err); }
+  };
+  el.querySelector('#retake').onclick = () => {
+    blob = null; shot.hidden = true; v.hidden = false;
+    el.querySelector('#snap').hidden = false; el.querySelector('#retake').hidden = true; el.querySelector('#post').hidden = true;
+  };
+  el.querySelector('#post').onsubmit = async e => {
+    e.preventDefault(); if (!blob) return;
+    const b = e.submitter; busy(b, true, 'Posting…');
+    try { await api.postCheckin(user.id, blob, el.querySelector('#note').value.trim()); releaseCamera(); location.hash = `#/g/${groupId}`; }
+    catch (err) { showError(err); busy(b, false, 'Post check-in'); }
+  };
+}
