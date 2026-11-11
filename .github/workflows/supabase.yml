@@ -33,13 +33,24 @@ jobs:
             echo "::error::Add these in GitHub → Settings → Secrets and variables → Actions:$missing"
             exit 1
           fi
+          # strip stray spaces/new lines from pasting, and pass the clean values on
+          tok=$(printf '%s' "$SUPABASE_ACCESS_TOKEN" | tr -d '[:space:]')
+          pw=$(printf '%s' "$SUPABASE_DB_PASSWORD" | tr -d '\r\n')
+          echo "::add-mask::$tok"; echo "::add-mask::$pw"
+          echo "SUPABASE_ACCESS_TOKEN=$tok" >> "$GITHUB_ENV"
+          echo "SUPABASE_DB_PASSWORD=$pw" >> "$GITHUB_ENV"
+          # show only the shape of the token, never the token
+          case "$tok" in
+            sbp_*) echo "Access token looks right (starts with sbp_, ${#tok} characters)." ;;
+            *) echo "::error::SUPABASE_ACCESS_TOKEN doesn't start with sbp_ (it is ${#tok} characters). It must be the token from supabase.com/dashboard/account/tokens, not the database password."; exit 1 ;;
+          esac
 
       - uses: supabase/setup-cli@v1
         with:
           version: latest
 
       - name: Link project
-        run: supabase link --project-ref "$PROJECT_REF" --password "$SUPABASE_DB_PASSWORD"
+        run: supabase link --project-ref "$PROJECT_REF"
 
       - name: Show migrations (local vs live)
         run: supabase migration list
