@@ -21,7 +21,17 @@ Web app (PWA) first, Android app later via TWA.
 - **Ranks** tab: the whole group ranked by gym days, weekly target, workouts, volume, big-four total, each lift, and weight change (sharers only).
 - **English / 繁中**: switch on the sign-in screen or Me → Settings. Saved to the profile, so notifications arrive in each person's language.
 
-Later: running times (5K…marathon), weekly plan, FitTrack backup import.
+## FitTrack features (brought over)
+- **Import**: Me → Bring over FitTrack, pick the file from FitTrack's Me → Export. Done sets, body weight, details, goal, plan, rest timer and targets come across; days already logged here are kept; safe to repeat.
+- **Weekly plan** (Log → Plan): which day trains what; today's log starts from it. Private unless shared.
+- **3D demos** (Log → Library, or tap any exercise name): FitTrack's viewer, phases, cues and red wrong-form figure. Three.js and the body model load only when opened.
+- **Coach**: FitTrack's double-progression next load on every exercise; lift targets as kg × reps with a deadline and on-pace check; weight goal date with weekly pace and calories.
+- **Rest timer**: tick a set done to start it; length on Me.
+- **Habits, points, levels**: daily habits on Log (private); points from real data (set 5, workout 15, PR 25, habit 5, check-in 10), 500 per level; weekly muscle coverage on Progress.
+
+Not brought over: FitTrack's weekly review and training-scheme guide, cardio logging.
+
+Later: running times (5K…marathon).
 
 ## Setup
 Database changes and the notification function deploy themselves: GitHub Actions (`.github/workflows/supabase.yml`) runs on every push to `main` that touches `supabase/`, applies any new file in `supabase/migrations/`, and deploys `supabase/functions/notify-checkin`. Watch it under the repo's **Actions** tab.

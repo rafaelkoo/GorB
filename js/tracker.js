@@ -6,6 +6,7 @@ import { cleanPlan, dayFocus, focusName } from './plan.js';
 import { openExercise } from './exsheet.js';
 import { nextLoad } from './coach.js';
 import { startRest } from './timer.js';
+import { points, coverage, levelCardHtml, coverageHtml, habitList } from './score.js';
 
 const $app = () => document.getElementById('app');
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -55,7 +56,8 @@ const dropDraft = uid => { try { localStorage.removeItem(draftKey(uid)); } catch
 
 export async function logScreen(user) {
   const today = api.ukToday(), weekday = api.ukWeekday();
-  const [rows, savedPlan, body] = await Promise.all([api.liftHistory(user.id), api.getPlan(user.id), api.bodyProfile(user.id)]);
+  const [rows, savedPlan, body, ticks, wlog] = await Promise.all([api.liftHistory(user.id), api.getPlan(user.id), api.bodyProfile(user.id), api.habitTicks(user.id, api.ukToday()), api.weights(user.id)]);
+  const habitsDone = new Set(ticks.map(x => x.habit)), habits = habitList(wlog.at(-1) ? +wlog.at(-1).weight_kg : null);
   const restSec = body?.rest_sec || 90;
   const history = bySession(rows);
   const fullPlan = savedPlan ? cleanPlan(savedPlan) : null, todayPlan = fullPlan ? fullPlan[weekday] : [];
@@ -83,6 +85,8 @@ export async function logScreen(user) {
       <header class="page-head"><div><h2>${t('Today’s workout', '今日訓練')}</h2>
         <p class="muted">${esc(fmtLongToday())} · ${esc(focusName(dayFocus(todayPlan)))}${draft.saved ? ` · ${t('saved, edit and save again', '已儲存，可以改完再儲')}` : draft.fromPlan ? ` · ${t('from your plan', '跟你嘅計劃')}` : ''}</p></div>
         <div class="head-links"><a class="link" href="#/plan">${t('Plan', '計劃')} ›</a><a class="link" href="#/lib">${t('Library', '動作庫')} ›</a></div></header>
+      <section class="card habits"><div class="card-head"><h3>${t('Today’s habits', '今日習慣')}</h3><span class="muted small">${habitsDone.size}/${habits.length} · +5 ${t('each', '分一個')}</span></div>
+        <div class="habit-grid">${habits.map(h => `<button class="habit ${habitsDone.has(h.id) ? 'on' : ''}" data-habit="${h.id}" aria-pressed="${habitsDone.has(h.id)}"><span class="hcheck">✓</span>${esc(h.label)}</button>`).join('')}</div></section>
       ${draft.items.length ? `<p class="muted small">${t(`${draft.items.length} exercise${draft.items.length === 1 ? '' : 's'} · ${nSets} set${nSets === 1 ? '' : 's'} · kept on this phone until you save`, `${draft.items.length} 個動作 · ${nSets} 組 · 未儲存之前會暫存喺呢部手機`)}</p>` : ''}
       ${draft.items.map((it, i) => {
         const last = past(it.id).at(-1);
@@ -125,6 +129,11 @@ export async function logScreen(user) {
       });
     });
     $app().querySelectorAll('[data-open]').forEach(b => b.onclick = () => openExercise(user, b.dataset.open, 'how'));
+    $app().querySelectorAll('[data-habit]').forEach(b => b.onclick = async () => {
+      const id = b.dataset.habit, on = !habitsDone.has(id);
+      on ? habitsDone.add(id) : habitsDone.delete(id); draw();
+      try { await api.setHabit(user.id, id, on); } catch (err) { on ? habitsDone.delete(id) : habitsDone.add(id); draw(); showError(err); }
+    });
     $app().querySelector('#addex').onclick = () => picker(id => {
       const last = past(id).at(-1);
       draft.items.push({ id, sets: last ? last.sets.map(s => ({ kg: s.kg, reps: s.reps })) : [{ kg: null, reps: null }] });
@@ -198,7 +207,9 @@ export function spark(values, label) {
 
 export async function progressScreen(user, who) {
   const uid = who === 'me' ? user.id : who;
-  const [profile, rows] = await Promise.all([api.getProfile(uid), api.liftHistory(uid)]);
+  const mineP = uid === user.id, weekStart = api.ukWeekStart();
+  const [profile, rows, habitRows, ciDays] = await Promise.all([api.getProfile(uid), api.liftHistory(uid),
+    mineP ? api.habitTicks(uid, '2000-01-01') : [], mineP ? api.checkinDates(uid) : []]);
   const sessions = bySession(rows);
   const order = Object.keys(sessions).sort((a, b) => sessions[b].at(-1).date.localeCompare(sessions[a].at(-1).date));
   const mine = uid === user.id;
@@ -209,6 +220,8 @@ export async function progressScreen(user, who) {
       <p class="muted">${t(`${days} workout${days === 1 ? '' : 's'} logged`, `記錄咗 ${days} 次訓練`)}</p></div>
       ${mine ? `<a class="link" href="#/me">${t('Me', '我')} ›</a>` : ''}</header>
     ${mine ? `<a class="big" href="#/log">${t('Log today’s workout', '記錄今日訓練')}</a>` : ''}
+    ${mine ? levelCardHtml(points(rows, habitRows, ciDays, weekStart), weekStart) : ''}
+    ${coverageHtml(coverage(rows, weekStart))}
     <section class="card"><h3>${t('Personal bests', '個人最佳')}</h3>
       <div class="pbs">${BIG_FOUR.map(id => { const p = prOf(sessions[id] || []); return `<div><span class="muted">${esc(exName(id))}</span><b>${p.kg ? kg(p.kg) : '—'}</b></div>`; }).join('')}
         <div class="total"><span class="muted">${t('Total', '總和')}</span><b>${total ? kg(total) : '—'}</b></div></div></section>

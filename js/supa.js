@@ -160,3 +160,16 @@ export const insertWorkouts = rows => sb.from('workouts').insert(rows).select('i
 export const insertSets = rows => sb.from('workout_sets').insert(rows).then(must);
 export const upsertWeights = rows => sb.from('body_weights').upsert(rows, { onConflict: 'user_id,logged_on', ignoreDuplicates: true }).then(must);
 export const upsertTargets = rows => sb.from('lift_targets').upsert(rows, { onConflict: 'user_id,exercise_id' }).then(must);
+
+// ---------- habits (private) + check-in dates for points ----------
+export const habitTicks = (userId, from) => sb.from('habit_ticks').select('day, habit').eq('user_id', userId).gte('day', from).then(must);
+export const allHabitCount = userId => sb.from('habit_ticks').select('day').eq('user_id', userId).then(must).then(r => r.length);
+export const setHabit = (userId, habit, on) => on
+  ? sb.from('habit_ticks').upsert({ user_id: userId, day: ukToday(), habit }, { onConflict: 'user_id,day,habit', ignoreDuplicates: true }).then(must)
+  : sb.from('habit_ticks').delete().match({ user_id: userId, day: ukToday(), habit }).then(must);
+export const checkinDates = userId => sb.from('checkins').select('created_at').eq('user_id', userId).then(must).then(r => r.map(x => ukDayOf(x.created_at)));
+// Monday of the current UK week, "YYYY-MM-DD"
+export function ukWeekStart() {
+  const d = new Date(ukToday() + 'T12:00:00Z'); d.setUTCDate(d.getUTCDate() - ((d.getUTCDay() + 6) % 7));
+  return d.toISOString().slice(0, 10);
+}
