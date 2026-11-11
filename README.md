@@ -23,7 +23,7 @@ Web app (PWA) first, Android app later via TWA.
 
 ## FitTrack features (brought over)
 - **Import**: Me → Bring over FitTrack, pick the file from FitTrack's Me → Export. Done sets, body weight, details, goal, plan, rest timer and targets come across; days already logged here are kept; safe to repeat.
-- **Weekly plan** (Log → Plan): which day trains what; today's log starts from it. Private unless shared.
+- **Workout days** (Log → Days): named days you pick from (Arms, Shoulders, Chest…), each with exercises, sets and rep range. Optional usual weekday; otherwise the Log page suggests the next day after the one you trained last. A FitTrack weekday plan turns into one day per weekday. Private unless shared.
 - **3D demos** (Log → Library, or tap any exercise name): FitTrack's viewer, phases, cues and red wrong-form figure. Three.js and the body model load only when opened.
 - **Coach**: FitTrack's double-progression next load on every exercise; lift targets as kg × reps with a deadline and on-pace check; weight goal date with weekly pace and calories.
 - **Rest timer**: tick a set done to start it; length on Me.

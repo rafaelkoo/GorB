@@ -109,7 +109,7 @@ export async function importFitTrack(user, text, onStep = () => {}) {
   const plan = get('customPlan');
   if (plan && !(await api.getPlan(user.id))) {
     const clean = cleanPlan(plan);
-    if (Object.values(clean).some(d => d.length)) { await api.savePlan(user.id, clean); report.plan = true; }
+    if (clean.days.length) { await api.savePlan(user.id, clean); report.plan = true; }
   }
 
   // 5. lift targets ({id: {kg, reps, by, set, base}}), keeping any already set here

@@ -105,7 +105,7 @@ export async function meScreen(user) {
         <span>${t('Show my lift targets to my groups', '俾 group 睇我嘅舉重目標')}<small class="muted">${t('Off: only you see them.', '關：得你自己睇到。')}</small></span></label>
     </section>
 
-    <a class="card linkcard" href="#/plan"><div><h3>${t('Weekly plan', '每週計劃')}</h3><p class="muted small">${t('Which day trains what. Today’s log starts from it.', '星期幾練咩。每日記錄會跟住佢自動填好。')}</p></div><span aria-hidden="true">›</span></a>
+    <a class="card linkcard" href="#/plan"><div><h3>${t('Workout days', '訓練日')}</h3><p class="muted small">${t('Your days to pick from, like Arms or Legs. The Log page fills in the one you pick.', '你會揀嘅訓練日，例如手臂日、腿日。喺「記錄」頁揀咗就會自動填好。')}</p></div><span aria-hidden="true">›</span></a>
 
     <section class="card">
       <div class="card-head"><h3>${t('Body weight', '體重')}</h3><span class="pill ${b.share_body ? 'on' : ''}">${b.share_body ? t('Shown to groups', 'Group 睇到') : t('Private', '私人')}</span></div>

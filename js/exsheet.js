@@ -4,14 +4,13 @@
 import * as api from './supa.js';
 import { EX as FT, bodyParts, muscleZh, equipZh } from './ftdata.js';
 import { MOVES } from './moves.js';
-import { WD, EXERCISES, CATS } from './exercises.js';
+import { EXERCISES, CATS } from './exercises.js';
 import { t, getLang, fmtDay } from './i18n.js';
 import { exName, kg, spark, bySession, prOf } from './tracker.js';
-import { cleanPlan } from './plan.js';
+import { cleanPlan, dayName } from './plan.js';
 import { esc, showError, toast, render } from './ui.js';
 
 const e1rm = (w, r) => (r <= 1 ? w : w * (1 + r / 30));   // Epley, as FitTrack
-const SHORT_ZH = { Mon: '一', Tue: '二', Wed: '三', Thu: '四', Fri: '五', Sat: '六', Sun: '日' };
 let viewer = null, box = null;
 const dispose = () => { if (viewer) { viewer.dispose(); viewer = null; } };
 
@@ -47,9 +46,10 @@ export async function openExercise(user, id, tab = 'how', who = user.id) {
     box.querySelectorAll('[data-tab]').forEach(b => b.onclick = () => { tab = b.dataset.tab; draw(); });
     if (tab === 'how') mount();
     box.querySelectorAll('[data-plan]').forEach(b => b.onclick = async () => {
-      const d = b.dataset.plan, list = planObj[d], at = list.findIndex(e => e.id === id);
+      const day = planObj.days.find(x => x.id === b.dataset.plan); if (!day) return;
+      const list = day.items, at = list.findIndex(e => e.id === id), nm = dayName(day);
       if (at >= 0) list.splice(at, 1); else list.push({ id, sets: 3, reps: 10 });
-      try { await api.savePlan(user.id, planObj); b.classList.toggle('on', at < 0); b.setAttribute('aria-pressed', at < 0); toast(at < 0 ? t(`Added to ${d}`, `已加入星期${SHORT_ZH[d]}`) : t(`Removed from ${d}`, `已由星期${SHORT_ZH[d]}移除`)); }
+      try { await api.savePlan(user.id, planObj); b.classList.toggle('on', at < 0); b.setAttribute('aria-pressed', at < 0); toast(at < 0 ? t(`Added to ${nm}`, `已加入${nm}`) : t(`Removed from ${nm}`, `已由${nm}移除`)); }
       catch (err) { showError(err); }
     });
   }
@@ -76,7 +76,8 @@ export async function openExercise(user, id, tab = 'how', who = user.id) {
   }
   function planHtml() {
     return `<section class="card"><h3>${t('Add to plan', '加入計劃')}</h3>
-      <div class="days7">${WD.map(d => { const on = planObj[d].some(e => e.id === id); return `<button data-plan="${d}" aria-pressed="${on}" class="${on ? 'on' : ''}"><b>${t(d, SHORT_ZH[d])}</b></button>`; }).join('')}</div></section>`;
+      ${planObj.days.length ? `<div class="chips wrap">${planObj.days.map(d => { const on = d.items.some(e => e.id === id); return `<button data-plan="${d.id}" aria-pressed="${on}" class="${on ? 'on' : ''}">${esc(dayName(d))}</button>`; }).join('')}</div>`
+        : `<p class="muted small">${t('Make a workout day first.', '要先整一個訓練日。')} <a class="link" href="#/plan">${t('Workout days', '訓練日')} ›</a></p>`}</section>`;
   }
   function progHtml() {
     if (!sessions.length) return `<section class="card empty"><p class="muted">${t('Save a workout with this exercise to see your trend here.', '儲存一次有呢個動作嘅訓練，就會見到走勢。')}</p></section>${mine ? planHtml() : ''}`;

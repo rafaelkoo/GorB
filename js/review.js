@@ -6,7 +6,7 @@ import { EX, WD, CATS } from './exercises.js';
 import { t, fmtDay } from './i18n.js';
 import { esc, render } from './ui.js';
 import { bySession, exName, kg } from './tracker.js';
-import { cleanPlan } from './plan.js';
+import { cleanPlan, allItems, plannedPerWeek } from './plan.js';
 import { coachSessions, nextLoad, targetStatus } from './coach.js';
 import { coverage } from './score.js';
 import { schemeOf, schemeName } from './scheme.js';
@@ -32,7 +32,7 @@ export function weeklyReview(d, today) {
   const liftDays = new Set(d.rows.filter(r => r.performed_on >= from && r.performed_on <= today && r.reps >= 1).map(r => r.performed_on));
   const cardioDays = new Set(d.cardio.filter(c => c.performed_on >= from && c.performed_on <= today).map(c => c.performed_on));
   const done = new Set([...liftDays, ...cardioDays]).size;
-  const planned = plan ? WD.filter(w => plan[w].length).length : (d.daysPerWeek || 0);
+  const planned = d.daysPerWeek || (plan && plan.days.length ? plannedPerWeek(plan) : 0);
 
   // lifts trained this week: against a target if there is one, otherwise est. 1RM vs the last session before this week
   const tg = Object.fromEntries(d.targets.map(x => [x.exercise_id, x]));
@@ -63,7 +63,7 @@ export function weeklyReview(d, today) {
   const sets = coverage(d.rows.filter(r => r.performed_on <= today), from);
 
   // next week: what to lift on each planned exercise (rep range from the plan)
-  const next = plan ? [...new Map(WD.flatMap(w => plan[w]).map(e => [e.id, e])).values()]
+  const next = plan ? [...new Map(allItems(plan).map(e => [e.id, e])).values()]
     .map(e => ({ id: e.id, s: nextLoad(e.id, hist[e.id], today, e.lo || e.reps, e.reps) })).filter(x => x.s && x.s.kg).slice(0, 8) : [];
 
   const judged = lifts.filter(l => !l.base);
