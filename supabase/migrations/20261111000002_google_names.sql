@@ -1,4 +1,4 @@
--- Run once in Supabase → SQL Editor (after schema.sql).
+-- Applied by GitHub Actions. Safe to run more than once.
 -- New Google users get their first name filled in, so they skip the "pick a name" screen.
 create or replace function public.handle_new_user() returns trigger
 language plpgsql security definer set search_path = public as $$

@@ -14,25 +14,29 @@ Web app (PWA) first, Android app later via TWA.
 - **Log**: today's workout — pick from 82 FitTrack exercises, kg + reps per set, last time's numbers filled in, draft kept on the phone until saved. One workout per UK day; saving again replaces it.
 - **Progress**: PBs for bench / deadlift / squat / OHP + total, a trend line and PR per exercise. Groupmates can open each other's progress.
 - **Group page**: PB board like the old Excel "Personal Bests" sheet.
-- Run `supabase/migrations/003_tracker.sql` once.
 
 Later: running times (5K…marathon), weekly plan, FitTrack backup import.
 
 ## Setup
-1. Make a free project at supabase.com.
-2. **SQL Editor** → paste all of `supabase/schema.sql` → Run.
-3. **Authentication → Sign In / Providers → Email**: turn **off** "Confirm email". Forgotten passwords: reset the user in Authentication → Users.
-4. **Authentication → URL Configuration**: Site URL = your GitHub Pages URL.
-5. **Google login**: see "Google sign-in setup" below, and run `supabase/migrations/002_google_names.sql`.
-6. **Project Settings → API**: copy the Project URL and the `anon` key into `js/config.js`.
-7. Push to GitHub → Settings → Pages → deploy from `main`, root folder.
+Database changes and the notification function deploy themselves: GitHub Actions (`.github/workflows/supabase.yml`) runs on every push to `main` that touches `supabase/`, applies any new file in `supabase/migrations/`, and deploys `supabase/functions/notify-checkin`. Watch it under the repo's **Actions** tab.
 
-Later (Play Store): add custom SMTP (e.g. Resend) and switch to email codes / password reset emails.
+One-time setup:
+1. Make a free project at supabase.com.
+2. GitHub repo → **Settings → Secrets and variables → Actions → New repository secret**:
+   - `SUPABASE_ACCESS_TOKEN` — from supabase.com/dashboard/account/tokens
+   - `SUPABASE_DB_PASSWORD` — the database password (Project Settings → Database)
+3. **Actions → Supabase → Run workflow** once (later pushes run it by themselves).
+4. **Authentication → Sign In / Providers → Email**: turn **off** "Confirm email".
+5. **Authentication → URL Configuration**: Site URL + Redirect URL = your GitHub Pages URL.
+6. **Project Settings → API**: Project URL + publishable key into `js/config.js`.
+7. GitHub → Settings → Pages → deploy from `main`, root folder.
+
+To change the database: add a new file `supabase/migrations/<yyyymmddhhmmss>_<name>.sql` and push. Never edit a migration that has already run; write a new one. Keep every migration safe to run twice (`if not exists`, `create or replace`, `drop … if exists`).
 
 ## Rules that keep it honest and private
 | Rule | Where it's enforced |
 |---|---|
-| Only groupmates can see your profile, check-ins and photos | Row Level Security in `schema.sql` |
+| Only groupmates can see your profile, check-ins and photos | Row Level Security in `supabase/migrations/` |
 | Photo bucket is private; photos load through 1-hour signed links | Storage policies |
 | Check-in time and owner are set by the server, not the phone | `stamp_checkin` trigger |
 | You can only upload into your own photo folder | Storage policy + trigger |
@@ -50,7 +54,9 @@ Later (Play Store): add custom SMTP (e.g. Resend) and switch to email codes / pa
 | `js/camera.js` | live camera, resize, EXIF strip |
 | `js/ui.js` | screens |
 | `js/main.js` | boot and routing |
-| `supabase/schema.sql` | tables, rules, functions, photo bucket |
+| `supabase/migrations/` | tables, rules, functions, photo bucket (applied by Actions) |
+| `supabase/functions/notify-checkin/` | sends push notifications (deployed by Actions) |
+| `.github/workflows/supabase.yml` | the automatic Supabase deploy |
 
 Bump `VERSION` in `sw.js` on every release so phones load the new files.
 
@@ -67,8 +73,7 @@ Bump `VERSION` in `sw.js` on every release so phones load the new files.
 The first check-in of someone's UK day pings everyone who shares a group with them (later ones that day don't).
 Phones mute it themselves (Do Not Disturb); the app has no mute.
 
-1. On your PC: `npx web-push generate-vapid-keys`. The **public** key goes in `js/config.js` (`VAPID_PUBLIC_KEY`); the **private** key only into Supabase secrets.
-2. Supabase → **Edge Functions** → Deploy a new function → Via editor → name `notify-checkin` → paste `supabase/functions/notify-checkin/index.ts` → Deploy. In its settings turn **off** "Verify JWT".
-3. Edge Functions → **Secrets**: `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `WEBHOOK_SECRET` (any long random string you make up).
-4. Database → **Webhooks** → Create: table `checkins`, event **Insert**, type **Supabase Edge Functions** → `notify-checkin`, POST, add header `x-webhook-secret` = the same `WEBHOOK_SECRET`.
-5. On each phone: Group page → Notifications → **Turn on**, then **Send test**.
+1. On your PC: `npx web-push generate-vapid-keys`. The **public** key goes in `js/config.js` (`VAPID_PUBLIC_KEY`); the **private** key only into GitHub secrets (step 2).
+2. The function deploys itself (GitHub Actions). Add GitHub repo secrets `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `WEBHOOK_SECRET` (any long random string you make up); the next run copies them into Supabase.
+3. Database → **Webhooks** → Create: table `checkins`, event **Insert**, type **Supabase Edge Functions** → `notify-checkin`, POST, add header `x-webhook-secret` = the same `WEBHOOK_SECRET`.
+4. On each phone: Group page → Notifications → **Turn on**, then **Send test**.

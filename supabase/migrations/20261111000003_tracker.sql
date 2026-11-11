@@ -1,4 +1,4 @@
--- Run once in Supabase → SQL Editor (after 002). Gym tracker.
+-- Gym tracker. Applied by GitHub Actions. Safe to run more than once.
 
 -- One workout per person per UK day; saving again replaces that day's sets.
 create unique index if not exists workouts_one_per_day on public.workouts (user_id, performed_on);
