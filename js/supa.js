@@ -129,7 +129,7 @@ export const saveBodyProfile = (userId, fields) =>
 export const weights = userId => sb.from('body_weights').select('logged_on, weight_kg').eq('user_id', userId).order('logged_on').then(must);
 export const logWeight = (userId, kg) =>
   sb.from('body_weights').upsert({ user_id: userId, logged_on: ukToday(), weight_kg: kg }, { onConflict: 'user_id,logged_on' }).then(must);
-export const liftTargets = userId => sb.from('lift_targets').select('exercise_id, target_kg').eq('user_id', userId).then(must);
+export const liftTargets = userId => sb.from('lift_targets').select('exercise_id, target_kg, target_reps, by_date, set_on, base_e1rm').eq('user_id', userId).then(must);
 export const setLiftTarget = (userId, exercise_id, target_kg) =>
   sb.from('lift_targets').upsert({ user_id: userId, exercise_id, target_kg }, { onConflict: 'user_id,exercise_id' }).then(must);
 export const dropLiftTarget = (userId, exercise_id) => sb.from('lift_targets').delete().match({ user_id: userId, exercise_id }).then(must);
@@ -160,6 +160,13 @@ export const insertWorkouts = rows => sb.from('workouts').insert(rows).select('i
 export const insertSets = rows => sb.from('workout_sets').insert(rows).then(must);
 export const upsertWeights = rows => sb.from('body_weights').upsert(rows, { onConflict: 'user_id,logged_on', ignoreDuplicates: true }).then(must);
 export const upsertTargets = rows => sb.from('lift_targets').upsert(rows, { onConflict: 'user_id,exercise_id' }).then(must);
+
+// ---------- cardio (private) ----------
+export const cardioLogs = (userId, from) => sb.from('cardio_logs').select('performed_on, kind, minutes').eq('user_id', userId).gte('performed_on', from).order('performed_on').then(must);
+export const setCardio = (userId, kind, minutes) =>
+  sb.from('cardio_logs').upsert({ user_id: userId, performed_on: ukToday(), kind, minutes }, { onConflict: 'user_id,performed_on,kind' }).then(must);
+export const dropCardio = (userId, kind) => sb.from('cardio_logs').delete().match({ user_id: userId, performed_on: ukToday(), kind }).then(must);
+export const upsertCardio = rows => sb.from('cardio_logs').upsert(rows, { onConflict: 'user_id,performed_on,kind', ignoreDuplicates: true }).then(must);
 
 // ---------- habits (private) + check-in dates for points ----------
 export const habitTicks = (userId, from) => sb.from('habit_ticks').select('day, habit').eq('user_id', userId).gte('day', from).then(must);

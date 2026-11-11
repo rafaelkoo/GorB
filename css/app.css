@@ -311,3 +311,32 @@ button:disabled { opacity: .55; cursor: default; }
 .cov .bar { height: 8px; }
 .cov .bar i { background: var(--blue); }
 .cov .bar.hit i { background: var(--green); }
+
+/* ---------- training guide, cardio, weekly review (FitTrack port, stage 6) ---------- */
+.guide .tag { background: var(--blue); color: #fff; }
+.guide-list { list-style: none; margin: 0 0 10px; padding: 0; display: grid; gap: 6px; }
+.guide-list li { display: flex; justify-content: space-between; gap: 12px; border-bottom: 1px solid var(--line); padding-bottom: 6px; }
+.cardio .bar { height: 8px; margin: 2px 0 10px; }
+.cardio .bar i { background: var(--green); }
+.cardio-list { list-style: none; margin: 0 0 10px; padding: 0; display: grid; gap: 6px; }
+.cardio-list li { display: flex; align-items: center; gap: 10px; }
+.cardio-list li b { flex: 1; min-width: 0; }
+.cardio .chips { margin-bottom: 10px; }
+.cardio-add { display: flex; gap: 10px; align-items: center; }
+.cardio-add > button { flex: 1; }
+a.review-due { display: grid; gap: 2px; text-decoration: none; color: inherit; border-left: 4px solid var(--yellow); }
+.review-score { display: flex; align-items: center; gap: 18px; }
+.score-num { display: flex; align-items: baseline; font-family: var(--display); line-height: 1; }
+.score-num b { font-size: 4rem; font-weight: 800; }
+.score-num span { font-size: 1.1rem; opacity: .6; margin-left: 2px; }
+.review-score.rv-ok .score-num b { color: var(--green); }
+.review-score.rv-mid .score-num b { color: var(--yellow); }
+.review-score.rv-low .score-num b { color: var(--red); }
+.review-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.review-list li { display: flex; justify-content: space-between; gap: 12px; padding-left: 10px; border-left: 3px solid var(--dust); }
+.review-list li b { min-width: 0; }
+.review-list li span { text-align: right; }
+.review-list li.rv-ok, .review-list li.rv-up { border-left-color: var(--green); }
+.review-list li.rv-mid, .review-list li.rv-same { border-left-color: var(--yellow); }
+.review-list li.rv-bad, .review-list li.rv-down { border-left-color: var(--red); }
+.pr-line { margin: 10px 0 0; font-weight: 600; }

@@ -5,6 +5,8 @@ import * as api from './supa.js';
 import { EX } from './exercises.js';
 import { t } from './i18n.js';
 import { cleanPlan } from './plan.js';
+import { CARDIO } from './cardio.js';
+const CARDIO_IDS = new Set(CARDIO.map(c => c.id));
 
 const GOAL_IDS = ['lose_weight', 'build_muscle', 'recomp', 'strength', 'endurance', 'wellness'];
 const isDay = d => typeof d === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(d);
@@ -42,10 +44,24 @@ export function workoutsFrom(history, today) {
   return byDate;
 }
 
+// FitTrack ticked cardio per day (history[].cardio = ids); minutes came from the plan item (reps = minutes), 30 if unknown
+export function cardioFrom(history, plan, today) {
+  const out = [], seen = new Set();
+  const mins = (day, id) => { for (const d of [day, ...Object.keys(plan || {})]) { const e = (plan?.[d] || []).find(x => x?.id === id); if (e && +e.reps > 0) return Math.min(600, +e.reps); } return 30; };
+  for (const h of Array.isArray(history) ? history : []) {
+    if (!isDay(h?.date) || h.date > today) continue;
+    for (const id of Array.isArray(h.cardio) ? h.cardio : []) {
+      if (!CARDIO_IDS.has(id) || seen.has(h.date + id)) continue;
+      seen.add(h.date + id); out.push({ performed_on: h.date, kind: id, minutes: mins(h.day, id) });
+    }
+  }
+  return out;
+}
+
 export async function importFitTrack(user, text, onStep = () => {}) {
   const get = readBackup(text);
   const today = api.ukToday();
-  const report = { workouts: 0, sets: 0, skippedDays: 0, weights: 0, plan: false, targets: 0, details: false };
+  const report = { workouts: 0, sets: 0, skippedDays: 0, weights: 0, plan: false, targets: 0, details: false, cardio: 0 };
 
   // 1. workouts
   onStep(t('Reading workouts…', '讀取訓練記錄…'));
@@ -62,6 +78,11 @@ export async function importFitTrack(user, text, onStep = () => {}) {
     for (const r of chunks(rows, 500)) await api.insertSets(r);
     report.workouts += made.length; report.sets += rows.length;
   }
+
+  // 1b. cardio (days already logged here are kept)
+  const cardio = cardioFrom(get('history'), get('customPlan'), today).map(c => ({ user_id: user.id, ...c }));
+  for (const r of chunks(cardio, 500)) await api.upsertCardio(r);
+  report.cardio = cardio.length;
 
   // 2. body weight log
   onStep(t('Saving body weight…', '儲存體重…'));

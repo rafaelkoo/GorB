@@ -7,6 +7,9 @@ import { openExercise } from './exsheet.js';
 import { nextLoad } from './coach.js';
 import { startRest } from './timer.js';
 import { points, coverage, levelCardHtml, coverageHtml, habitList } from './score.js';
+import { cardioHtml, wireCardio } from './cardio.js';
+import { schemeOf } from './scheme.js';
+import { reviewDue } from './review.js';
 
 const $app = () => document.getElementById('app');
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -56,14 +59,17 @@ const dropDraft = uid => { try { localStorage.removeItem(draftKey(uid)); } catch
 
 export async function logScreen(user) {
   const today = api.ukToday(), weekday = api.ukWeekday();
-  const [rows, savedPlan, body, ticks, wlog] = await Promise.all([api.liftHistory(user.id), api.getPlan(user.id), api.bodyProfile(user.id), api.habitTicks(user.id, api.ukToday()), api.weights(user.id)]);
-  const habitsDone = new Set(ticks.map(x => x.habit)), habits = habitList(wlog.at(-1) ? +wlog.at(-1).weight_kg : null);
+  const weekStart = api.ukWeekStart();
+  const [rows, savedPlan, body, ticks, wlog, clogs] = await Promise.all([api.liftHistory(user.id), api.getPlan(user.id), api.bodyProfile(user.id), api.habitTicks(user.id, api.ukToday()), api.weights(user.id), api.cardioLogs(user.id, weekStart)]);
+  const cst = { logs: clogs, pick: null, mins: 30, target: schemeOf(body?.goal_id)?.cardio || null, today, weekStart };
+  const habitsDone = new Set(ticks.map(x => x.habit)), habits = habitList(wlog.at(-1) ? +wlog.at(-1).weight_kg : null, schemeOf(body?.goal_id)?.steps);
   const restSec = body?.rest_sec || 90;
   const history = bySession(rows);
   const fullPlan = savedPlan ? cleanPlan(savedPlan) : null, todayPlan = fullPlan ? fullPlan[weekday] : [];
   const past = id => (history[id] || []).filter(s => s.date < today);
-  const planReps = id => (todayPlan.find(e => e.id === id) || Object.values(fullPlan || {}).flat().find(e => e.id === id))?.reps || 10;
-  const coach = id => nextLoad(id, history[id], today, planReps(id));
+  // the plan's rep range [lo, hi] for an exercise (today's entry first, then any day)
+  const planRange = id => { const e = todayPlan.find(x => x.id === id) || Object.values(fullPlan || {}).flat().find(x => x.id === id); return e ? [e.lo || e.reps, e.reps] : [10, 10]; };
+  const coach = id => nextLoad(id, history[id], today, ...planRange(id));
   // start from: unsaved draft → what was already saved today → today's plan → empty
   let draft = loadDraft(user.id);
   if (!draft) {
@@ -74,7 +80,7 @@ export async function logScreen(user) {
     else draft = { saved: false, fromPlan: todayPlan.length > 0, items: todayPlan.map(e => {
       // plan gives sets; the coach's next load gives kg × reps; otherwise last time's weights
       const c = coach(e.id), last = past(e.id).at(-1)?.sets || [];
-      return { id: e.id, sets: Array.from({ length: e.sets }, (_, j) => c ? { kg: c.kg, reps: c.reps } : { kg: (last[j] || last.at(-1))?.kg ?? null, reps: e.reps }) };
+      return { id: e.id, sets: Array.from({ length: e.sets }, (_, j) => c ? { kg: c.kg, reps: c.reps } : { kg: (last[j] || last.at(-1))?.kg ?? null, reps: e.lo || e.reps }) };
     }) };
   }
   const keep = () => saveDraft(user.id, draft);
@@ -84,7 +90,8 @@ export async function logScreen(user) {
     $app().innerHTML = `
       <header class="page-head"><div><h2>${t('Today’s workout', '今日訓練')}</h2>
         <p class="muted">${esc(fmtLongToday())} · ${esc(focusName(dayFocus(todayPlan)))}${draft.saved ? ` · ${t('saved, edit and save again', '已儲存，可以改完再儲')}` : draft.fromPlan ? ` · ${t('from your plan', '跟你嘅計劃')}` : ''}</p></div>
-        <div class="head-links"><a class="link" href="#/plan">${t('Plan', '計劃')} ›</a><a class="link" href="#/lib">${t('Library', '動作庫')} ›</a></div></header>
+        <div class="head-links"><a class="link" href="#/plan">${t('Plan', '計劃')} ›</a><a class="link" href="#/lib">${t('Library', '動作庫')} ›</a><a class="link" href="#/review">${t('Week', '一週')} ›</a></div></header>
+      ${reviewDue(user.id) ? `<a class="card review-due" href="#/review"><b>${t('Your weekly review is ready', '你嘅每週回顧準備好')}</b><span class="muted small">${t('See how the week went and what to lift next week', '睇吓呢個星期點，同下星期練幾重')} ›</span></a>` : ''}
       <section class="card habits"><div class="card-head"><h3>${t('Today’s habits', '今日習慣')}</h3><span class="muted small">${habitsDone.size}/${habits.length} · +5 ${t('each', '分一個')}</span></div>
         <div class="habit-grid">${habits.map(h => `<button class="habit ${habitsDone.has(h.id) ? 'on' : ''}" data-habit="${h.id}" aria-pressed="${habitsDone.has(h.id)}"><span class="hcheck">✓</span>${esc(h.label)}</button>`).join('')}</div></section>
       ${draft.items.length ? `<p class="muted small">${t(`${draft.items.length} exercise${draft.items.length === 1 ? '' : 's'} · ${nSets} set${nSets === 1 ? '' : 's'} · kept on this phone until you save`, `${draft.items.length} 個動作 · ${nSets} 組 · 未儲存之前會暫存喺呢部手機`)}</p>` : ''}
@@ -109,7 +116,9 @@ export async function logScreen(user) {
       }).join('')}
       ${draft.items.length ? '' : `<section class="card empty"><p>${t('Nothing logged today yet.', '今日仲未記錄。')}</p><p class="muted">${t('Add your first exercise. Last time’s numbers fill in for you.', '加第一個動作，上次嘅數字會自動填好。')}</p></section>`}
       <button id="addex" class="big ghost">+ ${t('Add exercise', '加動作')}</button>
-      ${draft.items.length ? `<button id="save" class="big">${t('Save workout', '儲存訓練')}</button>` : ''}`;
+      ${draft.items.length ? `<button id="save" class="big">${t('Save workout', '儲存訓練')}</button>` : ''}
+      ${cardioHtml(cst)}`;
+    wireCardio($app(), cst, user, draw);
 
     $app().querySelectorAll('.ex').forEach(card => {
       const it = draft.items[+card.dataset.i];

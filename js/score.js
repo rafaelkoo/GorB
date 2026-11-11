@@ -64,12 +64,12 @@ export function coverageHtml(cov) {
 }
 
 // FitTrack's daily habits; amounts follow body weight
-export function habitList(weightKg) {
+export function habitList(weightKg, steps = 8000) {
   const w = weightKg || 75;
   return [
     { id: 'water', label: t(`Drink ${(w * 0.033).toFixed(1)} L water`, `飲水 ${(w * 0.033).toFixed(1)}L`) },
     { id: 'protein', label: t(`Hit ${Math.round(w * 1.8)} g protein`, `蛋白質 ${Math.round(w * 1.8)}g`) },
     { id: 'sleep', label: t('In bed by 10:30pm (7–9 h)', '10:30 前上床（7–9 小時）') },
-    { id: 'steps', label: t('Walk 8,000 steps', '行 8,000 步') }
+    { id: 'steps', label: t(`Walk ${steps.toLocaleString('en-GB')} steps`, `行 ${steps.toLocaleString('en-GB')} 步`) }
   ];
 }

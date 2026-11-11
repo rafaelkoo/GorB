@@ -226,8 +226,8 @@ export async function meScreen(user) {
       const r = await importFitTrack(user, await file.text(), msg => { state.textContent = msg; });
       await again();
       const n = (k, w) => `${k} ${w}${k === 1 ? '' : 's'}`;
-      toast(t(`Imported ${n(r.workouts, 'workout')} (${n(r.sets, 'set')}), ${n(r.weights, 'weigh-in')}${r.targets ? `, ${n(r.targets, 'target')}` : ''}${r.plan ? ', your plan' : ''}${r.details ? ', your details' : ''}.${r.skippedDays ? ` ${n(r.skippedDays, 'day')} already here kept as they were.` : ''}`,
-        `已匯入 ${r.workouts} 次訓練（${r.sets} 組）、${r.weights} 次體重${r.targets ? `、${r.targets} 個目標` : ''}${r.plan ? '、你嘅計劃' : ''}${r.details ? '、你嘅資料' : ''}。${r.skippedDays ? `呢度已有嘅 ${r.skippedDays} 日保持唔變。` : ''}`));
+      toast(t(`Imported ${n(r.workouts, 'workout')} (${n(r.sets, 'set')}), ${n(r.weights, 'weigh-in')}${r.targets ? `, ${n(r.targets, 'target')}` : ''}${r.cardio ? `, ${n(r.cardio, 'cardio session')}` : ''}${r.plan ? ', your plan' : ''}${r.details ? ', your details' : ''}.${r.skippedDays ? ` ${n(r.skippedDays, 'day')} already here kept as they were.` : ''}`,
+        `已匯入 ${r.workouts} 次訓練（${r.sets} 組）、${r.weights} 次體重${r.targets ? `、${r.targets} 個目標` : ''}${r.cardio ? `、${r.cardio} 次有氧` : ''}${r.plan ? '、你嘅計劃' : ''}${r.details ? '、你嘅資料' : ''}。${r.skippedDays ? `呢度已有嘅 ${r.skippedDays} 日保持唔變。` : ''}`));
     } catch (err) { state.hidden = true; e.target.disabled = false; showError(err); }
   };
   el.querySelector('#signout').onclick = async () => {
