@@ -176,6 +176,10 @@ export async function group(user, groupId, limit = FEED_PAGE) {
       ${feed.length ? feed.map(r => postHtml(r, user)).join('') : `<p class="muted">${t('Nobody has checked in yet. Be first.', '仲未有人打卡，做第一個啦。')}</p>`}
       ${more ? `<button id="more" class="ghost">${t('Show more', '睇多啲')}</button>` : ''}
     </section>
+    ${g.owner_id === user.id ? `<section class="card"><h3>${t('Group name', 'Group 名')}</h3>
+      <form id="rename" class="row"><input id="gnewname" maxlength="60" required value="${esc(g.name)}" aria-label="${t('Group name', 'Group 名')}">
+        <button type="submit">${t('Rename', '改名')}</button></form>
+      <p class="muted small">${t('Only you can rename it, because you made the group.', '因為 group 係你開嘅，所以得你可以改名。')}</p></section>` : ''}
     <section class="card"><h3>${t('Invite mates', '邀請朋友')}</h3>
       <p>${t('Code', '邀請碼')}: <b class="code">${esc(g.invite_code)}</b></p>
       <div class="row"><button id="share2">${t('Share invite link', '分享邀請 link')}</button>
@@ -206,6 +210,14 @@ export async function group(user, groupId, limit = FEED_PAGE) {
     if (!confirm(t(`Leave ${g.name}?`, `確定退出「${g.name}」？`))) return;
     try { await api.leaveGroup(g.id, user.id); location.hash = '#/all'; } catch (err) { showError(err); }
   };
+  el.querySelector('#rename')?.addEventListener('submit', async e => {
+    e.preventDefault();
+    const name = el.querySelector('#gnewname').value.trim(), btn = e.currentTarget.querySelector('button');
+    if (!name || name === g.name) return;
+    busy(btn, true);
+    try { await api.renameGroup(g.id, name); await group(user, groupId, limit); toast(t('Group renamed.', 'Group 已改名。')); }
+    catch (err) { showError(err); busy(btn, false); }
+  });
   el.querySelector('#more')?.addEventListener('click', e => { busy(e.currentTarget, true, t('Loading…', '載入緊…')); group(user, groupId, limit + FEED_PAGE).catch(showError); });
   el.querySelectorAll('.photo').forEach(b => b.onclick = () => openPhoto(b.dataset.path));
   el.querySelectorAll('.del').forEach(b => b.onclick = async () => {

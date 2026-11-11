@@ -2,6 +2,7 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { SUPABASE_URL, SUPABASE_ANON_KEY, PHOTO_BUCKET } from './config.js';
 import { BIG_FOUR } from './exercises.js';
+import { t } from './i18n.js';
 
 export const configured = !SUPABASE_URL.includes('YOUR-PROJECT') && !SUPABASE_ANON_KEY.includes('YOUR-');
 // PKCE: Google sends us back with ?code=… in the query string, which keeps clear of the #/ routes.
@@ -34,6 +35,11 @@ export const setName = (id, display_name) => sb.from('profiles').update({ displa
 export const myGroups = () => sb.from('groups').select('id, name, invite_code, owner_id').order('created_at').then(must);
 export const createGroup = name => sb.rpc('create_group', { p_name: name }).then(must);
 export const joinGroup = code => sb.rpc('join_group', { p_code: code }).then(must);
+// only the person who made the group can rename it (database rule); no row back = not allowed
+export async function renameGroup(groupId, name) {
+  const rows = must(await sb.from('groups').update({ name }).eq('id', groupId).select('id'));
+  if (!rows.length) throw new Error(t('Only the person who made the group can rename it.', '得開 group 嗰個人先可以改名。'));
+}
 export const leaveGroup = (groupId, userId) => sb.from('group_members').delete().match({ group_id: groupId, user_id: userId }).then(must);
 export const leaderboard = groupId => sb.rpc('group_leaderboard', { p_group: groupId }).then(must);
 export const members = groupId => sb.from('group_members').select('user_id').eq('group_id', groupId).then(must);

@@ -362,3 +362,4 @@ a.review-due { display: grid; gap: 2px; text-decoration: none; color: inherit; b
 .sugg { color: var(--yellow); }
 .pickday button.on .sugg { color: inherit; }
 .field input:placeholder-shown { font-style: italic; }
+#rename input { flex: 2; min-width: 0; }
