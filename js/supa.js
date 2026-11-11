@@ -1,6 +1,7 @@
 // Supabase client + every call the app makes, in one place.
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { SUPABASE_URL, SUPABASE_ANON_KEY, PHOTO_BUCKET } from './config.js';
+import { BIG_FOUR } from './exercises.js';
 
 export const configured = !SUPABASE_URL.includes('YOUR-PROJECT') && !SUPABASE_ANON_KEY.includes('YOUR-');
 // PKCE: Google sends us back with ?code=… in the query string, which keeps clear of the #/ routes.
@@ -92,3 +93,21 @@ export async function deleteCheckin(row) {
   must(await sb.from('checkins').delete().eq('id', row.id));
   await sb.storage.from(PHOTO_BUCKET).remove([row.photo_path, thumbPath(row.photo_path)]);
 }
+
+// ---------- gym tracker ----------
+// Calendar day in the UK, e.g. "2026-11-11" (one workout per person per day)
+export const ukToday = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/London' }).format(new Date());
+
+// rows: [{exercise_id, set_no, weight_kg, reps}] — replaces whatever was saved for today
+export async function saveWorkout(userId, rows) {
+  const w = must(await sb.from('workouts')
+    .upsert({ user_id: userId, performed_on: ukToday() }, { onConflict: 'user_id,performed_on' })
+    .select('id').single());
+  must(await sb.from('workout_sets').delete().eq('workout_id', w.id));
+  if (rows.length) must(await sb.from('workout_sets').insert(rows.map(r => ({ ...r, workout_id: w.id }))));
+  return w.id;
+}
+// every set of one person (you or a groupmate), oldest first
+export const liftHistory = userId => sb.rpc('lift_history', { p_user: userId }).then(must);
+// heaviest set per member for the four PB-board lifts
+export const groupLifts = groupId => sb.rpc('group_lifts', { p_group: groupId, p_exercises: BIG_FOUR }).then(must);

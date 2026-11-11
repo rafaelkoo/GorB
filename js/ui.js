@@ -2,6 +2,7 @@
 import * as api from './supa.js';
 import { openCamera, stopCamera, snap } from './camera.js';
 import { FEED_PAGE } from './config.js';
+import { pbBoardHtml } from './tracker.js';
 import { pushSupported, pushState, enablePush, disablePush, testNotification } from './push.js';
 
 const $app = () => document.getElementById('app');
@@ -92,7 +93,7 @@ function boardHtml(board, user) {
   return `<ol class="board">${board.map(r => {
     const bitch = low !== null && !allTied && r.days === low;
     return `<li class="${r.user_id === user.id ? 'me' : ''}${bitch ? ' bitch' : ''}">
-      <span>${esc(r.display_name || '?')}${bitch ? ' <em class="tag">Bitch so far</em>' : ''}</span><b>${r.days}</b></li>`;
+      <span><a href="#/p/${r.user_id}">${esc(r.display_name || '?')}</a>${bitch ? ' <em class="tag">Bitch so far</em>' : ''}</span><b>${r.days}</b></li>`;
   }).join('')}</ol>`;
 }
 
@@ -122,7 +123,7 @@ export async function group(user, groupId, limit = FEED_PAGE) {
   const groups = await api.myGroups();
   const g = groups.find(x => x.id === groupId);
   if (!g) { location.hash = '#/all'; return; }
-  const [board, feed] = await Promise.all([api.leaderboard(groupId), api.groupFeed(groupId, limit + 1)]);
+  const [board, feed, pbs] = await Promise.all([api.leaderboard(groupId), api.groupFeed(groupId, limit + 1), pbBoardHtml(groupId, user.id)]);
   const more = feed.length > limit; if (more) feed.pop();
   const inviteLink = `${location.origin}${location.pathname}#/join/${g.invite_code}`;
   const el = render(`
@@ -136,6 +137,7 @@ export async function group(user, groupId, limit = FEED_PAGE) {
       <div class="row"><button id="non" hidden>Turn on</button><button id="ntest" class="ghost" hidden>Send test</button><button id="noff" class="ghost" hidden>Turn off</button></div>
     </section>` : ''}
     <section class="card"><h3>${esc(monthName())} — days at the gym</h3>${boardHtml(board, user)}</section>
+    <section class="card"><h3>Personal bests</h3>${pbs}</section>
     <section class="card"><h3>Latest</h3>
       ${feed.length ? feed.map(r => postHtml(r, user)).join('') : '<p class="muted">Nobody has checked in yet. Be first.</p>'}
       ${more ? '<button id="more" class="ghost">Show more</button>' : ''}

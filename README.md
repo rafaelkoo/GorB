@@ -10,7 +10,13 @@ Web app (PWA) first, Android app later via TWA.
 - Group feed and monthly table (counts distinct days, UK time)
 - Delete your own check-ins
 
-Next: push notifications (phase 2), sets/reps logging with FitTrack's exercise ids (phase 3), fines/pot and Android app (phase 4).
+## Gym tracker (phase 3, first part)
+- **Log**: today's workout — pick from 82 FitTrack exercises, kg + reps per set, last time's numbers filled in, draft kept on the phone until saved. One workout per UK day; saving again replaces it.
+- **Progress**: PBs for bench / deadlift / squat / OHP + total, a trend line and PR per exercise. Groupmates can open each other's progress.
+- **Group page**: PB board like the old Excel "Personal Bests" sheet.
+- Run `supabase/migrations/003_tracker.sql` once.
+
+Later: running times (5K…marathon), weekly plan, FitTrack backup import.
 
 ## Setup
 1. Make a free project at supabase.com.
