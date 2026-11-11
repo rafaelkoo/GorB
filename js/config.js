@@ -10,3 +10,5 @@ export const PHOTO_QUALITY = 0.8;   // JPEG quality
 export const THUMB_MAX_PX = 480;    // feed thumbnail, longest side
 export const THUMB_QUALITY = 0.7;
 export const FEED_PAGE = 10;        // check-ins loaded per "Show more"
+// Web Push public key (safe to publish). Empty = notifications hidden until set up.
+export const VAPID_PUBLIC_KEY = '';

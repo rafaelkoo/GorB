@@ -56,3 +56,13 @@ Bump `VERSION` in `sw.js` on every release so phones load the new files.
    - Authorised redirect URIs: `https://uzawqjiczhbfxhylogir.supabase.co/auth/v1/callback`
 4. Supabase → Authentication → Sign In / Providers → **Google** → on, paste Client ID + Client Secret (straight into Supabase, never into this repo).
 5. Supabase → Authentication → URL Configuration: Site URL `https://rafaelkoo.github.io/GorB/`, Redirect URLs add `https://rafaelkoo.github.io/GorB/**`.
+
+## Push notifications
+The first check-in of someone's UK day pings everyone who shares a group with them (later ones that day don't).
+Phones mute it themselves (Do Not Disturb); the app has no mute.
+
+1. On your PC: `npx web-push generate-vapid-keys`. The **public** key goes in `js/config.js` (`VAPID_PUBLIC_KEY`); the **private** key only into Supabase secrets.
+2. Supabase → **Edge Functions** → Deploy a new function → Via editor → name `notify-checkin` → paste `supabase/functions/notify-checkin/index.ts` → Deploy. In its settings turn **off** "Verify JWT".
+3. Edge Functions → **Secrets**: `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `WEBHOOK_SECRET` (any long random string you make up).
+4. Database → **Webhooks** → Create: table `checkins`, event **Insert**, type **Supabase Edge Functions** → `notify-checkin`, POST, add header `x-webhook-secret` = the same `WEBHOOK_SECRET`.
+5. On each phone: Group page → Notifications → **Turn on**, then **Send test**.

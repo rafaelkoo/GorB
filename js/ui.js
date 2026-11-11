@@ -2,6 +2,7 @@
 import * as api from './supa.js';
 import { openCamera, stopCamera, snap } from './camera.js';
 import { FEED_PAGE } from './config.js';
+import { pushSupported, pushState, enablePush, disablePush, testNotification } from './push.js';
 
 const $app = () => document.getElementById('app');
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -130,6 +131,10 @@ export async function group(user, groupId, limit = FEED_PAGE) {
       <h2>${esc(g.name)}</h2>
       <a class="big" href="#/checkin/${g.id}">📸 I'm at the gym</a>
     </section>
+    ${pushSupported() ? `<section class="card notif" id="notif">
+      <h3>Notifications</h3><p id="nstate" class="muted">Checking…</p>
+      <div class="row"><button id="non" hidden>Turn on</button><button id="ntest" class="ghost" hidden>Send test</button><button id="noff" class="ghost" hidden>Turn off</button></div>
+    </section>` : ''}
     <section class="card"><h3>${esc(monthName())} — days at the gym</h3>${boardHtml(board, user)}</section>
     <section class="card"><h3>Latest</h3>
       ${feed.length ? feed.map(r => postHtml(r, user)).join('') : '<p class="muted">Nobody has checked in yet. Be first.</p>'}
@@ -140,6 +145,7 @@ export async function group(user, groupId, limit = FEED_PAGE) {
       <button id="share">Share invite link</button>
       <button id="leave" class="ghost">Leave group</button>
     </section>`);
+  if (pushSupported()) wireNotifications(el, user);
   el.querySelector('#share').onclick = async () => {
     const text = `Join "${g.name}" on Gym or Bitch: ${inviteLink}`;
     try { if (navigator.share) await navigator.share({ title: 'Gym or Bitch', text }); else { await navigator.clipboard.writeText(text); showError({ message: 'Invite link copied' }); } }
@@ -155,6 +161,27 @@ export async function group(user, groupId, limit = FEED_PAGE) {
     if (!confirm('Delete this check-in and its photo?')) return;
     try { await api.deleteCheckin(feed.find(r => r.id === b.dataset.id)); group(user, groupId, limit); } catch (err) { showError(err); }
   });
+}
+
+const ASK_KEY = 'gob_ask_push';
+async function wireNotifications(el, user) {
+  const card = el.querySelector('#notif'), text = el.querySelector('#nstate');
+  const on = el.querySelector('#non'), off = el.querySelector('#noff'), test = el.querySelector('#ntest');
+  const show = async () => {
+    const st = await pushState();
+    let asked = false; try { asked = sessionStorage.getItem(ASK_KEY) === '1'; } catch {}
+    card.classList.toggle('ask', st === 'off' && asked);
+    text.textContent = {
+      on: 'On. You get a ping the first time each mate checks in each day.',
+      off: asked ? 'Nice one. Want a ping when your mates check in too?' : 'Off. Turn on to get a ping when a mate checks in.',
+      blocked: 'Blocked in Chrome. ⋮ → Settings → Site settings → Notifications → allow this site.'
+    }[st];
+    on.hidden = st !== 'off'; off.hidden = test.hidden = st !== 'on';
+  };
+  on.onclick = async () => { busy(on, true); try { await enablePush(user.id); try { sessionStorage.removeItem(ASK_KEY); } catch {} } catch (err) { showError(err); } busy(on, false); show(); };
+  off.onclick = async () => { busy(off, true); try { await disablePush(); } catch (err) { showError(err); } busy(off, false); show(); };
+  test.onclick = () => testNotification().catch(showError);
+  show().catch(showError);
 }
 
 export async function joinByLink(code) {
@@ -200,7 +227,7 @@ export async function checkin(user, groupId) {
   el.querySelector('#post').onsubmit = async e => {
     e.preventDefault(); if (!photo) return;
     const b = e.submitter; busy(b, true, 'Posting…');
-    try { await api.postCheckin(user.id, photo, el.querySelector('#note').value.trim()); releaseCamera(); location.hash = `#/g/${groupId}`; }
+    try { await api.postCheckin(user.id, photo, el.querySelector('#note').value.trim()); releaseCamera(); try { sessionStorage.setItem(ASK_KEY, '1'); } catch {} location.hash = `#/g/${groupId}`; }
     catch (err) { showError(err); busy(b, false, 'Post check-in'); }
   };
 }

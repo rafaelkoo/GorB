@@ -2,6 +2,7 @@
 // Routes: #/all  #/g/<groupId>  #/checkin/<groupId>  #/join/<inviteCode>
 import { configured, sb, currentUser, getProfile, signOut } from './supa.js';
 import * as ui from './ui.js';
+import { disablePush } from './push.js';
 
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
 
@@ -34,6 +35,6 @@ async function route() {
 
 const safeRoute = () => route().catch(ui.showError);
 window.addEventListener('hashchange', safeRoute);
-document.getElementById('signout').onclick = async () => { await signOut(); location.hash = '#/'; safeRoute(); };
+document.getElementById('signout').onclick = async () => { try { await disablePush(); } catch { /* still sign out */ } await signOut(); location.hash = '#/'; safeRoute(); };
 if (sb) sb.auth.onAuthStateChange(ev => { if (ev === 'SIGNED_OUT') safeRoute(); });
 safeRoute();
