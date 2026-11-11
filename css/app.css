@@ -207,3 +207,29 @@ button:disabled { opacity: .55; cursor: default; }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
 .sheet-in > * { min-width: 0; }
 .sheet .chips { overflow-x: auto; scrollbar-width: none; }
+/* plan */
+.days7 { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+.days7 button { flex-direction: column; gap: 2px; min-height: 58px; padding: 6px 2px; background: var(--mat); color: var(--dust); border: 1px solid var(--line); }
+.days7 button b { font: 700 1.05rem/1 var(--display); color: var(--chalk); }
+.days7 button small { font-size: .68rem; line-height: 1.1; }
+.days7 button.has { border-color: var(--dust); }
+.days7 button.on { background: var(--chalk); color: var(--floor); border-color: var(--chalk); }
+.days7 button.on b { color: var(--floor); }
+.plan-list { list-style: none; margin: 0; padding: 0; display: grid; }
+.plan-list li { display: grid; grid-template-columns: 1fr auto auto; grid-template-areas: "name name move" "sets reps reps"; gap: 8px 10px; padding: 12px 0; border-top: 1px solid var(--line); align-items: center; }
+.plan-list li:first-child { border-top: 0; }
+.pl-name { grid-area: name; display: grid; }
+.pl-move { grid-area: move; display: flex; gap: 4px; }
+.pl-move .x { min-width: 36px; }
+.stepper { display: flex; align-items: center; gap: 4px; }
+.st-sets { grid-area: sets; }
+.st-reps { grid-area: reps; justify-self: end; }
+.stepper button { width: 40px; min-height: 40px; padding: 0; font-size: 1.2rem; }
+.stepper span { display: grid; justify-items: center; min-width: 44px; }
+.stepper b { font: 700 1.3rem/1 var(--display); }
+.stepper small { font-size: .7rem; color: var(--dust); }
+.linkcard { text-decoration: none; color: var(--chalk); display: flex; align-items: center; justify-content: space-between; }
+.linkcard span { font-size: 1.4rem; color: var(--dust); }
+.file-btn { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; padding: 12px 16px; border-radius: var(--r-ctl); border: 1px dashed var(--dust); cursor: pointer; font-weight: 600; }
+.file-btn input { position: absolute; width: 1px; height: 1px; opacity: 0; }
+.file-btn:focus-within { outline: 2px solid var(--yellow); outline-offset: 2px; }

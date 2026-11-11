@@ -2,6 +2,7 @@
 import * as api from './supa.js';
 import { EXERCISES, EX, CATS, BIG_FOUR } from './exercises.js';
 import { t, getLang, fmtDay, fmtLongToday } from './i18n.js';
+import { cleanPlan, dayFocus, focusName } from './plan.js';
 
 const $app = () => document.getElementById('app');
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -50,16 +51,23 @@ const saveDraft = (uid, d) => { try { localStorage.setItem(draftKey(uid), JSON.s
 const dropDraft = uid => { try { localStorage.removeItem(draftKey(uid)); } catch { /* ignore */ } };
 
 export async function logScreen(user) {
-  const today = api.ukToday();
-  const history = bySession(await api.liftHistory(user.id));
+  const today = api.ukToday(), weekday = api.ukWeekday();
+  const [rows, savedPlan] = await Promise.all([api.liftHistory(user.id), api.getPlan(user.id)]);
+  const history = bySession(rows);
+  const todayPlan = savedPlan ? cleanPlan(savedPlan)[weekday] : [];
   const past = id => (history[id] || []).filter(s => s.date < today);
-  // start from: unsaved draft → what was already saved today → empty
+  // start from: unsaved draft → what was already saved today → today's plan → empty
   let draft = loadDraft(user.id);
   if (!draft) {
     const items = Object.entries(history)
       .filter(([, list]) => list.at(-1)?.date === today)
       .map(([id, list]) => ({ id, sets: list.at(-1).sets.map(s => ({ kg: s.kg, reps: s.reps })) }));
-    draft = { items, saved: items.length > 0 };
+    if (items.length) draft = { items, saved: true };
+    else draft = { saved: false, fromPlan: todayPlan.length > 0, items: todayPlan.map(e => {
+      // plan gives sets × reps; weights come from last time, set by set
+      const last = past(e.id).at(-1)?.sets || [];
+      return { id: e.id, sets: Array.from({ length: e.sets }, (_, j) => ({ kg: (last[j] || last.at(-1))?.kg ?? null, reps: e.reps })) };
+    }) };
   }
   const keep = () => saveDraft(user.id, draft);
 
@@ -67,7 +75,8 @@ export async function logScreen(user) {
     const nSets = draft.items.reduce((n, it) => n + it.sets.length, 0);
     $app().innerHTML = `
       <header class="page-head"><div><h2>${t('Today’s workout', '今日訓練')}</h2>
-        <p class="muted">${esc(fmtLongToday())}${draft.saved ? ` · ${t('saved, edit and save again', '已儲存，可以改完再儲')}` : ''}</p></div></header>
+        <p class="muted">${esc(fmtLongToday())} · ${esc(focusName(dayFocus(todayPlan)))}${draft.saved ? ` · ${t('saved, edit and save again', '已儲存，可以改完再儲')}` : draft.fromPlan ? ` · ${t('from your plan', '跟你嘅計劃')}` : ''}</p></div>
+        <a class="link" href="#/plan">${t('Plan', '計劃')} ›</a></header>
       ${draft.items.length ? `<p class="muted small">${t(`${draft.items.length} exercise${draft.items.length === 1 ? '' : 's'} · ${nSets} set${nSets === 1 ? '' : 's'} · kept on this phone until you save`, `${draft.items.length} 個動作 · ${nSets} 組 · 未儲存之前會暫存喺呢部手機`)}</p>` : ''}
       ${draft.items.map((it, i) => {
         const last = past(it.id).at(-1);

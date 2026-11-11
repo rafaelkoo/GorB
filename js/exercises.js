@@ -86,3 +86,6 @@ export const EXERCISES = [["bench_press","Bench press","槓鈴臥推","chest","B
 export const EX = Object.fromEntries(EXERCISES.map(([id, en, zh, cat, equip]) => [id, { id, en, zh, cat, equip }]));
 // The four lifts on the group's PB board (the old Excel "Personal Bests" sheet)
 export const BIG_FOUR = ['bench_press', 'deadlift', 'squat', 'ohp'];
+// FitTrack's default weekly plan (cardio items left out)
+export const WD = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+export const DEFAULT_PLAN = {"Mon":[{"id":"bb_curl","sets":5,"reps":15},{"id":"hammer","sets":5,"reps":15},{"id":"cable_pd","sets":5,"reps":15},{"id":"skull","sets":5,"reps":15}],"Tue":[{"id":"db_press","sets":5,"reps":15},{"id":"lat_raise","sets":5,"reps":15},{"id":"rev_fly","sets":5,"reps":15}],"Wed":[{"id":"inc_db","sets":5,"reps":15},{"id":"inc_mach","sets":5,"reps":15},{"id":"pec_deck","sets":5,"reps":15}],"Thu":[{"id":"lat_pd","sets":5,"reps":15},{"id":"vbar_pd","sets":5,"reps":15},{"id":"sit_row","sets":5,"reps":15},{"id":"db_row","sets":5,"reps":15}],"Fri":[{"id":"squat","sets":5,"reps":15},{"id":"calf","sets":5,"reps":15},{"id":"leg_press","sets":5,"reps":15},{"id":"leg_curl","sets":5,"reps":15},{"id":"adductor","sets":5,"reps":15}],"Sat":[],"Sun":[]};

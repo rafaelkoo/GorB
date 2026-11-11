@@ -143,3 +143,20 @@ export async function daysThisWeek(userId) {
   const mon = monday.toISOString().slice(0, 10);
   return new Set(rows.map(r => ukDayOf(r.created_at)).filter(d => d >= mon)).size;
 }
+
+// ---------- weekly plan ----------
+export async function getPlan(userId) {
+  const rows = must(await sb.from('plans').select('plan').eq('user_id', userId));
+  return rows[0]?.plan || null;
+}
+export const savePlan = (userId, plan) =>
+  sb.from('plans').upsert({ user_id: userId, plan, updated_at: new Date().toISOString() }, { onConflict: 'user_id' }).then(must);
+// UK weekday key for today: 'Mon'…'Sun'
+export const ukWeekday = () => ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][new Date(ukToday() + 'T12:00:00Z').getUTCDay()];
+
+// ---------- bulk insert for the FitTrack import ----------
+export const existingWorkoutDays = userId => sb.from('workouts').select('performed_on').eq('user_id', userId).then(must).then(r => new Set(r.map(x => x.performed_on)));
+export const insertWorkouts = rows => sb.from('workouts').insert(rows).select('id, performed_on').then(must);
+export const insertSets = rows => sb.from('workout_sets').insert(rows).then(must);
+export const upsertWeights = rows => sb.from('body_weights').upsert(rows, { onConflict: 'user_id,logged_on', ignoreDuplicates: true }).then(must);
+export const upsertTargets = rows => sb.from('lift_targets').upsert(rows, { onConflict: 'user_id,exercise_id' }).then(must);

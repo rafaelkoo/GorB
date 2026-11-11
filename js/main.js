@@ -5,6 +5,7 @@ import * as ui from './ui.js';
 import { logScreen, progressScreen } from './tracker.js';
 import { meScreen } from './me.js';
 import { ranksScreen } from './ranks.js';
+import { planScreen } from './plan.js';
 import { t, getLang, setLang, hasChosenLang } from './i18n.js';
 import { ICON } from './icons.js';
 
@@ -16,7 +17,7 @@ const store = { get: k => { try { return localStorage.getItem(k); } catch { retu
 // bottom tabs: Group (last group opened) · Log · Ranks · Me
 function drawTabs(page) {
   const g = store.get('gob_last_group');
-  const on = { g: 'group', all: 'group', log: 'log', r: 'ranks', me: 'me', p: 'me' }[page] || 'group';
+  const on = { g: 'group', all: 'group', log: 'log', plan: 'log', r: 'ranks', me: 'me', p: 'me' }[page] || 'group';
   const tab = (id, href, label) => `<a href="${href}" class="${on === id ? 'on' : ''}" ${on === id ? 'aria-current="page"' : ''}>${ICON[id](22)}<span>${label}</span></a>`;
   document.getElementById('tabs').innerHTML =
     tab('group', g ? `#/g/${g}` : '#/all', t('Group', 'Group')) +
@@ -58,6 +59,7 @@ async function route() {
   if (page === 'p' && arg) return progressScreen(user, arg);
   if (page === 'r' && arg) return ranksScreen(user, arg, arg2);
   if (page === 'me') return meScreen(user);
+  if (page === 'plan') return planScreen(user, arg);
   return ui.home(user);
 }
 

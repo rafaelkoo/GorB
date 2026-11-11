@@ -6,6 +6,7 @@ import { t, getLang, setLang, langSwitchHtml, fmtDay } from './i18n.js';
 import { exName, kg, picker, spark, bySession, prOf } from './tracker.js';
 import { pushSupported, pushState, enablePush, disablePush, testNotification } from './push.js';
 import { esc, render, busy, showError, toast, wireLangSwitch } from './ui.js';
+import { importFitTrack } from './importer.js';
 
 // FitTrack goals (same ids)
 export const GOALS = [
@@ -88,8 +89,12 @@ export async function meScreen(user) {
           <button class="ghost x" data-drop="${esc(tg.exercise_id)}" aria-label="${t('Remove target', '刪除目標')}">✕</button></div>
           <span class="bar ${pct >= 100 ? 'hit' : ''}"><i style="width:${pct}%"></i></span>
           <span class="muted small">${pct >= 100 ? t('Target hit 🎯', '達標 🎯') : pr ? t(`${kg(goal - pr)} to go`, `仲差 ${kg(goal - pr)}`) : t('No lifts logged yet', '仲未有記錄')}</span></li>`;
-      }).join('')}</ul>` : `<p class="muted">${t('Set a weight to aim for, e.g. bench 100 kg. Your groups can see targets.', '定個目標重量，例如臥推 100 kg。Group 入面嘅人睇到。')}</p>`}
+      }).join('')}</ul>` : `<p class="muted">${t('Set a weight to aim for, e.g. bench 100 kg.', '定個目標重量，例如臥推 100 kg。')}</p>`}
+      <label class="switch"><input type="checkbox" id="sharetargets" ${profile.share_targets ? 'checked' : ''}>
+        <span>${t('Show my lift targets to my groups', '俾 group 睇我嘅舉重目標')}<small class="muted">${t('Off: only you see them.', '關：得你自己睇到。')}</small></span></label>
     </section>
+
+    <a class="card linkcard" href="#/plan"><div><h3>${t('Weekly plan', '每週計劃')}</h3><p class="muted small">${t('Which day trains what. Today’s log starts from it.', '星期幾練咩。每日記錄會跟住佢自動填好。')}</p></div><span aria-hidden="true">›</span></a>
 
     <section class="card">
       <div class="card-head"><h3>${t('Body weight', '體重')}</h3><span class="pill ${b.share_body ? 'on' : ''}">${b.share_body ? t('Shown to groups', 'Group 睇到') : t('Private', '私人')}</span></div>
@@ -128,6 +133,13 @@ export async function meScreen(user) {
           <span>${t('Show my body details to my groups', '俾 group 睇我嘅身體資料')}<small class="muted">${t('Off: only you see height, age, weight and goal. On: groupmates see them and you join the weight change ranking.', '關：得你自己睇到身高、年齡、體重同目標。開：group 入面嘅人睇到，你亦會加入體重變化排名。')}</small></span></label>
         <button class="full">${t('Save details', '儲存資料')}</button>
       </form>
+    </section>
+
+    <section class="card">
+      <div class="card-head"><h3>${t('Bring over FitTrack', '搬 FitTrack 資料過嚟')}</h3></div>
+      <p class="muted small">${t('In FitTrack: Me → Export. Then pick that fittrack-backup file here. Workouts, body weight, details, goal, plan and targets come across; days you already logged here are kept as they are.', '喺 FitTrack：我 → 匯出。然後喺呢度揀嗰個 fittrack-backup 檔。訓練記錄、體重、資料、目標、計劃同舉重目標都會搬過嚟；呢度已經有記錄嘅日子會保持唔變。')}</p>
+      <label class="file-btn"><input type="file" id="ftfile" accept="application/json,.json">${t('Choose FitTrack backup', '揀 FitTrack 備份檔')}</label>
+      <p id="ftstate" class="muted small" hidden></p>
     </section>
 
     <section class="card">
@@ -182,6 +194,21 @@ export async function meScreen(user) {
     e.preventDefault();
     const v = el.querySelector('#nm').value.trim(); if (!v) return;
     try { await api.setName(user.id, v); await again(); toast(t('Name saved.', '名已儲存。')); } catch (err) { showError(err); }
+  };
+  el.querySelector('#sharetargets').onchange = async e => {
+    try { await api.updateProfile(user.id, { share_targets: e.target.checked }); } catch (err) { showError(err); }
+  };
+  el.querySelector('#ftfile').onchange = async e => {
+    const file = e.target.files?.[0]; if (!file) return;
+    const state = el.querySelector('#ftstate'); state.hidden = false;
+    e.target.disabled = true;
+    try {
+      const r = await importFitTrack(user, await file.text(), msg => { state.textContent = msg; });
+      await again();
+      const n = (k, w) => `${k} ${w}${k === 1 ? '' : 's'}`;
+      toast(t(`Imported ${n(r.workouts, 'workout')} (${n(r.sets, 'set')}), ${n(r.weights, 'weigh-in')}${r.targets ? `, ${n(r.targets, 'target')}` : ''}${r.plan ? ', your plan' : ''}${r.details ? ', your details' : ''}.${r.skippedDays ? ` ${n(r.skippedDays, 'day')} already here kept as they were.` : ''}`,
+        `已匯入 ${r.workouts} 次訓練（${r.sets} 組）、${r.weights} 次體重${r.targets ? `、${r.targets} 個目標` : ''}${r.plan ? '、你嘅計劃' : ''}${r.details ? '、你嘅資料' : ''}。${r.skippedDays ? `呢度已有嘅 ${r.skippedDays} 日保持唔變。` : ''}`));
+    } catch (err) { state.hidden = true; e.target.disabled = false; showError(err); }
   };
   el.querySelector('#signout').onclick = async () => {
     try { await disablePush(); } catch { /* still sign out */ }
