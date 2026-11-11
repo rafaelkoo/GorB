@@ -404,3 +404,6 @@ button.is-done svg { animation: tickin .45s var(--spring) both; }
 #timer:not([hidden]) { animation: rise .45s var(--spring) both; }
 .ok, .error { animation: rise .4s var(--spring) both; }
 button.is-loading:disabled, button.is-done:disabled { opacity: 1; cursor: default; }
+.rank-ex { display: grid; gap: 6px; }
+.rank-ex > p { margin: 0; }
+.rank b .reps { font: 600 .85rem/1 var(--body); color: var(--dust); margin-left: 4px; }

@@ -140,6 +140,7 @@ export const setLiftTarget = (userId, exercise_id, target_kg) =>
   sb.from('lift_targets').upsert({ user_id: userId, exercise_id, target_kg }, { onConflict: 'user_id,exercise_id' }).then(must);
 export const dropLiftTarget = (userId, exercise_id) => sb.from('lift_targets').delete().match({ user_id: userId, exercise_id }).then(must);
 export const groupRankings = groupId => sb.rpc('group_rankings', { p_group: groupId }).then(must);
+export const groupExerciseRanks = groupId => sb.rpc('group_exercise_ranks', { p_group: groupId }).then(must);
 // check-in days in this UK week (Mon–Sun) for the days-per-week target
 export async function daysThisWeek(userId) {
   const now = new Date(ukToday() + 'T12:00:00Z'), monday = new Date(now);
