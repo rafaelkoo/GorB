@@ -158,6 +158,8 @@ export async function meScreen(user) {
     <section class="card">
       <div class="card-head"><h3>${t('Settings', '設定')}</h3></div>
       <div class="setting"><span>${t('Language', '語言')}</span>${langSwitchHtml()}</div>
+      <div class="setting col"><span>${t('Rest between sets', '組間休息')}</span>
+        <div class="chips wrap">${[30, 60, 90, 120, 180].map(sec => `<button data-rest="${sec}" class="${(b.rest_sec || 90) === sec ? 'on' : ''}">${sec < 60 ? sec + t('s', ' 秒') : sec / 60 + t(' min', ' 分鐘')}</button>`).join('')}</div></div>
       <div class="setting"><span>${t('Name', '名')}</span><form id="rename" class="inline"><input id="nm" maxlength="40" value="${esc(profile.display_name)}" aria-label="${t('Name', '名')}"><button class="ghost">${t('Save', '儲存')}</button></form></div>
       ${pushSupported() ? `<div class="setting col"><span>${t('Notifications', '通知')}</span><p id="nstate" class="muted small">…</p>
         <div class="row"><button id="non" hidden>${t('Turn on', '開')}</button><button id="ntest" class="ghost" hidden>${t('Send test', '測試')}</button><button id="noff" class="ghost" hidden>${t('Turn off', '關')}</button></div></div>` : ''}
@@ -210,6 +212,9 @@ export async function meScreen(user) {
     const v = el.querySelector('#nm').value.trim(); if (!v) return;
     try { await api.setName(user.id, v); await again(); toast(t('Name saved.', '名已儲存。')); } catch (err) { showError(err); }
   };
+  el.querySelectorAll('[data-rest]').forEach(btn => btn.onclick = async () => {
+    try { await api.saveBodyProfile(user.id, { rest_sec: +btn.dataset.rest }); el.querySelectorAll('[data-rest]').forEach(x => x.classList.toggle('on', x === btn)); } catch (err) { showError(err); }
+  });
   el.querySelector('#sharetargets').onchange = async e => {
     try { await api.updateProfile(user.id, { share_targets: e.target.checked }); } catch (err) { showError(err); }
   };

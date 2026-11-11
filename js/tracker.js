@@ -5,6 +5,7 @@ import { t, getLang, fmtDay, fmtLongToday } from './i18n.js';
 import { cleanPlan, dayFocus, focusName } from './plan.js';
 import { openExercise } from './exsheet.js';
 import { nextLoad } from './coach.js';
+import { startRest } from './timer.js';
 
 const $app = () => document.getElementById('app');
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -54,7 +55,8 @@ const dropDraft = uid => { try { localStorage.removeItem(draftKey(uid)); } catch
 
 export async function logScreen(user) {
   const today = api.ukToday(), weekday = api.ukWeekday();
-  const [rows, savedPlan] = await Promise.all([api.liftHistory(user.id), api.getPlan(user.id)]);
+  const [rows, savedPlan, body] = await Promise.all([api.liftHistory(user.id), api.getPlan(user.id), api.bodyProfile(user.id)]);
+  const restSec = body?.rest_sec || 90;
   const history = bySession(rows);
   const fullPlan = savedPlan ? cleanPlan(savedPlan) : null, todayPlan = fullPlan ? fullPlan[weekday] : [];
   const past = id => (history[id] || []).filter(s => s.date < today);
@@ -91,10 +93,11 @@ export async function logScreen(user) {
           ${(() => { const c = coach(it.id); return c ? `<div class="coach ${c.kind}"><p><b>${t('Next', '下次')}: ${c.kg ? kg(c.kg) + ' × ' : ''}${c.reps}</b> ${esc(t(c.en, c.zh))}</p>
             <button class="ghost small-btn" data-act="usecoach">${t('Use', '套用')}</button></div>` : ''; })()}
           <div class="sets">
-            <div class="set head"><span>${t('Set', '組')}</span><span>kg</span><span>${t('Reps', '次數')}</span><span></span></div>
-            ${it.sets.map((s, j) => `<div class="set" data-j="${j}"><span>${j + 1}</span>
+            <div class="set head"><span>${t('Set', '組')}</span><span>kg</span><span>${t('Reps', '次數')}</span><span>${t('Done', '完成')}</span><span></span></div>
+            ${it.sets.map((s, j) => `<div class="set ${s.done ? 'done' : ''}" data-j="${j}"><span>${j + 1}</span>
               <input inputmode="decimal" aria-label="${t(`Set ${j + 1} kg`, `第 ${j + 1} 組 kg`)}" value="${s.kg ?? ''}" data-f="kg">
               <input inputmode="numeric" aria-label="${t(`Set ${j + 1} reps`, `第 ${j + 1} 組次數`)}" value="${s.reps ?? ''}" data-f="reps">
+              <button class="tick ${s.done ? 'on' : ''}" data-act="tick" aria-pressed="${!!s.done}" aria-label="${t(`Set ${j + 1} done, start rest`, `第 ${j + 1} 組完成，開始休息`)}">✓</button>
               <button class="ghost x" data-act="unset" aria-label="${t(`Remove set ${j + 1}`, `移除第 ${j + 1} 組`)}">✕</button></div>`).join('')}
           </div>
           <button class="ghost" data-act="addset">+ ${t('Set', '加一組')}</button>
@@ -116,6 +119,7 @@ export async function logScreen(user) {
         if (act === 'drop') draft.items.splice(+card.dataset.i, 1);
         if (act === 'addset') { const l = it.sets.at(-1) || {}; it.sets.push({ kg: l.kg ?? null, reps: l.reps ?? null }); }
         if (act === 'unset') it.sets.splice(+b.closest('.set').dataset.j, 1);
+        if (act === 'tick') { const x = it.sets[+b.closest('.set').dataset.j]; x.done = !x.done; if (x.done) startRest(restSec); }
         if (act === 'usecoach') { const c = coach(it.id); if (c) it.sets.forEach(x => { x.kg = c.kg; x.reps = c.reps; }); }
         keep(); draw();
       });

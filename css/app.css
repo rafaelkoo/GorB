@@ -163,7 +163,7 @@ button:disabled { opacity: .55; cursor: default; }
 .ex-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
 .ex-head h3 { margin-bottom: 2px; }
 .sets { display: grid; gap: 6px; }
-.set { display: grid; grid-template-columns: 34px 1fr 1fr 44px; gap: 8px; align-items: center; }
+.set { display: grid; grid-template-columns: 30px 1fr 1fr 44px 40px; gap: 6px; align-items: center; }
 .set.head { color: var(--dust); font-size: .8rem; font-weight: 600; }
 .set span:first-child { text-align: center; font: 700 1.05rem/1 var(--display); color: var(--dust); }
 .set input { text-align: center; font: 700 1.15rem/1 var(--display); font-variant-numeric: tabular-nums; }
@@ -276,3 +276,19 @@ button:disabled { opacity: .55; cursor: default; }
 .advice { font-size: .9rem; background: var(--mat-2); border-radius: 8px; padding: 10px 12px; border-left: 3px solid var(--blue); }
 .advice.ontrack, .advice.done { border-left-color: var(--green); }
 .advice.behind { border-left-color: var(--yellow); }
+
+/* rest timer + set ticks */
+.tick { width: 44px; min-height: 44px; padding: 0; border-radius: 50%; background: transparent; border: 2px solid var(--line); color: var(--dust); font-size: 1.1rem; }
+.tick.on { background: var(--green); border-color: var(--green); color: #fff; }
+.set.done input { border-color: var(--green); }
+.set.head span:nth-child(4) { text-align: center; }
+#timer { position: fixed; left: 0; right: 0; bottom: calc(62px + env(safe-area-inset-bottom)); z-index: 6; padding: 0 12px 8px; pointer-events: none; }
+#timer .tm { pointer-events: auto; max-width: 560px; margin: 0 auto; display: grid; grid-template-columns: 1fr auto auto; grid-template-areas: "text add stop" "bar bar bar"; gap: 6px 8px; align-items: center; background: var(--mat-2); border: 1px solid var(--blue); border-radius: var(--r-card); padding: 10px 12px; box-shadow: 0 6px 24px rgba(0,0,0,.45); }
+#timer.go .tm { border-color: var(--green); }
+.tm-text { grid-area: text; display: flex; align-items: baseline; gap: 10px; }
+.tm-text span { color: var(--dust); font-weight: 600; }
+#timer.go .tm-text span { color: var(--green); }
+.tm-text b { font: 800 1.8rem/1 var(--display); font-variant-numeric: tabular-nums; }
+#tm-add { grid-area: add; } #tm-stop { grid-area: stop; }
+.tm-bar { grid-area: bar; height: 4px; border-radius: 2px; background: var(--floor); overflow: hidden; }
+.tm-bar i { display: block; height: 100%; background: var(--blue); transition: width 1s linear; }
