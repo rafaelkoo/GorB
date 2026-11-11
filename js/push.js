@@ -2,6 +2,7 @@
 // The server side is supabase/functions/notify-checkin.
 import { sb } from './supa.js';
 import { VAPID_PUBLIC_KEY } from './config.js';
+import { t } from './i18n.js';
 
 export const pushSupported = () =>
   'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window && !!VAPID_PUBLIC_KEY;
@@ -21,8 +22,8 @@ export async function pushState() {
 export async function enablePush(userId) {
   const perm = await Notification.requestPermission();
   if (perm !== 'granted') throw new Error(perm === 'denied'
-    ? 'Notifications are blocked. In Chrome: ⋮ → Settings → Site settings → Notifications → allow this site.'
-    : 'Notifications were not allowed.');
+    ? t('Notifications are blocked. In Chrome: ⋮ → Settings → Site settings → Notifications → allow this site.', '通知被封鎖咗。Chrome：⋮ → 設定 → 網站設定 → 通知 → 允許呢個網站。')
+    : t('Notifications were not allowed.', '冇允許通知。'));
   const reg = await navigator.serviceWorker.ready;
   const sub = (await reg.pushManager.getSubscription())
     || await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlB64ToBytes(VAPID_PUBLIC_KEY) });
@@ -43,5 +44,5 @@ export async function disablePush() {
 // Shows a notification from this phone only: proves the phone can display them.
 export async function testNotification() {
   const reg = await navigator.serviceWorker.ready;
-  await reg.showNotification('Gym or Bitch', { body: 'Notifications work on this phone 💪', icon: 'icons/icon-192.png' });
+  await reg.showNotification('Gym or Bitch', { body: t('Notifications work on this phone 💪', '呢部手機收到通知 💪'), icon: 'icons/icon-192.png' });
 }

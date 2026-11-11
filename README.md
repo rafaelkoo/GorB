@@ -15,6 +15,12 @@ Web app (PWA) first, Android app later via TWA.
 - **Progress**: PBs for bench / deadlift / squat / OHP + total, a trend line and PR per exercise. Groupmates can open each other's progress.
 - **Group page**: PB board like the old Excel "Personal Bests" sheet.
 
+## Me, targets, rankings, language
+- **Me** tab: gym days per week target, lift targets with progress bars, body weight log + goal, FitTrack goal with BMI / calories / protein / water, settings.
+- Body details (height, age, sex, weights, goal) are **private** unless "Show my body details to my groups" is on. Lift targets and days per week are visible to groupmates.
+- **Ranks** tab: the whole group ranked by gym days, weekly target, workouts, volume, big-four total, each lift, and weight change (sharers only).
+- **English / 繁中**: switch on the sign-in screen or Me → Settings. Saved to the profile, so notifications arrive in each person's language.
+
 Later: running times (5K…marathon), weekly plan, FitTrack backup import.
 
 ## Setup

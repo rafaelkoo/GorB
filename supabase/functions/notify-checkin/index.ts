@@ -47,18 +47,22 @@ Deno.serve(async req => {
   for (const m of mates ?? []) if (!openGroup.has(m.user_id)) openGroup.set(m.user_id, m.group_id);
   if (!openGroup.size) return json({ sent: 0 });
 
-  const [{ data: me }, { data: subs }] = await Promise.all([
+  const [{ data: me }, { data: subs }, { data: langs }] = await Promise.all([
     db.from('profiles').select('display_name').eq('id', record.user_id).single(),
-    db.from('push_subscriptions').select('endpoint, user_id, p256dh, auth').in('user_id', [...openGroup.keys()])
+    db.from('push_subscriptions').select('endpoint, user_id, p256dh, auth').in('user_id', [...openGroup.keys()]),
+    db.from('profiles').select('id, lang').in('id', [...openGroup.keys()])
   ]);
+  const langOf = new Map((langs ?? []).map(p => [p.id, p.lang]));
   const name = me?.display_name || 'Someone';
-  // their own words if they typed any, otherwise the default nudge
-  const body = record.note?.trim() || 'Get moving. Gym or Bitch?';
+  // each person gets it in the language they picked; the poster's own words if they typed any
+  const text = (lang: string) => lang === 'zh'
+    ? { title: `${name} 去咗 gym 💪`, body: record.note?.trim() || '仲唔郁？Gym or Bitch？' }
+    : { title: `${name} is at the gym 💪`, body: record.note?.trim() || 'Get moving. Gym or Bitch?' };
 
   let sent = 0;
   const gone: string[] = [];
   await Promise.all((subs ?? []).map(async s => {
-    const payload = JSON.stringify({ title: `${name} is at the gym 💪`, body, url: `./#/g/${openGroup.get(s.user_id)}` });
+    const payload = JSON.stringify({ ...text(langOf.get(s.user_id) ?? 'en'), url: `./#/g/${openGroup.get(s.user_id)}` });
     try {
       await webpush.sendNotification({ endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } }, payload, { TTL: 3600 });
       sent++;

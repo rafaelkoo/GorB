@@ -1,14 +1,22 @@
 // Gym tracker screens: log today's workout, and a person's progress.
 import * as api from './supa.js';
 import { EXERCISES, EX, CATS, BIG_FOUR } from './exercises.js';
+import { t, getLang, fmtDay, fmtLongToday } from './i18n.js';
 
 const $app = () => document.getElementById('app');
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-const kg = n => `${+(+n).toFixed(2)} kg`;
-const shortDate = iso => new Date(iso + 'T12:00:00Z').toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+export const kg = n => `${+(+n).toFixed(2)} kg`;
+// exercise name in the chosen language, the other one underneath
+export const exName = id => (getLang() === 'zh' ? EX[id]?.zh : EX[id]?.en) || id;
+const exSub = id => (getLang() === 'zh' ? EX[id]?.en : EX[id]?.zh) || '';
+const CAT_ZH = { chest: '胸', back: '背', legs: '腿', shoulders: '肩', arms: '手臂', core: '核心' };
+const catName = k => t(CATS[k], CAT_ZH[k]);
+const EQ_ZH = { Barbell: '槓鈴', Dumbbell: '啞鈴', Machine: '器械', Cable: '滑輪', Bodyweight: '自身體重', Other: '其他' };
+const equipName = e => t(e, EQ_ZH[e] || e);
+
 function showError(err) {
   const box = document.querySelector('.error') || $app().insertAdjacentElement('afterbegin', document.createElement('p'));
-  box.className = 'error'; box.textContent = err?.message || String(err);
+  box.className = 'error'; box.hidden = false; box.textContent = err?.message || String(err);
 }
 function note(text) {
   const box = document.createElement('p'); box.className = 'ok'; box.textContent = text;
@@ -17,7 +25,7 @@ function note(text) {
 
 // ---------- history helpers ----------
 // sessions[exerciseId] = [{date, sets:[{kg, reps}]}] oldest first
-function bySession(rows) {
+export function bySession(rows) {
   const out = {};
   for (const r of rows) {
     const list = out[r.exercise_id] || (out[r.exercise_id] = []);
@@ -28,7 +36,7 @@ function bySession(rows) {
   return out;
 }
 const bestKg = sets => Math.max(0, ...sets.filter(s => s.reps >= 1).map(s => s.kg));
-const prOf = sessions => sessions.reduce((b, s) => { const k = bestKg(s.sets); return k > b.kg ? { kg: k, date: s.date } : b; }, { kg: 0, date: null });
+export const prOf = sessions => sessions.reduce((b, s) => { const k = bestKg(s.sets); return k > b.kg ? { kg: k, date: s.date } : b; }, { kg: 0, date: null });
 function setsText(sets) {
   // "3 × 5 @ 100 kg" when every set matches, else "100×5, 105×3"
   const same = sets.every(s => s.kg === sets[0].kg && s.reps === sets[0].reps);
@@ -56,27 +64,30 @@ export async function logScreen(user) {
   const keep = () => saveDraft(user.id, draft);
 
   function draw() {
+    const nSets = draft.items.reduce((n, it) => n + it.sets.length, 0);
     $app().innerHTML = `
-      <section class="hero"><h2>Today's workout</h2>
-        <p class="muted">${esc(new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' }))}${draft.saved ? ' · saved, edit and save again' : ''}</p></section>
+      <header class="page-head"><div><h2>${t('Today’s workout', '今日訓練')}</h2>
+        <p class="muted">${esc(fmtLongToday())}${draft.saved ? ` · ${t('saved, edit and save again', '已儲存，可以改完再儲')}` : ''}</p></div></header>
+      ${draft.items.length ? `<p class="muted small">${t(`${draft.items.length} exercise${draft.items.length === 1 ? '' : 's'} · ${nSets} set${nSets === 1 ? '' : 's'} · kept on this phone until you save`, `${draft.items.length} 個動作 · ${nSets} 組 · 未儲存之前會暫存喺呢部手機`)}</p>` : ''}
       ${draft.items.map((it, i) => {
         const last = past(it.id).at(-1);
         return `<section class="card ex" data-i="${i}">
-          <div class="ex-head"><div><h3>${esc(EX[it.id]?.en || it.id)}</h3><span class="muted">${esc(EX[it.id]?.zh || '')}</span></div>
-            <button class="ghost x" data-act="drop" aria-label="Remove ${esc(EX[it.id]?.en)}">✕</button></div>
-          <p class="muted last">${last ? `Last time (${esc(shortDate(last.date))}): ${esc(setsText(last.sets))}` : 'First time logging this'}</p>
+          <div class="ex-head"><div><h3>${esc(exName(it.id))}</h3><span class="muted">${esc(exSub(it.id))}</span></div>
+            <button class="ghost x" data-act="drop" aria-label="${t('Remove', '移除')} ${esc(exName(it.id))}">✕</button></div>
+          <p class="muted last">${last ? `${t('Last time', '上次')} (${esc(fmtDay(last.date))}): ${esc(setsText(last.sets))}` : t('First time logging this', '第一次記錄呢個動作')}</p>
           <div class="sets">
-            <div class="set head"><span>Set</span><span>kg</span><span>Reps</span><span></span></div>
+            <div class="set head"><span>${t('Set', '組')}</span><span>kg</span><span>${t('Reps', '次數')}</span><span></span></div>
             ${it.sets.map((s, j) => `<div class="set" data-j="${j}"><span>${j + 1}</span>
-              <input inputmode="decimal" aria-label="Set ${j + 1} kg" value="${s.kg ?? ''}" data-f="kg">
-              <input inputmode="numeric" aria-label="Set ${j + 1} reps" value="${s.reps ?? ''}" data-f="reps">
-              <button class="ghost x" data-act="unset" aria-label="Remove set ${j + 1}">✕</button></div>`).join('')}
+              <input inputmode="decimal" aria-label="${t(`Set ${j + 1} kg`, `第 ${j + 1} 組 kg`)}" value="${s.kg ?? ''}" data-f="kg">
+              <input inputmode="numeric" aria-label="${t(`Set ${j + 1} reps`, `第 ${j + 1} 組次數`)}" value="${s.reps ?? ''}" data-f="reps">
+              <button class="ghost x" data-act="unset" aria-label="${t(`Remove set ${j + 1}`, `移除第 ${j + 1} 組`)}">✕</button></div>`).join('')}
           </div>
-          <button class="ghost" data-act="addset">+ Set</button>
+          <button class="ghost" data-act="addset">+ ${t('Set', '加一組')}</button>
         </section>`;
       }).join('')}
-      <button id="addex" class="big ghost">+ Add exercise</button>
-      ${draft.items.length ? '<button id="save" class="big">Save workout</button>' : ''}`;
+      ${draft.items.length ? '' : `<section class="card empty"><p>${t('Nothing logged today yet.', '今日仲未記錄。')}</p><p class="muted">${t('Add your first exercise. Last time’s numbers fill in for you.', '加第一個動作，上次嘅數字會自動填好。')}</p></section>`}
+      <button id="addex" class="big ghost">+ ${t('Add exercise', '加動作')}</button>
+      ${draft.items.length ? `<button id="save" class="big">${t('Save workout', '儲存訓練')}</button>` : ''}`;
 
     $app().querySelectorAll('.ex').forEach(card => {
       const it = draft.items[+card.dataset.i];
@@ -107,11 +118,11 @@ export async function logScreen(user) {
       let n = 0;
       for (const s of it.sets) {
         if (!(s.reps >= 1) && !(s.kg > 0)) continue;              // skip empty rows
-        if (!(s.kg >= 0) || !(Number.isInteger(s.reps) && s.reps >= 0)) return showError({ message: `Check the numbers for ${EX[it.id]?.en}.` });
+        if (!(s.kg >= 0) || !(Number.isInteger(s.reps) && s.reps >= 0)) return showError({ message: t(`Check the numbers for ${exName(it.id)}.`, `檢查吓「${exName(it.id)}」嘅數字。`) });
         rows.push({ exercise_id: it.id, set_no: ++n, weight_kg: s.kg, reps: s.reps });
       }
     }
-    btn.disabled = true; btn.textContent = 'Saving…';
+    btn.disabled = true; btn.textContent = t('Saving…', '儲存緊…');
     try {
       await api.saveWorkout(user.id, rows);
       dropDraft(user.id);
@@ -119,25 +130,28 @@ export async function logScreen(user) {
         .map(id => ({ id, now: Math.max(...rows.filter(r => r.exercise_id === id && r.reps >= 1).map(r => r.weight_kg), 0), before: prOf(past(id)).kg }))
         .filter(p => p.before > 0 && p.now > p.before);
       location.hash = '#/p/me';
-      setTimeout(() => note(prs.length ? `Saved. New PR: ${prs.map(p => `${EX[p.id]?.en} ${kg(p.now)}`).join(', ')} 🏆` : 'Workout saved.'), 300);
-    } catch (err) { showError(err); btn.disabled = false; btn.textContent = 'Save workout'; }
+      setTimeout(() => note(prs.length
+        ? t(`Saved. New PR: ${prs.map(p => `${exName(p.id)} ${kg(p.now)}`).join(', ')} 🏆`, `已儲存。破咗 PR：${prs.map(p => `${exName(p.id)} ${kg(p.now)}`).join('、')} 🏆`)
+        : t('Workout saved.', '訓練已儲存。')), 300);
+    } catch (err) { showError(err); btn.disabled = false; btn.textContent = t('Save workout', '儲存訓練'); }
   }
 
   draw();
 }
 
-// Full-screen list to pick an exercise: search + body part filter.
-function picker(onPick) {
+// Bottom sheet to pick an exercise: search + body part filter. Also used by the Me page.
+export function picker(onPick, only) {
   const box = document.createElement('div');
-  box.className = 'sheet'; box.setAttribute('role', 'dialog'); box.setAttribute('aria-label', 'Add exercise');
+  box.className = 'sheet'; box.setAttribute('role', 'dialog'); box.setAttribute('aria-label', t('Add exercise', '加動作'));
   let cat = '', q = '';
-  const list = () => EXERCISES.filter(([id, en, zh, c]) => (!cat || c === cat) && (!q || `${en} ${zh}`.toLowerCase().includes(q)));
+  const pool = only ? EXERCISES.filter(([id]) => only.includes(id)) : EXERCISES;
+  const list = () => pool.filter(([id, en, zh, c]) => (!cat || c === cat) && (!q || `${en} ${zh}`.toLowerCase().includes(q)));
   function draw() {
     box.innerHTML = `<div class="sheet-in">
-      <div class="ex-head"><h3>Add exercise</h3><button class="ghost x" id="close" aria-label="Close">✕</button></div>
-      <input id="q" placeholder="Search, e.g. bench" value="${esc(q)}" autocomplete="off">
-      <div class="chips"><button data-c="" class="${cat ? '' : 'on'}">All</button>${Object.entries(CATS).map(([k, v]) => `<button data-c="${k}" class="${cat === k ? 'on' : ''}">${esc(v)}</button>`).join('')}</div>
-      <ul class="pick">${list().map(([id, en, zh, , equip]) => `<li><button data-id="${id}"><b>${esc(en)}</b> <span class="muted">${esc(zh)} · ${esc(equip)}</span></button></li>`).join('') || '<li class="muted">No match</li>'}</ul>
+      <div class="ex-head"><h3>${t('Pick an exercise', '揀動作')}</h3><button class="ghost x" id="close" aria-label="${t('Close', '關閉')}">✕</button></div>
+      <input id="q" placeholder="${t('Search, e.g. bench', '搜尋，例如 臥推')}" value="${esc(q)}" autocomplete="off" aria-label="${t('Search', '搜尋')}">
+      <div class="chips"><button data-c="" class="${cat ? '' : 'on'}">${t('All', '全部')}</button>${Object.keys(CATS).map(k => `<button data-c="${k}" class="${cat === k ? 'on' : ''}">${esc(catName(k))}</button>`).join('')}</div>
+      <ul class="pick">${list().map(([id, , , , equip]) => `<li><button data-id="${id}"><b>${esc(exName(id))}</b> <span class="muted">${esc(exSub(id))} · ${esc(equipName(equip))}</span></button></li>`).join('') || `<li class="muted">${t('No match', '搵唔到')}</li>`}</ul>
     </div>`;
     box.querySelector('#close').onclick = () => box.remove();
     const qi = box.querySelector('#q');
@@ -151,12 +165,12 @@ function picker(onPick) {
 }
 
 // ---------- progress ----------
-function spark(sessions) {
-  const pts = sessions.map(s => bestKg(s.sets)).filter(k => k > 0);
+export function spark(values, label) {
+  const pts = values.filter(k => k > 0);
   if (pts.length < 2) return '';
   const W = 300, H = 64, lo = Math.min(...pts), hi = Math.max(...pts), span = hi - lo || 1;
   const xy = pts.map((k, i) => [8 + i * (W - 16) / (pts.length - 1), H - 8 - (k - lo) / span * (H - 16)]);
-  return `<svg class="spark" viewBox="0 0 ${W} ${H}" role="img" aria-label="Best set per session, ${kg(pts[0])} to ${kg(pts.at(-1))}">
+  return `<svg class="spark" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(label)}">
     <polyline points="${xy.map(p => p.join(',')).join(' ')}" fill="none" stroke="var(--accent)" stroke-width="2"/>
     ${xy.map(([x, y]) => `<circle cx="${x}" cy="${y}" r="3" fill="var(--accent)"/>`).join('')}</svg>`;
 }
@@ -167,35 +181,37 @@ export async function progressScreen(user, who) {
   const sessions = bySession(rows);
   const order = Object.keys(sessions).sort((a, b) => sessions[b].at(-1).date.localeCompare(sessions[a].at(-1).date));
   const mine = uid === user.id;
-  const total = BIG_FOUR.reduce((t, id) => t + prOf(sessions[id] || []).kg, 0);
+  const total = BIG_FOUR.reduce((s, id) => s + prOf(sessions[id] || []).kg, 0);
   const days = new Set(rows.map(r => r.performed_on)).size;
   $app().innerHTML = `
-    <section class="hero"><h2>${mine ? 'Your progress' : `${esc(profile.display_name)}'s progress`}</h2>
-      <p class="muted">${days} workout${days === 1 ? '' : 's'} logged</p>
-      ${mine ? '<a class="big" href="#/log">🏋️ Log today\'s workout</a>' : ''}</section>
-    <section class="card"><h3>Personal bests</h3>
-      <div class="pbs">${BIG_FOUR.map(id => { const p = prOf(sessions[id] || []); return `<div><span class="muted">${esc(EX[id].en)}</span><b>${p.kg ? kg(p.kg) : '—'}</b></div>`; }).join('')}
-        <div class="total"><span class="muted">Total</span><b>${total ? kg(total) : '—'}</b></div></div></section>
+    <header class="page-head"><div><h2>${mine ? t('Your progress', '你嘅進度') : t(`${esc(profile.display_name)}’s progress`, `${esc(profile.display_name)} 嘅進度`)}</h2>
+      <p class="muted">${t(`${days} workout${days === 1 ? '' : 's'} logged`, `記錄咗 ${days} 次訓練`)}</p></div>
+      ${mine ? `<a class="link" href="#/me">${t('Me', '我')} ›</a>` : ''}</header>
+    ${mine ? `<a class="big" href="#/log">${t('Log today’s workout', '記錄今日訓練')}</a>` : ''}
+    <section class="card"><h3>${t('Personal bests', '個人最佳')}</h3>
+      <div class="pbs">${BIG_FOUR.map(id => { const p = prOf(sessions[id] || []); return `<div><span class="muted">${esc(exName(id))}</span><b>${p.kg ? kg(p.kg) : '—'}</b></div>`; }).join('')}
+        <div class="total"><span class="muted">${t('Total', '總和')}</span><b>${total ? kg(total) : '—'}</b></div></div></section>
     ${order.length ? order.map(id => {
       const list = sessions[id], pr = prOf(list), last = list.at(-1);
-      return `<section class="card"><div class="ex-head"><div><h3>${esc(EX[id]?.en || id)}</h3><span class="muted">${esc(EX[id]?.zh || '')}</span></div>
+      const series = list.map(s => bestKg(s.sets));
+      return `<section class="card"><div class="ex-head"><div><h3>${esc(exName(id))}</h3><span class="muted">${esc(exSub(id))}</span></div>
           <div class="pr"><span class="muted">PR</span><b>${pr.kg ? kg(pr.kg) : '—'}</b></div></div>
-        ${spark(list)}
-        <p class="muted">Last (${esc(shortDate(last.date))}): ${esc(setsText(last.sets))} · ${list.length} session${list.length === 1 ? '' : 's'}</p></section>`;
-    }).join('') : `<section class="card"><p class="muted">${mine ? 'Nothing logged yet. Log your first workout.' : 'Nothing logged yet.'}</p></section>`}`;
+        ${spark(series, t(`Best set per session, ${kg(series[0])} to ${kg(series.at(-1))}`, `每次最重一組，由 ${kg(series[0])} 到 ${kg(series.at(-1))}`))}
+        <p class="muted">${t('Last', '上次')} (${esc(fmtDay(last.date))}): ${esc(setsText(last.sets))} · ${t(`${list.length} session${list.length === 1 ? '' : 's'}`, `${list.length} 次`)}</p></section>`;
+    }).join('') : `<section class="card empty"><p class="muted">${mine ? t('Nothing logged yet. Log your first workout.', '仲未有記錄，記低你第一次訓練啦。') : t('Nothing logged yet.', '仲未有記錄。')}</p></section>`}`;
 }
 
 // PB board for the group page: rows = members, columns = the four lifts + total
 export async function pbBoardHtml(groupId, userId) {
   const rows = await api.groupLifts(groupId);
-  if (!rows.length) return '<p class="muted">No lifts logged yet. Log a workout to get on the board.</p>';
+  if (!rows.length) return `<p class="muted">${t('No lifts logged yet. Log a workout to get on the board.', '仲未有人記錄。記一次訓練就上榜。')}</p>`;
   const people = {};
   for (const r of rows) (people[r.user_id] ||= { name: r.display_name, kg: {} }).kg[r.exercise_id] = +r.best_kg;
-  const list = Object.entries(people).map(([id, p]) => ({ id, ...p, total: BIG_FOUR.reduce((t, e) => t + (p.kg[e] || 0), 0) }))
+  const list = Object.entries(people).map(([id, p]) => ({ id, ...p, total: BIG_FOUR.reduce((s, e) => s + (p.kg[e] || 0), 0) }))
     .sort((a, b) => b.total - a.total);
-  const short = { bench_press: 'Bench', deadlift: 'Dead', squat: 'Squat', ohp: 'OHP' };
-  return `<div class="tablewrap"><table class="pb"><thead><tr><th>Name</th>${BIG_FOUR.map(e => `<th>${short[e]}</th>`).join('')}<th>Total</th></tr></thead>
+  const short = { bench_press: t('Bench', '臥推'), deadlift: t('Dead', '硬舉'), squat: t('Squat', '深蹲'), ohp: t('OHP', '推舉') };
+  return `<div class="tablewrap"><table class="pb"><thead><tr><th>${t('Name', '名')}</th>${BIG_FOUR.map(e => `<th>${short[e]}</th>`).join('')}<th>${t('Total', '總和')}</th></tr></thead>
     <tbody>${list.map(p => `<tr class="${p.id === userId ? 'me' : ''}"><td><a href="#/p/${p.id}">${esc(p.name)}</a></td>
       ${BIG_FOUR.map(e => `<td>${p.kg[e] ? +p.kg[e] : '—'}</td>`).join('')}<td><b>${+p.total.toFixed(2)}</b></td></tr>`).join('')}</tbody></table></div>
-    <p class="muted">kg, heaviest set with at least 1 rep. Tap a name to see their progress.</p>`;
+    <p class="muted small">${t('kg, heaviest set with at least 1 rep. Tap a name to see their progress.', '單位 kg，最少 1 下嘅最重一組。撳個名睇佢嘅進度。')}</p>`;
 }

@@ -111,3 +111,35 @@ export async function saveWorkout(userId, rows) {
 export const liftHistory = userId => sb.rpc('lift_history', { p_user: userId }).then(must);
 // heaviest set per member for the four PB-board lifts
 export const groupLifts = groupId => sb.rpc('group_lifts', { p_group: groupId, p_exercises: BIG_FOUR }).then(must);
+
+// ---------- me: language, targets, personal details ----------
+export const ukDayOf = iso => new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/London' }).format(new Date(iso));
+export const updateProfile = (id, fields) => sb.from('profiles').update(fields).eq('id', id).then(must);
+export async function checkedInToday(userId) {
+  const rows = must(await sb.from('checkins').select('created_at').eq('user_id', userId).order('created_at', { ascending: false }).limit(1));
+  return !!rows.length && ukDayOf(rows[0].created_at) === ukToday();
+}
+// private unless share_body is on (database rules enforce it)
+export async function bodyProfile(userId) {
+  const rows = must(await sb.from('body_profiles').select('*').eq('user_id', userId));
+  return rows[0] || null;
+}
+export const saveBodyProfile = (userId, fields) =>
+  sb.from('body_profiles').upsert({ user_id: userId, ...fields, updated_at: new Date().toISOString() }, { onConflict: 'user_id' }).then(must);
+export const weights = userId => sb.from('body_weights').select('logged_on, weight_kg').eq('user_id', userId).order('logged_on').then(must);
+export const logWeight = (userId, kg) =>
+  sb.from('body_weights').upsert({ user_id: userId, logged_on: ukToday(), weight_kg: kg }, { onConflict: 'user_id,logged_on' }).then(must);
+export const liftTargets = userId => sb.from('lift_targets').select('exercise_id, target_kg').eq('user_id', userId).then(must);
+export const setLiftTarget = (userId, exercise_id, target_kg) =>
+  sb.from('lift_targets').upsert({ user_id: userId, exercise_id, target_kg }, { onConflict: 'user_id,exercise_id' }).then(must);
+export const dropLiftTarget = (userId, exercise_id) => sb.from('lift_targets').delete().match({ user_id: userId, exercise_id }).then(must);
+export const groupRankings = groupId => sb.rpc('group_rankings', { p_group: groupId }).then(must);
+// check-in days in this UK week (Mon–Sun) for the days-per-week target
+export async function daysThisWeek(userId) {
+  const now = new Date(ukToday() + 'T12:00:00Z'), monday = new Date(now);
+  monday.setUTCDate(now.getUTCDate() - ((now.getUTCDay() + 6) % 7));
+  const since = new Date(monday.getTime() - 24 * 3600 * 1000).toISOString();
+  const rows = must(await sb.from('checkins').select('created_at').eq('user_id', userId).gte('created_at', since));
+  const mon = monday.toISOString().slice(0, 10);
+  return new Set(rows.map(r => ukDayOf(r.created_at)).filter(d => d >= mon)).size;
+}
