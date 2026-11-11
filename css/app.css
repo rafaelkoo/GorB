@@ -36,9 +36,19 @@ button:disabled { opacity: .6; }
 .post p { margin: 4px 0 0; }
 .del { padding: 6px 10px; font-size: .8rem; margin-top: 6px; }
 .code { font-family: ui-monospace, monospace; letter-spacing: .15em; font-size: 1.1rem; }
-.cam { display: grid; gap: 12px; }
-.cam video, .cam img { width: 100%; border-radius: var(--radius); background: #000; aspect-ratio: 3 / 4; object-fit: cover; }
-.cam-actions { display: grid; gap: 8px; }
+/* full-screen camera, controls over the picture */
+.cam { position: fixed; inset: 0; z-index: 30; background: #000; height: 100dvh; }
+.cam video, .cam img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.cam-top { position: absolute; top: 0; left: 0; right: 0; padding: max(12px, env(safe-area-inset-top)) 12px 12px; display: grid; gap: 8px; justify-items: start; background: linear-gradient(rgba(0,0,0,.55), transparent); }
+.cam-close { width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; background: rgba(0,0,0,.45); color: #fff; text-decoration: none; font-size: 1.1rem; }
+.cam-top .error { justify-self: stretch; }
+.cam-bottom { position: absolute; left: 0; right: 0; bottom: 0; padding: 24px 16px max(20px, env(safe-area-inset-bottom)); background: linear-gradient(transparent, rgba(0,0,0,.7) 40%); display: grid; gap: 10px; }
+#live { justify-items: center; background: none; }
+.shutter { width: 76px; height: 76px; border-radius: 50%; padding: 0; background: #fff; border: 5px solid rgba(255,255,255,.45); background-clip: padding-box; box-shadow: 0 0 0 2px #fff; }
+.shutter:active { transform: scale(.94); }
+.cam-bottom input { background: rgba(13,14,16,.85); border-color: rgba(255,255,255,.25); }
+.cam-bottom .row { display: grid; grid-template-columns: 1fr 2fr; gap: 10px; }
+.cam-bottom .ghost { background: rgba(0,0,0,.45); color: #fff; border-color: rgba(255,255,255,.35); }
 code { background: #0d0e10; padding: 2px 6px; border-radius: 6px; }
 .google { display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; background: #fff; color: #1f1f1f; }
 .or { display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: .85rem; margin: 14px 0 4px; }

@@ -14,7 +14,7 @@ function render(html) { $app().innerHTML = html; return $app(); }
 function busy(btn, on, label) { btn.disabled = on; if (label) btn.textContent = label; }
 export function showError(err) {
   const box = document.querySelector('.error') || $app().insertAdjacentElement('afterbegin', document.createElement('p'));
-  box.className = 'error'; box.textContent = err?.message || String(err);
+  box.className = 'error'; box.hidden = false; box.textContent = err?.message || String(err);
 }
 
 // ---------- setup / auth ----------
@@ -196,21 +196,28 @@ let liveStream = null;
 export function releaseCamera() { stopCamera(liveStream); liveStream = null; }
 
 export async function checkin(user, groupId) {
+  // Full-screen camera. Controls float over the picture so nothing needs scrolling.
   const el = render(`
-    <nav class="crumbs"><a href="#/g/${groupId}">Back</a></nav>
-    <section class="cam">
+    <section class="cam" aria-label="Check in">
       <video id="v" playsinline muted></video>
       <img id="shot" alt="Your photo" hidden>
-      <div class="cam-actions">
-        <button id="snap" class="big">Take photo</button>
-        <button id="retake" class="ghost" hidden>Retake</button>
+      <div class="cam-top">
+        <a class="cam-close" href="#/g/${groupId}" aria-label="Cancel">✕</a>
+        <p class="error" role="alert" hidden></p>
       </div>
-      <form id="post" hidden>
-        <input id="note" maxlength="140" placeholder="Message to your group (optional)">
-        <button>Post check-in</button>
+      <div class="cam-bottom" id="live">
+        <button id="snap" class="shutter" aria-label="Take photo"></button>
+      </div>
+      <form id="post" class="cam-bottom" hidden>
+        <input id="note" maxlength="140" placeholder="Message to your group (optional)" enterkeyhint="send">
+        <div class="row">
+          <button type="button" id="retake" class="ghost">Retake</button>
+          <button id="send">Post check-in</button>
+        </div>
       </form>
     </section>`);
   const v = el.querySelector('#v'), shot = el.querySelector('#shot');
+  const live = el.querySelector('#live'), post = el.querySelector('#post');
   let photo = null;
   try { liveStream = await openCamera(v); }
   catch (err) { showError(err.name === 'NotAllowedError' ? { message: 'Camera blocked. Allow camera for this site in Chrome settings.' } : err); return; }
@@ -218,17 +225,16 @@ export async function checkin(user, groupId) {
   el.querySelector('#snap').onclick = async () => {
     try {
       photo = await snap(v);
-      shot.src = URL.createObjectURL(photo.full); shot.hidden = false; v.hidden = true;
-      el.querySelector('#snap').hidden = true; el.querySelector('#retake').hidden = false; el.querySelector('#post').hidden = false;
+      shot.src = URL.createObjectURL(photo.full);
+      shot.hidden = false; v.hidden = true; live.hidden = true; post.hidden = false;
     } catch (err) { showError(err); }
   };
   el.querySelector('#retake').onclick = () => {
-    photo = null; shot.hidden = true; v.hidden = false;
-    el.querySelector('#snap').hidden = false; el.querySelector('#retake').hidden = true; el.querySelector('#post').hidden = true;
+    photo = null; shot.hidden = true; v.hidden = false; live.hidden = false; post.hidden = true;
   };
-  el.querySelector('#post').onsubmit = async e => {
+  post.onsubmit = async e => {
     e.preventDefault(); if (!photo) return;
-    const b = e.submitter; busy(b, true, 'Posting…');
+    const b = el.querySelector('#send'); busy(b, true, 'Posting…');
     try { await api.postCheckin(user.id, photo, el.querySelector('#note').value.trim()); releaseCamera(); try { sessionStorage.setItem(ASK_KEY, '1'); } catch {} location.hash = `#/g/${groupId}`; }
     catch (err) { showError(err); busy(b, false, 'Post check-in'); }
   };
