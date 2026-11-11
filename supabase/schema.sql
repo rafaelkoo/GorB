@@ -193,3 +193,5 @@ create policy "groupmates view photos" on storage.objects for select to authenti
   using (bucket_id = 'checkins' and public.shares_group(((storage.foldername(name))[1])::uuid));
 create policy "delete own photos" on storage.objects for delete to authenticated
   using (bucket_id = 'checkins' and (storage.foldername(name))[1] = auth.uid()::text);
+
+-- Later changes live in supabase/migrations/ (run them in order after this file).

@@ -1,3 +1,4 @@
+[hidden] { display: none !important; }
 :root {
   --bg: #111214; --card: #1b1d21; --line: #2a2d33; --text: #f1f1f1; --muted: #9aa0a8;
   --accent: #ff4d2e; --accent-ink: #fff; --ok: #3ccf8e; --radius: 14px;
@@ -39,3 +40,6 @@ button:disabled { opacity: .6; }
 .cam video, .cam img { width: 100%; border-radius: var(--radius); background: #000; aspect-ratio: 3 / 4; object-fit: cover; }
 .cam-actions { display: grid; gap: 8px; }
 code { background: #0d0e10; padding: 2px 6px; border-radius: 6px; }
+.google { display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; background: #fff; color: #1f1f1f; }
+.or { display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: .85rem; margin: 14px 0 4px; }
+.or::before, .or::after { content: ""; flex: 1; height: 1px; background: var(--line); }

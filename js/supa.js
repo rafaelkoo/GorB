@@ -3,11 +3,19 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { SUPABASE_URL, SUPABASE_ANON_KEY, PHOTO_BUCKET } from './config.js';
 
 export const configured = !SUPABASE_URL.includes('YOUR-PROJECT') && !SUPABASE_ANON_KEY.includes('YOUR-');
-export const sb = configured ? createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
+// PKCE: Google sends us back with ?code=… in the query string, which keeps clear of the #/ routes.
+export const sb = configured ? createClient(SUPABASE_URL, SUPABASE_ANON_KEY, { auth: { flowType: 'pkce' } }) : null;
 
 const must = ({ data, error }) => { if (error) throw error; return data; };
 
-// ---------- auth (email + password; "Confirm email" is OFF in Supabase so no emails are sent) ----------
+// ---------- auth ----------
+// Google: leaves the page, comes back to the same address signed in.
+export const googleLogIn = () => sb.auth.signInWithOAuth({
+  provider: 'google',
+  options: { redirectTo: location.origin + location.pathname }
+}).then(must);
+
+// Email + password fallback ("Confirm email" is OFF in Supabase so no emails are sent).
 export const logIn = (email, password) => sb.auth.signInWithPassword({ email, password }).then(must);
 export async function register(email, password) {
   const data = must(await sb.auth.signUp({ email, password }));

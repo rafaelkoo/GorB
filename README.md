@@ -4,7 +4,7 @@ Friends' gym check-in app. Take a photo at the gym, your group sees it, the mont
 Web app (PWA) first, Android app later via TWA.
 
 ## Phase 1 (this version)
-- Sign in with email + password (no emails sent, so no Supabase email limits)
+- Sign in with Google (name filled in automatically) or email + password (no emails sent)
 - Make a group or join one with an invite code / link
 - Check in with a **live camera photo only** (no gallery upload, so no old photos)
 - Group feed and monthly table (counts distinct days, UK time)
@@ -17,8 +17,9 @@ Next: push notifications (phase 2), sets/reps logging with FitTrack's exercise i
 2. **SQL Editor** → paste all of `supabase/schema.sql` → Run.
 3. **Authentication → Sign In / Providers → Email**: turn **off** "Confirm email". Forgotten passwords: reset the user in Authentication → Users.
 4. **Authentication → URL Configuration**: Site URL = your GitHub Pages URL.
-5. **Project Settings → API**: copy the Project URL and the `anon` key into `js/config.js`.
-6. Push to GitHub → Settings → Pages → deploy from `main`, root folder.
+5. **Google login**: see "Google sign-in setup" below, and run `supabase/migrations/002_google_names.sql`.
+6. **Project Settings → API**: copy the Project URL and the `anon` key into `js/config.js`.
+7. Push to GitHub → Settings → Pages → deploy from `main`, root folder.
 
 Later (Play Store): add custom SMTP (e.g. Resend) and switch to email codes / password reset emails.
 
@@ -46,3 +47,12 @@ Later (Play Store): add custom SMTP (e.g. Resend) and switch to email codes / pa
 | `supabase/schema.sql` | tables, rules, functions, photo bucket |
 
 Bump `VERSION` in `sw.js` on every release so phones load the new files.
+
+## Google sign-in setup
+1. console.cloud.google.com → new project → **Google Auth Platform** → Branding: app name, support email.
+2. Audience: **External**. While in *Testing*, only listed test users can sign in; **Publish app** to let anyone in (email/profile scopes need no review).
+3. Clients → **Create client** → Web application.
+   - Authorised JavaScript origins: `https://rafaelkoo.github.io`
+   - Authorised redirect URIs: `https://uzawqjiczhbfxhylogir.supabase.co/auth/v1/callback`
+4. Supabase → Authentication → Sign In / Providers → **Google** → on, paste Client ID + Client Secret (straight into Supabase, never into this repo).
+5. Supabase → Authentication → URL Configuration: Site URL `https://rafaelkoo.github.io/GorB/`, Redirect URLs add `https://rafaelkoo.github.io/GorB/**`.
