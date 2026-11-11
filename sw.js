@@ -1,6 +1,6 @@
 // Service worker: offline app shell + push notifications.
 // Bump VERSION whenever app files change so phones pick up the new copy.
-const VERSION = 'gob-v0.5.0';
+const VERSION = 'gob-v0.5.1';
 const SHELL = [
   './', 'index.html', 'manifest.json', 'css/app.css',
   'js/main.js', 'js/config.js', 'js/supa.js', 'js/camera.js', 'js/ui.js', 'js/push.js', 'js/tracker.js', 'js/exercises.js',
