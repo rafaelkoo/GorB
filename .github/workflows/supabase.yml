@@ -47,16 +47,16 @@ jobs:
 
       - uses: supabase/setup-cli@v1
         with:
-          version: latest
+          version: 3.1.0   # pinned: newer CLIs have changed flags before
 
       - name: Link project
         run: supabase link --project-ref "$PROJECT_REF"
 
       - name: Show migrations (local vs live)
-        run: supabase migration list
+        run: supabase migration list --remote --password "$SUPABASE_DB_PASSWORD"
 
       - name: Apply new migrations
-        run: supabase db push --include-all --password "$SUPABASE_DB_PASSWORD"
+        run: supabase db push --remote --include-all --password "$SUPABASE_DB_PASSWORD"
 
       - name: Copy notification secrets into Supabase (if set)
         env:
@@ -68,7 +68,7 @@ jobs:
           for k in VAPID_PUBLIC_KEY VAPID_PRIVATE_KEY WEBHOOK_SECRET; do
             v="${!k}"; [ -n "$v" ] && args="$args $k=$v"
           done
-          if [ -n "$args" ]; then supabase secrets set --project-ref "$PROJECT_REF" $args; else echo "No notification secrets yet, skipping."; fi
+          if [ -n "$args" ]; then supabase secrets set $args; else echo "No notification secrets yet, skipping."; fi
 
       - name: Deploy notify-checkin function
-        run: supabase functions deploy notify-checkin --project-ref "$PROJECT_REF" --no-verify-jwt
+        run: supabase functions deploy notify-checkin --no-verify-jwt --use-api
