@@ -206,7 +206,7 @@ export async function checkin(user, groupId) {
         <button id="retake" class="ghost" hidden>Retake</button>
       </div>
       <form id="post" hidden>
-        <input id="note" maxlength="140" placeholder="Leg day? Say something (optional)">
+        <input id="note" maxlength="140" placeholder="Message to your group (optional)">
         <button>Post check-in</button>
       </form>
     </section>`);

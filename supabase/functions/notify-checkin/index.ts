@@ -52,7 +52,8 @@ Deno.serve(async req => {
     db.from('push_subscriptions').select('endpoint, user_id, p256dh, auth').in('user_id', [...openGroup.keys()])
   ]);
   const name = me?.display_name || 'Someone';
-  const body = record.note ? `"${record.note}" Gym or Bitch?` : 'Get moving. Gym or Bitch?';
+  // their own words if they typed any, otherwise the default nudge
+  const body = record.note?.trim() || 'Get moving. Gym or Bitch?';
 
   let sent = 0;
   const gone: string[] = [];
