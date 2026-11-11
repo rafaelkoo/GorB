@@ -79,25 +79,29 @@ export async function photoLinks(paths) {
 }
 
 // Feed for one group: everyone in the group, newest first, `limit` rows.
+// Photos are kept for a week (cleanup-photos deletes them); older check-ins come back with gone: true.
+export const PHOTO_DAYS = 7;
 export async function groupFeed(groupId, limit) {
   const ids = (await members(groupId)).map(m => m.user_id);
   if (!ids.length) return [];
   const rows = must(await sb.from('checkins')
-    .select('id, user_id, photo_path, note, created_at, profiles(display_name)')
+    .select('id, user_id, photo_path, photo_expired, note, created_at, profiles(display_name)')
     .in('user_id', ids).order('created_at', { ascending: false }).limit(limit));
   if (!rows.length) return rows;
-  const url = await photoLinks(rows.map(r => thumbPath(r.photo_path)));
+  const cutoff = Date.now() - PHOTO_DAYS * 864e5;
+  const live = rows.filter(r => !r.photo_expired && new Date(r.created_at).getTime() > cutoff);
+  const url = live.length ? await photoLinks(live.map(r => thumbPath(r.photo_path))) : {};
   // check-ins from before thumbnails existed fall back to the full photo
-  const missing = rows.filter(r => !url[thumbPath(r.photo_path)]).map(r => r.photo_path);
+  const missing = live.filter(r => !url[thumbPath(r.photo_path)]).map(r => r.photo_path);
   const full = missing.length ? await photoLinks(missing) : {};
-  return rows.map(r => ({ ...r, thumb: url[thumbPath(r.photo_path)] || full[r.photo_path] }));
+  return rows.map(r => live.includes(r) ? { ...r, gone: false, thumb: url[thumbPath(r.photo_path)] || full[r.photo_path] } : { ...r, gone: true, thumb: null });
 }
 
 export async function fullPhoto(path) { return (await photoLinks([path]))[path]; }
 
 export async function deleteCheckin(row) {
   must(await sb.from('checkins').delete().eq('id', row.id));
-  await sb.storage.from(PHOTO_BUCKET).remove([row.photo_path, thumbPath(row.photo_path)]);
+  if (!row.photo_expired) await sb.storage.from(PHOTO_BUCKET).remove([row.photo_path, thumbPath(row.photo_path)]);
 }
 
 // ---------- gym tracker ----------

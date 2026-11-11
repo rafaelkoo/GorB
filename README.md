@@ -56,6 +56,7 @@ To change the database: add a new file `supabase/migrations/<yyyymmddhhmmss>_<na
 |---|---|
 | Only groupmates can see your profile, check-ins and photos | Row Level Security in `supabase/migrations/` |
 | Photo bucket is private; photos load through 1-hour signed links | Storage policies |
+| Photos are deleted after 7 days; the check-in stays, so gym days and rankings don't change | `cleanup-photos` Edge Function, run daily at 03:17 UTC by pg_cron (migration 010) |
 | Check-in time and owner are set by the server, not the phone | `stamp_checkin` trigger |
 | You can only upload into your own photo folder | Storage policy + trigger |
 | Photo GPS/EXIF data is removed before upload | `js/camera.js` (canvas re-encode) |

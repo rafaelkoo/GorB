@@ -124,8 +124,9 @@ function boardHtml(board, user) {
 function postHtml(r, user) {
   const name = esc(r.profiles?.display_name);
   return `<article class="post">
-    <button class="photo" data-path="${esc(r.photo_path)}" aria-label="${t('Open photo by', '睇大圖：')} ${name}">
-      <img src="${esc(r.thumb)}" alt="${t('Check-in photo by', '打卡相：')} ${name}" loading="lazy"></button>
+    ${r.gone ? `<div class="photo gone" role="img" aria-label="${t('Photo removed after a week', '相片一星期後已刪除')}">${ICON.camera(22)}<span>${t('Photo removed after a week', '相片一星期後已刪除')}</span></div>`
+      : `<button class="photo" data-path="${esc(r.photo_path)}" aria-label="${t('Open photo by', '睇大圖：')} ${name}">
+      <img src="${esc(r.thumb)}" alt="${t('Check-in photo by', '打卡相：')} ${name}" loading="lazy"></button>`}
     <div class="post-meta"><b>${name}</b> <span class="muted">${esc(fmtDateTime(r.created_at))}</span>
       ${r.note ? `<p>${esc(r.note)}</p>` : ''}
       ${r.user_id === user.id ? `<button class="ghost del" data-id="${r.id}">${t('Delete', '刪除')}</button>` : ''}</div>
@@ -173,7 +174,7 @@ export async function group(user, groupId, limit = FEED_PAGE) {
     ${pushSupported() && asked ? '<section class="card notif ask" id="notif" hidden></section>' : ''}
     <section class="card"><div class="card-head"><h3>${esc(monthName())} · ${t('days at the gym', '去 gym 日數')}</h3>
       <a class="link" href="#/r/${g.id}">${t('All rankings', '全部排名')} ›</a></div>${boardHtml(board, user)}</section>
-    <section class="card"><h3>${t('Latest', '最新')}</h3>
+    <section class="card"><div class="card-head"><h3>${t('Latest', '最新')}</h3><span class="muted small">${t('Photos stay for 7 days', '相片保留 7 日')}</span></div>
       ${feed.length ? feed.map(r => postHtml(r, user)).join('') : `<p class="muted">${t('Nobody has checked in yet. Be first.', '仲未有人打卡，做第一個啦。')}</p>`}
       ${more ? `<button id="more" class="ghost">${t('Show more', '睇多啲')}</button>` : ''}
     </section>
@@ -220,7 +221,7 @@ export async function group(user, groupId, limit = FEED_PAGE) {
     catch (err) { showError(err); busy(btn, false); }
   });
   el.querySelector('#more')?.addEventListener('click', e => { busy(e.currentTarget, true, t('Loading…', '載入緊…')); group(user, groupId, limit + FEED_PAGE).catch(showError); });
-  el.querySelectorAll('.photo').forEach(b => b.onclick = () => openPhoto(b.dataset.path));
+  el.querySelectorAll('button.photo').forEach(b => b.onclick = () => openPhoto(b.dataset.path));
   el.querySelectorAll('.del').forEach(b => b.onclick = async () => {
     if (!confirm(t('Delete this check-in and its photo?', '刪除呢次打卡同張相？'))) return;
     try { await api.deleteCheckin(feed.find(r => r.id === b.dataset.id)); group(user, groupId, limit); } catch (err) { showError(err); }

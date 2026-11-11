@@ -407,3 +407,4 @@ button.is-loading:disabled, button.is-done:disabled { opacity: 1; cursor: defaul
 .rank-ex { display: grid; gap: 6px; }
 .rank-ex > p { margin: 0; }
 .rank b .reps { font: 600 .85rem/1 var(--body); color: var(--dust); margin-left: 4px; }
+.photo.gone { cursor: default; border-radius: var(--r-ctl); background: var(--floor); border: 1px dashed var(--line); color: var(--dust); display: flex; align-items: center; justify-content: center; gap: 10px; font-size: .85rem; padding: 16px 12px; }
