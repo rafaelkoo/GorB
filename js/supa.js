@@ -22,7 +22,7 @@ export async function register(email, password) {
   if (!data.session) throw new Error('Account made, but Supabase wants email confirmation. Turn off "Confirm email" in Authentication → Sign In / Providers → Email.');
   return data;
 }
-export const signOut = () => sb.auth.signOut();
+export const signOut = () => { try { localStorage.removeItem('gob_links'); } catch {} return sb.auth.signOut(); };
 export async function currentUser() { const { data } = await sb.auth.getUser(); return data.user; }
 
 // ---------- profile ----------
@@ -38,27 +38,57 @@ export const leaderboard = groupId => sb.rpc('group_leaderboard', { p_group: gro
 export const members = groupId => sb.from('group_members').select('user_id').eq('group_id', groupId).then(must);
 
 // ---------- check-ins ----------
-export async function postCheckin(userId, blob, note) {
+// The small feed copy sits beside the full photo: abc.jpg → abc_t.jpg
+export const thumbPath = p => p.replace(/\.jpg$/, '_t.jpg');
+
+export async function postCheckin(userId, photo, note) {
   const path = `${userId}/${crypto.randomUUID()}.jpg`;
-  must(await sb.storage.from(PHOTO_BUCKET).upload(path, blob, { contentType: 'image/jpeg', upsert: false }));
-  const { error } = await sb.from('checkins').insert({ photo_path: path, note: note || null });
-  if (error) { await sb.storage.from(PHOTO_BUCKET).remove([path]); throw error; }  // don't leave orphan photos
+  const bucket = sb.storage.from(PHOTO_BUCKET), opts = { contentType: 'image/jpeg', upsert: false };
+  must(await bucket.upload(path, photo.full, opts));
+  const t = await bucket.upload(thumbPath(path), photo.thumb, opts);
+  const { error } = t.error ? t : await sb.from('checkins').insert({ photo_path: path, note: note || null });
+  if (error) { await bucket.remove([path, thumbPath(path)]); throw error; }  // don't leave orphan photos
 }
 
-// Feed for one group: everyone in the group, newest first, with short-lived photo links.
-export async function groupFeed(groupId, limit = 30) {
+// ---------- signed photo links, reused until near expiry ----------
+// The same link every time means the browser's cache serves repeat views for free.
+const LINK_LIFE = 6 * 3600, LINK_KEY = 'gob_links';
+let links = {};
+try { links = JSON.parse(localStorage.getItem(LINK_KEY) || '{}'); } catch { links = {}; }
+function saveLinks() {
+  const now = Date.now();
+  for (const k of Object.keys(links)) if (links[k].exp < now) delete links[k];
+  try { localStorage.setItem(LINK_KEY, JSON.stringify(links)); } catch { /* storage full or blocked */ }
+}
+export async function photoLinks(paths) {
+  const soon = Date.now() + 10 * 60 * 1000;
+  const need = paths.filter(p => !(links[p] && links[p].exp > soon));
+  if (need.length) {
+    const signed = must(await sb.storage.from(PHOTO_BUCKET).createSignedUrls(need, LINK_LIFE));
+    for (const s of signed) if (s.signedUrl) links[s.path] = { url: s.signedUrl, exp: Date.now() + LINK_LIFE * 1000 };
+    saveLinks();
+  }
+  return Object.fromEntries(paths.map(p => [p, links[p]?.url || null]));
+}
+
+// Feed for one group: everyone in the group, newest first, `limit` rows.
+export async function groupFeed(groupId, limit) {
   const ids = (await members(groupId)).map(m => m.user_id);
   if (!ids.length) return [];
   const rows = must(await sb.from('checkins')
     .select('id, user_id, photo_path, note, created_at, profiles(display_name)')
     .in('user_id', ids).order('created_at', { ascending: false }).limit(limit));
   if (!rows.length) return rows;
-  const signed = must(await sb.storage.from(PHOTO_BUCKET).createSignedUrls(rows.map(r => r.photo_path), 3600));
-  const byPath = Object.fromEntries(signed.map(s => [s.path, s.signedUrl]));
-  return rows.map(r => ({ ...r, url: byPath[r.photo_path] }));
+  const url = await photoLinks(rows.map(r => thumbPath(r.photo_path)));
+  // check-ins from before thumbnails existed fall back to the full photo
+  const missing = rows.filter(r => !url[thumbPath(r.photo_path)]).map(r => r.photo_path);
+  const full = missing.length ? await photoLinks(missing) : {};
+  return rows.map(r => ({ ...r, thumb: url[thumbPath(r.photo_path)] || full[r.photo_path] }));
 }
+
+export async function fullPhoto(path) { return (await photoLinks([path]))[path]; }
 
 export async function deleteCheckin(row) {
   must(await sb.from('checkins').delete().eq('id', row.id));
-  await sb.storage.from(PHOTO_BUCKET).remove([row.photo_path]);
+  await sb.storage.from(PHOTO_BUCKET).remove([row.photo_path, thumbPath(row.photo_path)]);
 }

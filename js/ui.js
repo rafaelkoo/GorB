@@ -1,6 +1,7 @@
 // Screens. Each one renders into #app and wires its own buttons.
 import * as api from './supa.js';
 import { openCamera, stopCamera, snap } from './camera.js';
+import { FEED_PAGE } from './config.js';
 
 const $app = () => document.getElementById('app');
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -83,11 +84,45 @@ export async function home(user) {
   };
 }
 
-export async function group(user, groupId) {
+// Bottom of the month table. Ties at the bottom are all marked (tie rule not decided yet).
+function boardHtml(board, user) {
+  const low = board.length > 1 ? Math.min(...board.map(r => r.days)) : null;
+  const allTied = low !== null && board.every(r => r.days === low);
+  return `<ol class="board">${board.map(r => {
+    const bitch = low !== null && !allTied && r.days === low;
+    return `<li class="${r.user_id === user.id ? 'me' : ''}${bitch ? ' bitch' : ''}">
+      <span>${esc(r.display_name || '?')}${bitch ? ' <em class="tag">Bitch so far</em>' : ''}</span><b>${r.days}</b></li>`;
+  }).join('')}</ol>`;
+}
+
+function postHtml(r, user) {
+  return `<article class="post">
+    <button class="photo" data-path="${esc(r.photo_path)}" aria-label="Open photo by ${esc(r.profiles?.display_name)}">
+      <img src="${esc(r.thumb)}" alt="Check-in photo by ${esc(r.profiles?.display_name)}" loading="lazy"></button>
+    <div><b>${esc(r.profiles?.display_name)}</b> <span class="muted">${esc(when(r.created_at))}</span>
+      ${r.note ? `<p>${esc(r.note)}</p>` : ''}
+      ${r.user_id === user.id ? `<button class="ghost del" data-id="${r.id}">Delete</button>` : ''}</div>
+  </article>`;
+}
+
+async function openPhoto(path) {
+  const box = document.createElement('div');
+  box.className = 'lightbox'; box.setAttribute('role', 'dialog'); box.setAttribute('aria-label', 'Photo');
+  box.innerHTML = '<p class="muted">Loading photo…</p>';
+  const close = () => box.remove();
+  box.onclick = close;
+  document.addEventListener('keydown', function esc_(e) { if (e.key === 'Escape') { close(); document.removeEventListener('keydown', esc_); } });
+  document.body.append(box);
+  try { const url = await api.fullPhoto(path); box.innerHTML = `<img src="${esc(url)}" alt="Check-in photo, full size">`; }
+  catch (err) { box.innerHTML = `<p class="error">${esc(err.message)}</p>`; }
+}
+
+export async function group(user, groupId, limit = FEED_PAGE) {
   const groups = await api.myGroups();
   const g = groups.find(x => x.id === groupId);
   if (!g) { location.hash = '#/all'; return; }
-  const [board, feed] = await Promise.all([api.leaderboard(groupId), api.groupFeed(groupId)]);
+  const [board, feed] = await Promise.all([api.leaderboard(groupId), api.groupFeed(groupId, limit + 1)]);
+  const more = feed.length > limit; if (more) feed.pop();
   const inviteLink = `${location.origin}${location.pathname}#/join/${g.invite_code}`;
   const el = render(`
     <nav class="crumbs"><a href="#/all">All groups</a></nav>
@@ -95,18 +130,10 @@ export async function group(user, groupId) {
       <h2>${esc(g.name)}</h2>
       <a class="big" href="#/checkin/${g.id}">📸 I'm at the gym</a>
     </section>
-    <section class="card"><h3>${esc(monthName())} — days at the gym</h3>
-      <ol class="board">${board.map((r, i) => `<li class="${r.user_id === user.id ? 'me' : ''}">
-        <span>${esc(r.display_name || '?')}</span><b>${r.days}</b></li>`).join('')}</ol>
-      ${board.length > 1 ? `<p class="muted">Bottom right now: <b>${esc(board[board.length - 1].display_name)}</b></p>` : ''}
-    </section>
+    <section class="card"><h3>${esc(monthName())} — days at the gym</h3>${boardHtml(board, user)}</section>
     <section class="card"><h3>Latest</h3>
-      ${feed.length ? feed.map(r => `<article class="post">
-          <img src="${esc(r.url)}" alt="Check-in photo by ${esc(r.profiles?.display_name)}" loading="lazy">
-          <div><b>${esc(r.profiles?.display_name)}</b> <span class="muted">${esc(when(r.created_at))}</span>
-            ${r.note ? `<p>${esc(r.note)}</p>` : ''}
-            ${r.user_id === user.id ? `<button class="ghost del" data-id="${r.id}">Delete</button>` : ''}</div>
-        </article>`).join('') : '<p class="muted">Nobody has checked in yet. Be first.</p>'}
+      ${feed.length ? feed.map(r => postHtml(r, user)).join('') : '<p class="muted">Nobody has checked in yet. Be first.</p>'}
+      ${more ? '<button id="more" class="ghost">Show more</button>' : ''}
     </section>
     <section class="card"><h3>Invite mates</h3>
       <p>Code: <b class="code">${esc(g.invite_code)}</b></p>
@@ -122,9 +149,11 @@ export async function group(user, groupId) {
     if (!confirm(`Leave ${g.name}?`)) return;
     try { await api.leaveGroup(g.id, user.id); location.hash = '#/all'; } catch (err) { showError(err); }
   };
+  el.querySelector('#more')?.addEventListener('click', e => { busy(e.currentTarget, true, 'Loading…'); group(user, groupId, limit + FEED_PAGE).catch(showError); });
+  el.querySelectorAll('.photo').forEach(b => b.onclick = () => openPhoto(b.dataset.path));
   el.querySelectorAll('.del').forEach(b => b.onclick = async () => {
     if (!confirm('Delete this check-in and its photo?')) return;
-    try { await api.deleteCheckin(feed.find(r => r.id === b.dataset.id)); group(user, groupId); } catch (err) { showError(err); }
+    try { await api.deleteCheckin(feed.find(r => r.id === b.dataset.id)); group(user, groupId, limit); } catch (err) { showError(err); }
   });
 }
 
@@ -153,25 +182,25 @@ export async function checkin(user, groupId) {
       </form>
     </section>`);
   const v = el.querySelector('#v'), shot = el.querySelector('#shot');
-  let blob = null;
+  let photo = null;
   try { liveStream = await openCamera(v); }
   catch (err) { showError(err.name === 'NotAllowedError' ? { message: 'Camera blocked. Allow camera for this site in Chrome settings.' } : err); return; }
 
   el.querySelector('#snap').onclick = async () => {
     try {
-      blob = await snap(v);
-      shot.src = URL.createObjectURL(blob); shot.hidden = false; v.hidden = true;
+      photo = await snap(v);
+      shot.src = URL.createObjectURL(photo.full); shot.hidden = false; v.hidden = true;
       el.querySelector('#snap').hidden = true; el.querySelector('#retake').hidden = false; el.querySelector('#post').hidden = false;
     } catch (err) { showError(err); }
   };
   el.querySelector('#retake').onclick = () => {
-    blob = null; shot.hidden = true; v.hidden = false;
+    photo = null; shot.hidden = true; v.hidden = false;
     el.querySelector('#snap').hidden = false; el.querySelector('#retake').hidden = true; el.querySelector('#post').hidden = true;
   };
   el.querySelector('#post').onsubmit = async e => {
-    e.preventDefault(); if (!blob) return;
+    e.preventDefault(); if (!photo) return;
     const b = e.submitter; busy(b, true, 'Posting…');
-    try { await api.postCheckin(user.id, blob, el.querySelector('#note').value.trim()); releaseCamera(); location.hash = `#/g/${groupId}`; }
+    try { await api.postCheckin(user.id, photo, el.querySelector('#note').value.trim()); releaseCamera(); location.hash = `#/g/${groupId}`; }
     catch (err) { showError(err); busy(b, false, 'Post check-in'); }
   };
 }

@@ -7,3 +7,6 @@ export const SUPABASE_ANON_KEY = 'sb_publishable_t5SxehGFoSQmL14an0uiEg_diY3ZRA3
 export const PHOTO_BUCKET = 'checkins';
 export const PHOTO_MAX_PX = 1080;   // longest side after resize
 export const PHOTO_QUALITY = 0.8;   // JPEG quality
+export const THUMB_MAX_PX = 480;    // feed thumbnail, longest side
+export const THUMB_QUALITY = 0.7;
+export const FEED_PAGE = 10;        // check-ins loaded per "Show more"
