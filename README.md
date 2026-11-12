@@ -30,6 +30,7 @@ Web app (PWA) first, Android app later via TWA.
 - **Habits, points, levels**: daily habits on Log (private); points from real data (set 5, workout 15, PR 25, habit 5, check-in 10), 500 per level; weekly muscle coverage on Progress.
 
 - **Training guide** (Plan page): FitTrack's sets, rep range, rest, weekly cardio and daily steps for the goal on Me; one tap applies it to the plan and rest timer. The coach works inside the plan's rep range.
+- **Your own exercises** (Library, or "Add your own" in the exercise picker and the Cardio card): weight × reps ones log as sets and rank like any lift; minute ones (wall climbing, swimming) log with cardio. No 3D demo. Groupmates can see and use them; only the person who added one can rename or delete it.
 - **Cardio** (Log page): kind + minutes per day, weekly minutes against the guide. Private. FitTrack's ticked cardio comes across in the import.
 - **Weekly review** (Log → Week): last 7 days scored like FitTrack (training days 60, lifts on track 25, weighed in 15), PRs, weigh-in change, cardio, low muscle groups and next week's weights. Banner on Sunday and Monday. Worked out live, nothing extra stored.
 

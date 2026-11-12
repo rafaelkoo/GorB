@@ -1,6 +1,6 @@
 // Exercise library, same ids as FitTrack (generated from FitTrack js/data.js). Cardio left out for now.
 // [id, English name, Chinese name, category, equipment]
-export const CATS = {"chest":"Chest","back":"Back","legs":"Legs","shoulders":"Shoulders","arms":"Arms","core":"Core"};
+export const CATS = {"chest":"Chest","back":"Back","legs":"Legs","shoulders":"Shoulders","arms":"Arms","core":"Core","other":"Other"};
 export const EXERCISES = [["bench_press","Bench press","槓鈴臥推","chest","Barbell"],
   ["inc_db","Incline DB press","啞鈴斜臥推","chest","Dumbbell"],
   ["inc_mach","Incline press machine","上斜胸推機","chest","Machine"],
@@ -89,3 +89,18 @@ export const BIG_FOUR = ['bench_press', 'deadlift', 'squat', 'ohp'];
 // FitTrack's default weekly plan (cardio items left out)
 export const WD = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 export const DEFAULT_PLAN = {"Mon":[{"id":"bb_curl","sets":5,"reps":15},{"id":"hammer","sets":5,"reps":15},{"id":"cable_pd","sets":5,"reps":15},{"id":"skull","sets":5,"reps":15}],"Tue":[{"id":"db_press","sets":5,"reps":15},{"id":"lat_raise","sets":5,"reps":15},{"id":"rev_fly","sets":5,"reps":15}],"Wed":[{"id":"inc_db","sets":5,"reps":15},{"id":"inc_mach","sets":5,"reps":15},{"id":"pec_deck","sets":5,"reps":15}],"Thu":[{"id":"lat_pd","sets":5,"reps":15},{"id":"vbar_pd","sets":5,"reps":15},{"id":"sit_row","sets":5,"reps":15},{"id":"db_row","sets":5,"reps":15}],"Fri":[{"id":"squat","sets":5,"reps":15},{"id":"calf","sets":5,"reps":15},{"id":"leg_press","sets":5,"reps":15},{"id":"leg_curl","sets":5,"reps":15},{"id":"adductor","sets":5,"reps":15}],"Sat":[],"Sun":[]};
+
+// ---------- exercises people add themselves (custom_exercises table) ----------
+// 'weight' ones join EXERCISES / EX like any lift (no 3D demo); 'minutes' ones join the cardio list.
+// Filled after sign-in with your own and your groupmates' exercises.
+export const CUSTOM_CARDIO = [];
+export function registerCustom(rows, myId) {
+  for (let i = EXERCISES.length - 1; i >= 0; i--) if (EX[EXERCISES[i][0]]?.custom) { delete EX[EXERCISES[i][0]]; EXERCISES.splice(i, 1); }
+  CUSTOM_CARDIO.length = 0;
+  for (const r of rows || []) {
+    const base = { id: r.id, en: r.name, zh: r.name, custom: true, mine: r.user_id === myId, owner: r.user_id };
+    if (r.kind === 'minutes') CUSTOM_CARDIO.push(base);
+    else { const cat = CATS[r.cat] ? r.cat : 'other'; EXERCISES.push([r.id, r.name, r.name, cat, 'Other']); EX[r.id] = { ...base, cat, equip: 'Other' }; }
+  }
+}
+export const newCustomId = () => 'c_' + Array.from(crypto.getRandomValues(new Uint8Array(5)), b => b.toString(36).padStart(2, '0')).join('').slice(0, 10);

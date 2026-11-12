@@ -8,8 +8,8 @@ import { exName } from './tracker.js';
 import { esc, render } from './ui.js';
 
 const MEDAL = ['🥇', '🥈', '🥉'];
-const CAT_ZH = { chest: '胸', back: '背', legs: '腿', shoulders: '肩', arms: '手臂', core: '核心' };
-const CAT_EN = { chest: 'Chest', back: 'Back', legs: 'Legs', shoulders: 'Shoulders', arms: 'Arms', core: 'Core' };
+const CAT_ZH = { chest: '胸', back: '背', legs: '腿', shoulders: '肩', arms: '手臂', core: '核心', other: '其他' };
+const CAT_EN = { chest: 'Chest', back: 'Back', legs: 'Legs', shoulders: 'Shoulders', arms: 'Arms', core: 'Core', other: 'Other' };
 
 function general() {
   const m = monthName();

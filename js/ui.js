@@ -102,7 +102,7 @@ export async function home(user) {
   };
   el.querySelector('#jn').onsubmit = async e => {
     e.preventDefault();
-    try { const g = await api.joinGroup(el.querySelector('#gcode').value); location.hash = `#/g/${g.id}`; } catch (err) { showError(err); }
+    try { const g = await api.joinGroup(el.querySelector('#gcode').value); window.dispatchEvent(new Event('customchange')); location.hash = `#/g/${g.id}`; } catch (err) { showError(err); }
   };
 }
 
@@ -229,7 +229,7 @@ export async function group(user, groupId, limit = FEED_PAGE) {
 }
 
 export async function joinByLink(code) {
-  try { const g = await api.joinGroup(code); location.hash = `#/g/${g.id}`; }
+  try { const g = await api.joinGroup(code); window.dispatchEvent(new Event('customchange')); location.hash = `#/g/${g.id}`; }
   catch (err) { location.hash = '#/all'; setTimeout(() => showError(err), 50); }
 }
 

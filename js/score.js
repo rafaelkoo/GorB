@@ -41,7 +41,7 @@ export function coverage(rows, weekStart) {
   return c;
 }
 
-const CAT_ZH = { chest: '胸', back: '背', legs: '腿', shoulders: '肩', arms: '手臂', core: '核心' };
+const CAT_ZH = { chest: '胸', back: '背', legs: '腿', shoulders: '肩', arms: '手臂', core: '核心', other: '其他' };
 const DAY_ZH = { Mon: '一', Tue: '二', Wed: '三', Thu: '四', Fri: '五', Sat: '六', Sun: '日' };
 const addDays = (iso, n) => { const d = new Date(iso + 'T12:00:00Z'); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
 
@@ -59,7 +59,7 @@ export function levelCardHtml(p, weekStart) {
 
 export function coverageHtml(cov) {
   return `<section class="card"><div class="card-head"><h3>${t('Muscle groups this week', '本週肌群')}</h3><span class="muted small">${t('sets / target', '組數 / 目標')}</span></div>
-    <div class="cov">${Object.keys(CATS).map(k => { const v = cov[k] || 0, goal = WEEK_SETS[k]; return `<div class="cov-row"><span>${t(CATS[k], CAT_ZH[k])}</span>
+    <div class="cov">${Object.keys(CATS).filter(k => WEEK_SETS[k]).map(k => { const v = cov[k] || 0, goal = WEEK_SETS[k]; return `<div class="cov-row"><span>${t(CATS[k], CAT_ZH[k])}</span>
       <span class="bar ${v >= goal ? 'hit' : ''}" role="img" aria-label="${t(CATS[k], CAT_ZH[k])} ${v}/${goal}"><i style="width:${Math.min(100, Math.round(v / goal * 100))}%"></i></span><b>${v}/${goal}</b></div>`; }).join('')}</div></section>`;
 }
 

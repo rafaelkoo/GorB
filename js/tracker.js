@@ -10,6 +10,7 @@ import { points, coverage, levelCardHtml, coverageHtml, habitList } from './scor
 import { cardioHtml, wireCardio } from './cardio.js';
 import { schemeOf } from './scheme.js';
 import { reviewDue } from './review.js';
+import { addCustomSheet } from './custom.js';
 import { btnLoading, btnDone, btnReset, popAfter } from './motion.js';
 
 const $app = () => document.getElementById('app');
@@ -18,7 +19,7 @@ export const kg = n => `${+(+n).toFixed(2)} kg`;
 // exercise name in the chosen language, the other one underneath
 export const exName = id => (getLang() === 'zh' ? EX[id]?.zh : EX[id]?.en) || id;
 const exSub = id => (getLang() === 'zh' ? EX[id]?.en : EX[id]?.zh) || '';
-const CAT_ZH = { chest: '胸', back: '背', legs: '腿', shoulders: '肩', arms: '手臂', core: '核心' };
+const CAT_ZH = { chest: '胸', back: '背', legs: '腿', shoulders: '肩', arms: '手臂', core: '核心', other: '其他' };
 const catName = k => t(CATS[k], CAT_ZH[k]);
 const EQ_ZH = { Barbell: '槓鈴', Dumbbell: '啞鈴', Machine: '器械', Cable: '滑輪', Bodyweight: '自身體重', Other: '其他' };
 const equipName = e => t(e, EQ_ZH[e] || e);
@@ -214,13 +215,24 @@ export function picker(onPick, only) {
       <div class="ex-head"><h3>${t('Pick an exercise', '揀動作')}</h3><button class="ghost x" id="close" aria-label="${t('Close', '關閉')}">✕</button></div>
       <input id="q" placeholder="${t('Search, e.g. bench', '搜尋，例如 臥推')}" value="${esc(q)}" autocomplete="off" aria-label="${t('Search', '搜尋')}">
       <div class="chips"><button data-c="" class="${cat ? '' : 'on'}">${t('All', '全部')}</button>${Object.keys(CATS).map(k => `<button data-c="${k}" class="${cat === k ? 'on' : ''}">${esc(catName(k))}</button>`).join('')}</div>
-      <ul class="pick">${list().map(([id, , , , equip]) => `<li><button data-id="${id}"><b>${esc(exName(id))}</b> <span class="muted">${esc(exSub(id))} · ${esc(equipName(equip))}</span></button></li>`).join('') || `<li class="muted">${t('No match', '搵唔到')}</li>`}</ul>
+      <ul class="pick">${list().map(([id, , , , equip]) => `<li><button data-id="${id}"><b>${esc(exName(id))}</b> <span class="muted">${EX[id].custom ? esc(EX[id].mine ? t('Added by you', '你加嘅') : t('Added by your group', 'Group 加嘅')) : `${esc(exSub(id))} · ${esc(equipName(equip))}`}</span></button></li>`).join('') || `<li class="muted">${t('No match', '搵唔到')}</li>`}
+        <li><button class="add-own" id="addown">+ ${q ? t(`Add “${esc(q)}” as your own exercise`, `將「${esc(q)}」加做自己嘅動作`) : t('Add your own exercise', '加自己嘅動作')}</button></li></ul>
     </div>`;
     box.querySelector('#close').onclick = () => box.remove();
     const qi = box.querySelector('#q');
     qi.oninput = () => { q = qi.value.trim().toLowerCase(); const pos = qi.selectionStart; draw(); const n = box.querySelector('#q'); n.focus(); n.setSelectionRange(pos, pos); };
     box.querySelectorAll('[data-c]').forEach(b => b.onclick = () => { cat = b.dataset.c; draw(); });
     box.querySelectorAll('[data-id]').forEach(b => b.onclick = () => { box.remove(); onPick(b.dataset.id); });
+    box.querySelector('#addown').onclick = async () => {
+      const user = await api.currentUser(); if (!user) return;
+      const raw = box.querySelector('#q').value.trim();
+      box.hidden = true;
+      const made = await addCustomSheet(user, { name: raw });
+      if (!made) { box.hidden = false; return; }
+      box.remove();
+      if (made.kind === 'weight') onPick(made.id);
+      else { window.dispatchEvent(new HashChangeEvent('hashchange')); setTimeout(() => note(t('Added. Log it in the Cardio card below.', '加咗。喺下面嘅有氧卡記錄。')), 400); }
+    };
   }
   draw();
   document.body.append(box);

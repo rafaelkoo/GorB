@@ -172,6 +172,12 @@ export const insertSets = rows => sb.from('workout_sets').insert(rows).then(must
 export const upsertWeights = rows => sb.from('body_weights').upsert(rows, { onConflict: 'user_id,logged_on', ignoreDuplicates: true }).then(must);
 export const upsertTargets = rows => sb.from('lift_targets').upsert(rows, { onConflict: 'user_id,exercise_id' }).then(must);
 
+// ---------- your own exercises (you + groupmates can see; only you edit) ----------
+export const customExercises = () => sb.from('custom_exercises').select('id, user_id, name, kind, cat').order('created_at').then(must);
+export const addCustomExercise = row => sb.from('custom_exercises').insert(row).select('id, user_id, name, kind, cat').single().then(must);
+export const renameCustomExercise = (id, name) => sb.from('custom_exercises').update({ name }).eq('id', id).then(must);
+export const deleteCustomExercise = id => sb.from('custom_exercises').delete().eq('id', id).then(must);
+
 // ---------- cardio (private) ----------
 export const cardioLogs = (userId, from) => sb.from('cardio_logs').select('performed_on, kind, minutes').eq('user_id', userId).gte('performed_on', from).order('performed_on').then(must);
 export const setCardio = (userId, kind, minutes) =>

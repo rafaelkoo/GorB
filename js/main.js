@@ -11,6 +11,16 @@ import { reviewScreen } from './review.js';
 import { t, getLang, setLang, hasChosenLang } from './i18n.js';
 import { ICON } from './icons.js';
 import { initMotion, markRoute } from './motion.js';
+import { registerCustom } from './exercises.js';
+import { customExercises } from './supa.js';
+
+// exercises people added (yours + groupmates'), refreshed at most once a minute or when told to
+let customAt = 0;
+async function loadCustom(user) {
+  if (Date.now() - customAt < 60000) return;
+  try { registerCustom(await customExercises(), user.id); customAt = Date.now(); } catch { /* keep what we had */ }
+}
+window.addEventListener('customchange', () => { customAt = 0; });
 
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
 
@@ -57,6 +67,7 @@ async function route() {
   const pending = store.get(PENDING_JOIN);
   if (pending) { localStorage.removeItem(PENDING_JOIN); return ui.joinByLink(pending); }
 
+  await loadCustom(user);
   drawTabs(page);
   if (page === 'g' && arg) { store.set('gob_last_group', arg); return ui.group(user, arg); }
   if (page === 'checkin' && arg) return ui.checkin(user, arg);

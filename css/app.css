@@ -408,3 +408,17 @@ button.is-loading:disabled, button.is-done:disabled { opacity: 1; cursor: defaul
 .rank-ex > p { margin: 0; }
 .rank b .reps { font: 600 .85rem/1 var(--body); color: var(--dust); margin-left: 4px; }
 .photo.gone { cursor: default; border-radius: var(--r-ctl); background: var(--floor); border: 1px dashed var(--line); color: var(--dust); display: flex; align-items: center; justify-content: center; gap: 10px; font-size: .85rem; padding: 16px 12px; }
+
+/* ---------- your own exercises ---------- */
+.add-own { color: var(--blue); background: transparent; border: 1px dashed var(--line); }
+.pick .add-own { width: 100%; text-align: left; padding: 12px; border-radius: var(--r-ctl); font-weight: 600; }
+.custom-add .kind { border: 0; padding: 0; margin: 0; display: grid; gap: 8px; }
+.custom-add .kind legend { font-size: .85rem; color: var(--dust); margin-bottom: 6px; }
+.custom-add .kind label { display: grid; grid-template-columns: auto 1fr; column-gap: 10px; row-gap: 2px; align-items: center; padding: 12px; border: 1px solid var(--line); border-radius: var(--r-ctl); cursor: pointer; }
+.custom-add .kind label.on { border-color: var(--chalk); background: var(--mat); }
+.custom-add .kind input { grid-row: span 2; accent-color: var(--red); width: 20px; height: 20px; }
+.custom-add .kind small { color: var(--dust); font-size: .8rem; }
+.own-list { list-style: none; margin: 0 0 8px; padding: 0; display: grid; gap: 8px; }
+.own-list li { display: flex; align-items: center; gap: 10px; }
+.own-list input { flex: 1; min-width: 0; }
+.own-list .muted { white-space: nowrap; }

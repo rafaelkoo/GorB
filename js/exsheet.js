@@ -4,7 +4,8 @@
 import * as api from './supa.js';
 import { EX as FT, bodyParts, muscleZh, equipZh } from './ftdata.js';
 import { MOVES } from './moves.js';
-import { EXERCISES, CATS } from './exercises.js';
+import { EXERCISES, CATS, EX as LIB, CUSTOM_CARDIO } from './exercises.js';
+import { addCustomSheet, renameCustom, deleteCustom } from './custom.js';
 import { t, getLang, fmtDay } from './i18n.js';
 import { exName, kg, spark, bySession, prOf } from './tracker.js';
 import { cleanPlan, dayName } from './plan.js';
@@ -20,7 +21,10 @@ export function closeExercise() {
 }
 
 export async function openExercise(user, id, tab = 'how', who = user.id) {
-  const ex = FT[id]; if (!ex) return;
+  // your own exercises have no 3D demo: the sheet opens on Progress
+  const own = LIB[id]?.custom ? LIB[id] : null;
+  const ex = FT[id] || (own && { en: own.en, zh: own.zh, equip: 'Other', muscles: [], move: null }); if (!ex) return;
+  if (own && tab === 'how') tab = 'prog';
   closeExercise();
   box = document.createElement('div');
   box.className = 'sheet exsheet'; box.setAttribute('role', 'dialog'); box.setAttribute('aria-modal', 'true'); box.setAttribute('aria-label', exName(id));
@@ -35,9 +39,9 @@ export async function openExercise(user, id, tab = 'how', who = user.id) {
 
   function draw() {
     dispose();
-    const tabs = [['how', t('How to', '教學')], ['prog', t('Progress', '進度')], ['hist', t('History', '記錄')]];
+    const tabs = [...(own ? [] : [['how', t('How to', '教學')]]), ['prog', t('Progress', '進度')], ['hist', t('History', '記錄')]];
     box.innerHTML = `<div class="sheet-in tall">
-      <div class="ex-head"><div><h3>${esc(exName(id))}</h3><span class="muted small">${esc(getLang() === 'zh' ? ex.en : ex.zh)} · ${esc(t(ex.equip, equipZh(ex.equip)))}</span></div>
+      <div class="ex-head"><div><h3>${esc(exName(id))}</h3><span class="muted small">${own ? esc(own.mine ? t('Added by you · no 3D demo', '你加嘅 · 冇 3D 示範') : t('Added by your group · no 3D demo', 'Group 加嘅 · 冇 3D 示範')) : `${esc(getLang() === 'zh' ? ex.en : ex.zh)} · ${esc(t(ex.equip, equipZh(ex.equip)))}`}</span></div>
         <button class="ghost x" id="close" aria-label="${t('Close', '關閉')}">✕</button></div>
       <div class="seg wide" role="tablist">${tabs.map(([v, l]) => `<button role="tab" data-tab="${v}" aria-selected="${v === tab}" class="${v === tab ? 'on' : ''}">${l}</button>`).join('')}</div>
       <div id="body">${tab === 'how' ? howHtml() : tab === 'prog' ? progHtml() : histHtml()}</div>
@@ -143,21 +147,42 @@ export async function openExercise(user, id, tab = 'how', who = user.id) {
 }
 
 // Library: every exercise, search + body part, tap for the exercise page
-const CAT_ZH = { chest: '胸', back: '背', legs: '腿', shoulders: '肩', arms: '手臂', core: '核心' };
+const CAT_ZH = { chest: '胸', back: '背', legs: '腿', shoulders: '肩', arms: '手臂', core: '核心', other: '其他' };
 export function libraryScreen(user) {
   let cat = '', q = '';
   const draw = () => {
     const list = EXERCISES.filter(([id, en, zh, c]) => (!cat || c === cat) && (!q || `${en} ${zh}`.toLowerCase().includes(q)));
     const el = render(`
-      <header class="page-head"><div><h2>${t('Exercise library', '動作庫')}</h2><p class="muted">${t(`${EXERCISES.length} exercises with 3D demos`, `${EXERCISES.length} 個動作，全部有 3D 示範`)}</p></div>
+      <header class="page-head"><div><h2>${t('Exercise library', '動作庫')}</h2><p class="muted">${t(`${EXERCISES.filter(([id]) => !LIB[id]?.custom).length} exercises with 3D demos`, `${EXERCISES.filter(([id]) => !LIB[id]?.custom).length} 個動作，全部有 3D 示範`)}</p></div>
         <a class="link" href="#/log">${t('Today', '今日')} ›</a></header>
+      <section class="card own-ex"><div class="card-head"><h3>${t('Your own exercises', '自己加嘅動作')}</h3></div>
+        ${mineList().length ? `<ul class="own-list">${mineList().map(x => `<li data-own="${x.id}">
+            <input value="${esc(x.en)}" maxlength="40" aria-label="${t('Name', '名')}"><span class="muted small">${x.kind === 'minutes' ? t('minutes', '分鐘') : t('weight × reps', '重量 × 次數')}</span>
+            <button class="ghost x" data-del="${x.id}" aria-label="${t('Delete', '刪除')} ${esc(x.en)}">✕</button></li>`).join('')}</ul>
+          <p class="muted small">${t('Renaming changes it for your whole group. Deleting hides its past records too.', '改名會連 group 入面嘅人一齊改。刪除之後，以前嘅記錄都會睇唔到。')}</p>`
+          : `<p class="muted">${t('Add things the library doesn’t have, like wall climbing or a machine only your gym has.', '加動作庫冇嘅嘢，例如攀石，或者你 gym 獨有嘅機。')}</p>`}
+        <button id="addown">+ ${t('Add your own exercise', '加自己嘅動作')}</button></section>
       <input id="q" placeholder="${t('Search, e.g. bench', '搜尋，例如 臥推')}" value="${esc(q)}" autocomplete="off" aria-label="${t('Search', '搜尋')}">
       <div class="chips scroll"><button data-c="" class="${cat ? '' : 'on'}">${t('All', '全部')}</button>${Object.keys(CATS).map(k => `<button data-c="${k}" class="${cat === k ? 'on' : ''}">${esc(t(CATS[k], CAT_ZH[k]))}</button>`).join('')}</div>
-      <ul class="pick">${list.map(([id, , , c, equip]) => `<li><button data-id="${id}"><b>${esc(exName(id))}</b> <span class="muted">${esc(t(CATS[c], CAT_ZH[c]))} · ${esc(t(equip, equipZh(equip)))}</span></button></li>`).join('') || `<li class="muted">${t('No match', '搵唔到')}</li>`}</ul>`);
+      <ul class="pick">${list.map(([id, , , c, equip]) => `<li><button data-id="${id}"><b>${esc(exName(id))}</b> <span class="muted">${esc(t(CATS[c], CAT_ZH[c]))} · ${LIB[id]?.custom ? esc(LIB[id].mine ? t('added by you', '你加嘅') : t('added by your group', 'Group 加嘅')) : esc(t(equip, equipZh(equip)))}</span></button></li>`).join('') || `<li class="muted">${t('No match', '搵唔到')}</li>`}</ul>
+`);
     const qi = el.querySelector('#q');
     qi.oninput = () => { q = qi.value.trim().toLowerCase(); const pos = qi.selectionStart; draw(); const n = document.getElementById('q'); n.focus(); n.setSelectionRange(pos, pos); };
     el.querySelectorAll('[data-c]').forEach(b => b.onclick = () => { cat = b.dataset.c; draw(); });
     el.querySelectorAll('[data-id]').forEach(b => b.onclick = () => openExercise(user, b.dataset.id, 'how'));
+    el.querySelector('#addown').onclick = async () => { const made = await addCustomSheet(user, { name: q }); if (made) { draw(); toast(made.kind === 'weight' ? t('Added. It’s in the exercise list now.', '加咗，而家喺動作清單入面。') : t('Added. Log it in the Cardio card on the Log page.', '加咗。喺「記錄」頁嘅有氧卡記錄。')); } };
+    el.querySelectorAll('[data-own] input').forEach(inp => inp.onchange = async () => {
+      const id = inp.closest('[data-own]').dataset.own, name = inp.value.trim().replace(/\s+/g, ' ');
+      if (!name) { draw(); return; }
+      try { await renameCustom(user, id, name); toast(t('Renamed.', '改咗名。')); draw(); } catch (err) { showError(err); }
+    });
+    el.querySelectorAll('[data-del]').forEach(b => b.onclick = async () => {
+      if (!b.dataset.sure) { b.dataset.sure = '1'; b.textContent = t('Delete?', '刪除？'); b.classList.add('danger-text'); return; }
+      try { await deleteCustom(user, b.dataset.del); toast(t('Deleted.', '刪除咗。')); draw(); } catch (err) { showError(err); }
+    });
   };
+  // your own, both kinds
+  const mineList = () => [...EXERCISES.filter(([id]) => LIB[id]?.custom && LIB[id].mine).map(([id]) => ({ ...LIB[id], kind: 'weight' })),
+    ...CUSTOM_CARDIO.filter(c => c.mine).map(c => ({ ...c, kind: 'minutes' }))];
   draw();
 }

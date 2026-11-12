@@ -15,7 +15,7 @@ import { schemeOf, schemeFor, schemeChanges, applyScheme, schemeName, restLabel 
 const DAY_EN = { Mon: 'Monday', Tue: 'Tuesday', Wed: 'Wednesday', Thu: 'Thursday', Fri: 'Friday', Sat: 'Saturday', Sun: 'Sunday' };
 const DAY_ZH = { Mon: '星期一', Tue: '星期二', Wed: '星期三', Thu: '星期四', Fri: '星期五', Sat: '星期六', Sun: '星期日' };
 const SHORT_ZH = { Mon: '一', Tue: '二', Wed: '三', Thu: '四', Fri: '五', Sat: '六', Sun: '日' };
-const CAT_ZH = { chest: '胸', back: '背', legs: '腿', shoulders: '肩', arms: '手臂', core: '核心' };
+const CAT_ZH = { chest: '胸', back: '背', legs: '腿', shoulders: '肩', arms: '手臂', core: '核心', other: '其他' };
 export const dayLong = d => t(DAY_EN[d], DAY_ZH[d]);
 export const dayShort = d => t(d, SHORT_ZH[d]);
 export const repRange = e => (e.lo && e.lo < e.reps ? `${e.lo}–${e.reps}` : `${e.reps}`);

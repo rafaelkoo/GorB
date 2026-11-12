@@ -15,7 +15,7 @@ import { tally } from './icons.js';
 
 const addDays = (iso, n) => { const d = new Date(iso + 'T12:00:00Z'); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
 const weekStartOf = iso => { const d = new Date(iso + 'T12:00:00Z'); d.setUTCDate(d.getUTCDate() - ((d.getUTCDay() + 6) % 7)); return d.toISOString().slice(0, 10); };
-const CAT_ZH = { chest: '胸', back: '背', legs: '腿', shoulders: '肩', arms: '手臂', core: '核心' };
+const CAT_ZH = { chest: '胸', back: '背', legs: '腿', shoulders: '肩', arms: '手臂', core: '核心', other: '其他' };
 
 // shown on Sunday and Monday until opened; Sunday's and Monday's banner are the same review week
 const reviewKey = () => weekStartOf(addDays(api.ukToday(), -1));
@@ -90,7 +90,7 @@ export async function reviewScreen(user) {
     const pct = Math.round(l.change * 1000) / 10;
     return `<li class="${l.ok ? 'rv-ok' : l.close ? 'rv-mid' : 'rv-bad'}"><b>${esc(exName(l.id))}</b><span>${t('est. 1RM', '估算 1RM')} ${kg(Math.round(l.best * 10) / 10)} (${pct > 0 ? '+' : ''}${pct}%)</span></li>`;
   };
-  const under = rv.sc ? Object.keys(CATS).filter(k => (rv.sets[k] || 0) < rv.sc.sets[0] && (rv.sets[k] || 0) > 0) : [];
+  const under = rv.sc ? Object.keys(CATS).filter(k => k !== 'other' && (rv.sets[k] || 0) < rv.sc.sets[0] && (rv.sets[k] || 0) > 0) : [];
 
   render(`
     <header class="page-head"><div><h2>${t('Weekly review', '每週回顧')}</h2>
