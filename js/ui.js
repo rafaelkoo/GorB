@@ -151,9 +151,10 @@ export async function group(user, groupId, limit = FEED_PAGE) {
   const groups = await api.myGroups();
   const g = groups.find(x => x.id === groupId);
   if (!g) { location.hash = '#/all'; return; }
-  const [board, feed, doneToday] = await Promise.all([
-    api.leaderboard(groupId), api.groupFeed(groupId, limit + 1), api.checkedInToday(user.id)
+  const [board, feed, doneToday, unread] = await Promise.all([
+    api.leaderboard(groupId), api.groupFeed(groupId, limit + 1), api.checkedInToday(user.id), api.chatUnread().catch(() => ({}))
   ]);
+  const nUnread = unread[groupId] || 0;
   const more = feed.length > limit; if (more) feed.pop();
   const mine = board.find(r => r.user_id === user.id);
   let asked = false; try { asked = sessionStorage.getItem(ASK_KEY) === '1'; } catch {}
@@ -161,7 +162,8 @@ export async function group(user, groupId, limit = FEED_PAGE) {
   const el = render(`
     <header class="page-head">
       <div><h2>${esc(g.name)}</h2><p class="muted">${t(`${board.length} member${board.length === 1 ? '' : 's'}`, `${board.length} 個人`)}${groups.length > 1 ? ` · <a href="#/all">${t('switch group', '轉 group')}</a>` : ''}</p></div>
-      <button id="share" class="icon-btn" aria-label="${t('Invite mates', '邀請朋友')}">${ICON.share(20)}</button>
+      <div class="head-btns"><a class="icon-btn chat-btn" href="#/c/${g.id}" aria-label="${nUnread ? t(`Chat, ${nUnread} unread`, `傾偈，${nUnread} 個未讀`) : t('Chat', '傾偈')}">${ICON.chat(20)}${nUnread ? `<span class="badge">${nUnread > 99 ? '99+' : nUnread}</span>` : ''}</a>
+      <button id="share" class="icon-btn" aria-label="${t('Invite mates', '邀請朋友')}">${ICON.share(20)}</button></div>
     </header>
     <section class="hero-card ${doneToday ? 'done' : ''}">
       <div class="hero-text">
@@ -178,10 +180,10 @@ export async function group(user, groupId, limit = FEED_PAGE) {
       ${feed.length ? feed.map(r => postHtml(r, user)).join('') : `<p class="muted">${t('Nobody has checked in yet. Be first.', '仲未有人打卡，做第一個啦。')}</p>`}
       ${more ? `<button id="more" class="ghost">${t('Show more', '睇多啲')}</button>` : ''}
     </section>
-    ${g.owner_id === user.id ? `<section class="card"><h3>${t('Group name', 'Group 名')}</h3>
+    <section class="card"><h3>${t('Group name', 'Group 名')}</h3>
       <form id="rename" class="row"><input id="gnewname" maxlength="60" required value="${esc(g.name)}" aria-label="${t('Group name', 'Group 名')}">
         <button type="submit">${t('Rename', '改名')}</button></form>
-      <p class="muted small">${t('Only you can rename it, because you made the group.', '因為 group 係你開嘅，所以得你可以改名。')}</p></section>` : ''}
+      <p class="muted small">${t('Anyone in the group can rename it. Each change shows up in the chat.', 'Group 入面每個人都可以改名，每次改名都會喺傾偈度顯示。')}</p></section>
     <section class="card"><h3>${t('Invite mates', '邀請朋友')}</h3>
       <p>${t('Code', '邀請碼')}: <b class="code">${esc(g.invite_code)}</b></p>
       <div class="row"><button id="share2">${t('Share invite link', '分享邀請 link')}</button>

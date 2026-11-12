@@ -8,11 +8,12 @@ import { ranksScreen } from './ranks.js';
 import { planScreen } from './plan.js';
 import { libraryScreen, closeExercise } from './exsheet.js';
 import { reviewScreen } from './review.js';
+import { chatScreen, closeChat } from './chat.js';
 import { t, getLang, setLang, hasChosenLang } from './i18n.js';
 import { ICON } from './icons.js';
 import { initMotion, markRoute } from './motion.js';
 import { registerCustom } from './exercises.js';
-import { customExercises } from './supa.js';
+import { customExercises, chatUnread } from './supa.js';
 
 // exercises people added (yours + groupmates'), refreshed at most once a minute or when told to
 let customAt = 0;
@@ -21,6 +22,7 @@ async function loadCustom(user) {
   try { registerCustom(await customExercises(), user.id); customAt = Date.now(); } catch { /* keep what we had */ }
 }
 window.addEventListener('customchange', () => { customAt = 0; });
+window.addEventListener('chatread', () => chatDot());
 // coming back to the app (switching from another app or tab) picks up what groupmates added meanwhile
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') { customAt = 0; } });
 
@@ -32,13 +34,23 @@ const store = { get: k => { try { return localStorage.getItem(k); } catch { retu
 // bottom tabs: Group (last group opened) · Log · Ranks · Me
 function drawTabs(page) {
   const g = store.get('gob_last_group');
-  const on = { g: 'group', all: 'group', log: 'log', plan: 'log', lib: 'log', review: 'log', r: 'ranks', me: 'me', p: 'me' }[page] || 'group';
+  const on = { g: 'group', c: 'group', all: 'group', log: 'log', plan: 'log', lib: 'log', review: 'log', r: 'ranks', me: 'me', p: 'me' }[page] || 'group';
   const tab = (id, href, label) => `<a href="${href}" class="${on === id ? 'on' : ''}" ${on === id ? 'aria-current="page"' : ''}>${ICON[id](22)}<span>${label}</span></a>`;
   document.getElementById('tabs').innerHTML =
     tab('group', g ? `#/g/${g}` : '#/all', t('Group', 'Group')) +
     tab('log', '#/log', t('Log', '記錄')) +
     tab('ranks', g ? `#/r/${g}` : '#/all', t('Ranks', '排名')) +
     tab('me', '#/me', t('Me', '我'));
+  chatDot();
+}
+// red dot on the Group tab when any of your group chats has unread messages
+async function chatDot() {
+  try {
+    const n = Object.values(await chatUnread()).reduce((a, b) => a + b, 0);
+    const a = document.querySelector('#tabs a:first-child'); if (!a) return;
+    a.querySelector('.tab-dot')?.remove();
+    if (n) a.insertAdjacentHTML('beforeend', `<i class="tab-dot" aria-label="${t(`${n} unread`, `${n} 個未讀`)}"></i>`);
+  } catch { /* chat not set up yet */ }
 }
 
 let synced = false;
@@ -46,6 +58,7 @@ async function route() {
   markRoute();
   ui.releaseCamera();
   closeExercise();
+  closeChat();
   if (!configured) return ui.notConfigured();
 
   const [, page, arg, arg2] = (location.hash || '#/').split('/');
@@ -72,6 +85,7 @@ async function route() {
   await loadCustom(user);
   drawTabs(page);
   if (page === 'g' && arg) { store.set('gob_last_group', arg); return ui.group(user, arg); }
+  if (page === 'c' && arg) { store.set('gob_last_group', arg); return chatScreen(user, arg); }
   if (page === 'checkin' && arg) return ui.checkin(user, arg);
   if (page === 'log') return logScreen(user);
   if (page === 'p' && arg) return progressScreen(user, arg);

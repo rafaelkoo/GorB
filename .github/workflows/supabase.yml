@@ -70,5 +70,8 @@ jobs:
           done
           if [ -n "$args" ]; then supabase secrets set --yes $args; else echo "No notification secrets yet, skipping."; fi
 
-      - name: Deploy Edge Functions (notify-checkin, cleanup-photos)
-        run: supabase functions deploy notify-checkin --no-verify-jwt --use-api --yes && supabase functions deploy cleanup-photos --no-verify-jwt --use-api --yes
+      - name: Deploy Edge Functions (notify-checkin, cleanup-photos, notify-chat)
+        run: |
+          supabase functions deploy notify-checkin --no-verify-jwt --use-api --yes
+          supabase functions deploy cleanup-photos --no-verify-jwt --use-api --yes
+          supabase functions deploy notify-chat --no-verify-jwt --use-api --yes

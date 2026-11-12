@@ -35,14 +35,34 @@ export const setName = (id, display_name) => sb.from('profiles').update({ displa
 export const myGroups = () => sb.from('groups').select('id, name, invite_code, owner_id').order('created_at').then(must);
 export const createGroup = name => sb.rpc('create_group', { p_name: name }).then(must);
 export const joinGroup = code => sb.rpc('join_group', { p_code: code }).then(must);
-// only the person who made the group can rename it (database rule); no row back = not allowed
-export async function renameGroup(groupId, name) {
-  const rows = must(await sb.from('groups').update({ name }).eq('id', groupId).select('id'));
-  if (!rows.length) throw new Error(t('Only the person who made the group can rename it.', '得開 group 嗰個人先可以改名。'));
+// anyone in the group can rename it; the database logs each rename as a line in the chat
+export const renameGroup = (groupId, name) => sb.rpc('rename_group', { p_group: groupId, p_name: name }).then(must);
+
+// ---------- group chat (members only, kept forever) ----------
+const CHAT_COLS = 'id, group_id, user_id, kind, body, created_at';
+export const chatPage = (groupId, before, limit = 50) => {
+  let q = sb.from('chat_messages').select(CHAT_COLS).eq('group_id', groupId).order('created_at', { ascending: false }).limit(limit);
+  if (before) q = q.lt('created_at', before);
+  return q.then(must).then(rows => rows.reverse());
+};
+export const chatSince = (groupId, after) => sb.from('chat_messages').select(CHAT_COLS).eq('group_id', groupId).gt('created_at', after).order('created_at').then(must);
+export const sendChat = (userId, groupId, body) => sb.from('chat_messages').insert({ group_id: groupId, user_id: userId, body }).select(CHAT_COLS).single().then(must);
+export const markChatRead = (userId, groupId) =>
+  sb.from('chat_reads').upsert({ user_id: userId, group_id: groupId, read_at: new Date().toISOString() }, { onConflict: 'user_id,group_id' }).then(must);
+export const chatUnread = () => sb.rpc('chat_unread').then(must).then(rows => Object.fromEntries(rows.map(r => [r.group_id, r.unread])));
+// live new messages for one group; returns a function that stops listening
+export function chatLive(groupId, onRow, onStatus) {
+  if (!sb.channel) return () => {};
+  const ch = sb.channel(`chat-${groupId}`)
+    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chat_messages', filter: `group_id=eq.${groupId}` }, p => onRow(p.new))
+    .subscribe(st => onStatus?.(st));
+  return () => { try { sb.removeChannel(ch); } catch { /* already gone */ } };
 }
+
 export const leaveGroup = (groupId, userId) => sb.from('group_members').delete().match({ group_id: groupId, user_id: userId }).then(must);
 export const leaderboard = groupId => sb.rpc('group_leaderboard', { p_group: groupId }).then(must);
 export const members = groupId => sb.from('group_members').select('user_id').eq('group_id', groupId).then(must);
+export const profilesOf = ids => (ids.length ? sb.from('profiles').select('id, display_name').in('id', ids).then(must) : Promise.resolve([]));
 
 // ---------- check-ins ----------
 // The small feed copy sits beside the full photo: abc.jpg → abc_t.jpg
