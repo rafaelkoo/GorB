@@ -7,7 +7,7 @@ import { t, fmtDay } from './i18n.js';
 import { esc, render } from './ui.js';
 import { bySession, exName, kg } from './tracker.js';
 import { cleanPlan, allItems, plannedPerWeek } from './plan.js';
-import { coachSessions, nextLoad, targetStatus } from './coach.js';
+import { coachSessions, nextLoad, holdNext, targetStatus } from './coach.js';
 import { coverage } from './score.js';
 import { schemeOf, schemeName } from './scheme.js';
 import { weekMinutes } from './cardio.js';
@@ -36,7 +36,7 @@ export function weeklyReview(d, today) {
 
   // lifts trained this week: against a target if there is one, otherwise est. 1RM vs the last session before this week
   const tg = Object.fromEntries(d.targets.map(x => [x.exercise_id, x]));
-  const ids = Object.keys(hist).filter(id => EX[id] && hist[id].some(s => s.date >= from && s.date <= today));
+  const ids = Object.keys(hist).filter(id => EX[id] && !EX[id].timed && hist[id].some(s => s.date >= from && s.date <= today));
   const lifts = ids.map(id => {
     const ses = coachSessions(hist[id]), now = ses.filter(s => s.date >= from), old = ses.filter(s => s.date < from);
     if (!now.length) return null;
@@ -64,7 +64,7 @@ export function weeklyReview(d, today) {
 
   // next week: what to lift on each planned exercise (rep range from the plan)
   const next = plan ? [...new Map(allItems(plan).map(e => [e.id, e])).values()]
-    .map(e => ({ id: e.id, s: nextLoad(e.id, hist[e.id], today, e.lo || e.reps, e.reps) })).filter(x => x.s && x.s.kg).slice(0, 8) : [];
+    .map(e => ({ id: e.id, timed: !!EX[e.id]?.timed, s: (EX[e.id]?.timed ? holdNext : nextLoad)(e.id, hist[e.id], today, e.lo || e.reps, e.reps) })).filter(x => x.s && x.s.kg).slice(0, 8) : [];
 
   const judged = lifts.filter(l => !l.base);
   const score = Math.round((planned ? Math.min(1, done / planned) : 1) * 60 + (judged.length ? judged.filter(l => l.ok).length / judged.length * 25 : 12) + (weighed ? 15 : 0));
@@ -121,7 +121,7 @@ export async function reviewScreen(user) {
     </section>
     <section class="card">
       <div class="card-head"><h3>${t('Next week', '下星期')}</h3></div>
-      ${rv.next.length ? `<ul class="review-list next">${rv.next.map(x => `<li class="rv-${x.s.kind}"><b>${esc(exName(x.id))}</b><span>${kg(x.s.kg)} × ${x.s.reps}</span></li>`).join('')}</ul>
+      ${rv.next.length ? `<ul class="review-list next">${rv.next.map(x => `<li class="rv-${x.s.kind}"><b>${esc(exName(x.id))}</b><span>${kg(x.s.kg)} × ${x.s.reps}${x.timed ? 's' : ''}</span></li>`).join('')}</ul>
         <p class="muted small">${t('These fill in on the Log page on the day.', '到嗰日喺「記錄」頁會自動填好。')}</p>`
         : `<p class="muted">${plan ? t('Log a few sessions of your planned lifts and next week’s weights show here.', '記錄多幾次計劃入面嘅動作，呢度就會出下星期嘅重量。') : t('Make a weekly plan to get next week’s weights.', '整個每週計劃，就會有下星期嘅重量建議。')}</p>
           <a class="link" href="#/plan">${t('Plan', '計劃')} ›</a>`}

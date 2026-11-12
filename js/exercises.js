@@ -100,7 +100,10 @@ export function registerCustom(rows, myId) {
   for (const r of rows || []) {
     const base = { id: r.id, en: r.name, zh: r.name, custom: true, mine: r.user_id === myId, owner: r.user_id };
     if (r.kind === 'minutes') CUSTOM_CARDIO.push(base);
-    else { const cat = CATS[r.cat] ? r.cat : 'other'; EXERCISES.push([r.id, r.name, r.name, cat, 'Other']); EX[r.id] = { ...base, cat, equip: 'Other' }; }
+    else { const cat = CATS[r.cat] ? r.cat : 'other'; EXERCISES.push([r.id, r.name, r.name, cat, 'Other']); EX[r.id] = { ...base, cat, equip: 'Other', timed: r.kind === 'timed' }; }
   }
 }
 export const newCustomId = () => 'c_' + Array.from(crypto.getRandomValues(new Uint8Array(5)), b => b.toString(36).padStart(2, '0')).join('').slice(0, 10);
+
+// timed holds (your own 'timed' exercises): the reps column holds seconds
+export const isTimed = id => !!EX[id]?.timed;

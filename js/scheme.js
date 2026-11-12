@@ -1,6 +1,7 @@
 // Training guide (FitTrack's SCHEMES): sets, rep range and rest for your goal,
 // plus weekly cardio minutes and daily steps. Picked from the goal on the Me page.
 import { isCompound } from './coach.js';
+import { EX } from './exercises.js';
 import { t } from './i18n.js';
 
 // c = compound [sets, lo, hi] · i = isolation [sets, lo, hi] · rest seconds · cardio minutes a week · steps a day · hard sets per muscle a week
@@ -25,6 +26,7 @@ export const schemeFor = (sc, id) => (isCompound(id) ? sc.c : sc.i);
 export function schemeChanges(plan, sc) {
   let n = 0;
   for (const d of plan.days) for (const e of d.items) {
+    if (EX[e.id]?.timed) continue;
     const [s, lo, hi] = schemeFor(sc, e.id);
     if (e.sets !== s || e.reps !== hi || (e.lo ?? e.reps) !== lo) n++;
   }
@@ -32,7 +34,7 @@ export function schemeChanges(plan, sc) {
 }
 // sets and rep range for every exercise in the plan (reps = top of the range, lo = bottom)
 export function applyScheme(plan, sc) {
-  for (const d of plan.days) for (const e of d.items) { const [s, lo, hi] = schemeFor(sc, e.id); e.sets = s; e.lo = lo; e.reps = hi; }
+  for (const d of plan.days) for (const e of d.items) { if (EX[e.id]?.timed) continue; const [s, lo, hi] = schemeFor(sc, e.id); e.sets = s; e.lo = lo; e.reps = hi; }
   return plan;
 }
 export const schemeName = sc => t(sc.en, sc.zh);

@@ -45,15 +45,15 @@ export async function ranksScreen(user, groupId, measureId = 'days') {
     const list = byEx[measureId].map(r => ({ r, kg: +r.best_kg, reps: r.best_reps || 0 }))
       .sort((a, b) => b.kg - a.kg || b.reps - a.reps);
     const bw = list.every(x => x.kg === 0), top = Math.max(...list.map(x => (bw ? x.reps : x.kg)), 1);
-    const cat = EX[measureId].cat;
+    const cat = EX[measureId].cat, timedEx = !!EX[measureId].timed, unit = timedEx ? 's' : '';
     body = `<div class="card-head"><h3>${esc(exName(measureId))}</h3><span class="muted small">${esc(t(CAT_EN[cat], CAT_ZH[cat]))}</span></div>
-      <p class="muted small">${bw ? t('Most reps in one set', '一組做最多次') : t('Heaviest set, at least 1 rep', '最少 1 下嘅最重一組')}</p>
+      <p class="muted small">${timedEx ? (bw ? t('Longest hold', '撐得最耐') : t('Heaviest hold, then longest', '最重，然後撐得最耐')) : bw ? t('Most reps in one set', '一組做最多次') : t('Heaviest set, at least 1 rep', '最少 1 下嘅最重一組')}</p>
       <ol class="rank">${list.map((x, i) => `<li class="${x.r.user_id === user.id ? 'me' : ''}">
           <span class="pos">${MEDAL[i] || i + 1}</span>
           <div class="who"><a href="#/p/${x.r.user_id}">${esc(x.r.display_name)}</a>
             <span class="muted small">${esc(setsTxt(x.r.sets_total))} · ${t('last', '上次')} ${esc(fmtDay(x.r.last_on))}</span>
             <span class="bar"><i style="width:${Math.round((bw ? x.reps : x.kg) / top * 100)}%"></i></span></div>
-          <b>${bw ? `<span data-count="${x.reps}">${x.reps}</span> ${t('reps', '次')}` : `<span data-count="${x.kg}" data-suffix=" kg">${kgTxt(x.kg)}</span><small class="reps">× ${x.reps}</small>`}</b></li>`).join('')}</ol>`;
+          <b>${bw ? `<span data-count="${x.reps}"${timedEx ? ' data-suffix="s"' : ''}>${x.reps}${unit}</span>${timedEx ? '' : ` ${t('reps', '次')}`}` : `<span data-count="${x.kg}" data-suffix=" kg">${kgTxt(x.kg)}</span><small class="reps">× ${x.reps}${unit}</small>`}</b></li>`).join('')}</ol>`;
   } else {
     const withVal = rows.map(r => ({ r, v: m.get(r) })), has = withVal.filter(x => x.v != null && (x.v !== 0 || m.zero));
     has.sort((a, b) => (m.asc ? a.v - b.v : b.v - a.v));

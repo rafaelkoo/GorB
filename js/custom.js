@@ -31,10 +31,12 @@ export function addCustomSheet(user, { kind = 'weight', name = '' } = {}) {
         <fieldset class="kind"><legend>${t('How do you log it?', '點樣記錄？')}</legend>
           <label class="${kind === 'weight' ? 'on' : ''}"><input type="radio" name="kind" value="weight" ${kind === 'weight' ? 'checked' : ''}>
             <b>${t('Sets of weight × reps', '組數：重量 × 次數')}</b><small>${t('Like a lift. Shows in progress and rankings.', '同舉重一樣，會計入進度同排名。')}</small></label>
+          <label class="${kind === 'timed' ? 'on' : ''}"><input type="radio" name="kind" value="timed" ${kind === 'timed' ? 'checked' : ''}>
+            <b>${t('Sets of weight × seconds', '組數：重量 × 秒數')}</b><small>${t('Holds, like holding a weight for 30 s. Has a stopwatch on the Log page.', '撐住嘅動作，例如揸住重量 30 秒。記錄頁有計時器。')}</small></label>
           <label class="${kind === 'minutes' ? 'on' : ''}"><input type="radio" name="kind" value="minutes" ${kind === 'minutes' ? 'checked' : ''}>
             <b>${t('Minutes', '分鐘')}</b><small>${t('Like climbing or swimming. Logged with cardio, only you see it.', '例如攀石、游水。同有氧一齊記，得你自己睇到。')}</small></label>
         </fieldset>
-        ${kind === 'weight' ? `<div><p class="muted small">${t('Body part', '部位')}</p><div class="chips">${Object.keys(CATS).map(k => `<button type="button" data-cat="${k}" aria-pressed="${cat === k}" class="${cat === k ? 'on' : ''}">${esc(t(CATS[k], CAT_ZH[k]))}</button>`).join('')}</div></div>` : ''}
+        ${kind !== 'minutes' ? `<div><p class="muted small">${t('Body part', '部位')}</p><div class="chips">${Object.keys(CATS).map(k => `<button type="button" data-cat="${k}" aria-pressed="${cat === k}" class="${cat === k ? 'on' : ''}">${esc(t(CATS[k], CAT_ZH[k]))}</button>`).join('')}</div></div>` : ''}
         <p class="muted small">${t('Everyone in your groups can use it too. No 3D demo for your own exercises.', 'Group 入面嘅人都用得到。自己加嘅動作冇 3D 示範。')}</p>
         <p class="error" id="cerr" hidden></p>
         <button type="submit" id="csave">${t('Add exercise', '加動作')}</button>
@@ -48,7 +50,7 @@ export function addCustomSheet(user, { kind = 'weight', name = '' } = {}) {
         if (!n) return;
         const btn = box.querySelector('#csave'); btn.disabled = true;
         try {
-          const row = await api.addCustomExercise({ id: newCustomId(), name: n, kind, cat: kind === 'weight' ? cat : 'other' });
+          const row = await api.addCustomExercise({ id: newCustomId(), name: n, kind, cat: kind !== 'minutes' ? cat : 'other' });
           await refreshCustom(user.id);
           close({ id: row.id, kind });
         } catch (err) { const p = box.querySelector('#cerr'); p.hidden = false; p.textContent = err?.message || String(err); btn.disabled = false; }
@@ -63,6 +65,7 @@ export function addCustomSheet(user, { kind = 'weight', name = '' } = {}) {
 
 // rename / delete controls for one of your own (used in the library)
 export async function renameCustom(user, id, name) { await api.renameCustomExercise(id, name); await refreshCustom(user.id); }
+export async function setCustomKind(user, id, kind) { await api.setCustomExerciseKind(id, kind); await refreshCustom(user.id); }
 export async function deleteCustom(user, id) { await api.deleteCustomExercise(id); await refreshCustom(user.id); }
 
 // ask for an exercise to be added to the library with a 3D demo; resolves true when sent

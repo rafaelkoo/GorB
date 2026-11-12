@@ -145,3 +145,20 @@ export function bodyAdvice(log, goalKg, goalDate, td, today) {
     (eat ? ` Eat about ${eat.toLocaleString()} kcal a day (maintenance about ${td.toLocaleString()}).` : '') + `${tooFast ? ' Consider a later date.' : ''}${eat === 1500 ? ' That is the suggested minimum; don\'t go lower.' : ''}`;
   return { state: onTrack ? 'ontrack' : trend === null ? 'nopace' : 'behind', zh, en, eat };
 }
+
+// timed holds (weight × seconds): add 5 s each time; once every set reaches the plan's top time, add weight
+// and start again at the bottom. Without a plan target it just asks for 5 s more. Reps column = seconds.
+export function holdNext(id, list, today, lo, hi, inPlan = true) {
+  const ses = coachSessions(list, today);
+  if (!ses.length) return null;
+  const last = ses[ses.length - 1], off = days(last.date, today), wks = Math.floor(off / 7);
+  const s0 = Math.min(...last.atTop.map(x => x.reps)), top = last.top, inc = 2.5;
+  if (off >= 21) return { kg: top, reps: s0, kind: 'same', zh: `隔咗 ${wks} 星期冇練，先維持 ${top ? `${top} kg ` : ''}${s0} 秒`, en: `${wks} weeks off; repeat ${top ? `${top} kg for ` : ''}${s0}s first` };
+  if (inPlan && top > 0 && s0 >= hi) {
+    const up = roundTo(top + inc, inc);
+    return { kg: up, reps: lo, kind: 'up', zh: `上次 ${top} kg 每組都撐到 ${s0} 秒（目標 ${hi} 秒），加到 ${up} kg，由 ${lo} 秒重新開始`, en: `You held ${top} kg for ${s0}s every set (target ${hi}s), so go to ${up} kg and start again at ${lo}s` };
+  }
+  return { kg: top, reps: s0 + 5, kind: 'up',
+    zh: inPlan && top > 0 ? `維持 ${top} kg，每組撐多 5 秒；撐到 ${hi} 秒就加重` : '每組撐多 5 秒',
+    en: inPlan && top > 0 ? `Stay at ${top} kg and hold 5s longer; at ${hi}s, add weight` : 'Hold 5s longer each set' };
+}

@@ -5,7 +5,7 @@ import * as api from './supa.js';
 import { EX as FT, bodyParts, muscleZh, equipZh } from './ftdata.js';
 import { MOVES } from './moves.js';
 import { EXERCISES, CATS, EX as LIB, CUSTOM_CARDIO } from './exercises.js';
-import { addCustomSheet, renameCustom, deleteCustom, requestSheet } from './custom.js';
+import { addCustomSheet, renameCustom, deleteCustom, requestSheet, setCustomKind } from './custom.js';
 import { t, getLang, fmtDay } from './i18n.js';
 import { exName, kg, spark, bySession, prOf } from './tracker.js';
 import { cleanPlan, dayName } from './plan.js';
@@ -86,16 +86,19 @@ export async function openExercise(user, id, tab = 'how', who = user.id) {
   function progHtml() {
     if (!sessions.length) return `<section class="card empty"><p class="muted">${t('Save a workout with this exercise to see your trend here.', '儲存一次有呢個動作嘅訓練，就會見到走勢。')}</p></section>${mine ? planHtml() : ''}`;
     const pr = prOf(sessions);
+    const timed = LIB[id]?.timed;
     const best1 = Math.max(...sessions.flatMap(s => s.sets.filter(x => x.reps >= 1).map(x => e1rm(x.kg, x.reps))));
+    const longest = Math.max(0, ...sessions.flatMap(s => s.sets.map(x => x.reps || 0)));
     const heavy = sessions.map(s => Math.max(0, ...s.sets.filter(x => x.reps >= 1).map(x => x.kg)));
-    const vol = sessions.map(s => s.sets.reduce((a, x) => a + x.kg * x.reps, 0));
+    const vol = sessions.map(s => s.sets.reduce((a, x) => a + (timed ? x.reps : x.kg * x.reps), 0));
     return `<section class="card"><div class="stats">
         <div><span class="muted">PR</span><b>${kg(pr.kg)}</b><span class="muted small">${pr.date ? esc(fmtDay(pr.date)) : ''}</span></div>
-        <div><span class="muted">${t('Est. 1RM', '估算 1RM')}</span><b>${kg(Math.round(best1 * 10) / 10)}</b><span class="muted small">Epley</span></div>
+        ${timed ? `<div><span class="muted">${t('Longest hold', '最長')}</span><b>${longest}s</b><span class="muted small">${t('any weight', '任何重量')}</span></div>`
+          : `<div><span class="muted">${t('Est. 1RM', '估算 1RM')}</span><b>${kg(Math.round(best1 * 10) / 10)}</b><span class="muted small">Epley</span></div>`}
         <div><span class="muted">${t('Sessions', '次數')}</span><b>${sessions.length}</b></div></div></section>
       <section class="card"><h3>${t('Heaviest set', '最重一組')}</h3>${spark(heavy, t('Heaviest set per session', '每次最重一組')) || `<p class="muted small">${t('One session so far.', '暫時得一次。')}</p>`}</section>
-      <section class="card"><h3>${t('Session volume', '每次總容量')}</h3>${spark(vol, t('kg × reps per session', '每次 kg × 次數')) || `<p class="muted small">${t('One session so far.', '暫時得一次。')}</p>`}
-        <p class="muted small">${t(`Last: ${Math.round(vol.at(-1)).toLocaleString()} kg`, `上次：${Math.round(vol.at(-1)).toLocaleString()} kg`)}</p></section>
+      <section class="card"><h3>${timed ? t('Time held per session', '每次總時間') : t('Session volume', '每次總容量')}</h3>${spark(vol, timed ? t('Seconds held per session', '每次撐咗幾多秒') : t('kg × reps per session', '每次 kg × 次數')) || `<p class="muted small">${t('One session so far.', '暫時得一次。')}</p>`}
+        <p class="muted small">${timed ? t(`Last: ${vol.at(-1)}s`, `上次：${vol.at(-1)} 秒`) : t(`Last: ${Math.round(vol.at(-1)).toLocaleString()} kg`, `上次：${Math.round(vol.at(-1)).toLocaleString()} kg`)}</p></section>
       ${mine ? planHtml() : ''}`;
   }
   function histHtml() {
@@ -103,8 +106,8 @@ export async function openExercise(user, id, tab = 'how', who = user.id) {
     let run = 0;
     const withPr = sessions.map(s => { const h = Math.max(0, ...s.sets.filter(x => x.reps >= 1).map(x => x.kg)); const isPr = h > run && run > 0; run = Math.max(run, h); return { ...s, isPr }; });
     return withPr.reverse().map(s => `<section class="card"><div class="card-head"><h3>${esc(fmtDay(s.date))}</h3>${s.isPr ? '<span class="pill gold">🏆 PR</span>' : ''}</div>
-      <ol class="hist">${s.sets.map(x => `<li><span>${+x.kg} kg × ${x.reps}</span><span class="muted small">1RM ${Math.round(e1rm(x.kg, x.reps))}</span></li>`).join('')}</ol>
-      <p class="muted small">${t('Volume', '總容量')} ${Math.round(s.sets.reduce((a, x) => a + x.kg * x.reps, 0)).toLocaleString()} kg</p></section>`).join('');
+      <ol class="hist">${s.sets.map(x => LIB[id]?.timed ? `<li><span>${+x.kg} kg × ${x.reps}s</span></li>` : `<li><span>${+x.kg} kg × ${x.reps}</span><span class="muted small">1RM ${Math.round(e1rm(x.kg, x.reps))}</span></li>`).join('')}</ol>
+      ${LIB[id]?.timed ? `<p class="muted small">${t('Total', '總共')} ${s.sets.reduce((a, x) => a + x.reps, 0)}s</p>` : `<p class="muted small">${t('Volume', '總容量')} ${Math.round(s.sets.reduce((a, x) => a + x.kg * x.reps, 0)).toLocaleString()} kg</p>`}</section>`).join('');
   }
 
   async function mount() {
@@ -160,11 +163,12 @@ export async function libraryScreen(user) {
         <a class="link" href="#/log">${t('Today', '今日')} ›</a></header>
       <section class="card own-ex"><div class="card-head"><h3>${t('Your own exercises', '自己加嘅動作')}</h3></div>
         ${mineList().length ? `<ul class="own-list">${mineList().map(x => `<li data-own="${x.id}">
-            <input value="${esc(x.en)}" maxlength="40" aria-label="${t('Name', '名')}"><span class="muted small">${x.kind === 'minutes' ? t('minutes', '分鐘') : t('weight × reps', '重量 × 次數')}</span>
+            <input value="${esc(x.en)}" maxlength="40" aria-label="${t('Name', '名')}">${x.kind === 'minutes' ? `<span class="muted small">${t('minutes', '分鐘')}</span>`
+              : `<button class="ghost small-btn unit-btn" data-unit="${x.id}" data-to="${x.kind === 'timed' ? 'weight' : 'timed'}" aria-label="${x.kind === 'timed' ? t('Switch to reps', '轉做次數') : t('Switch to seconds', '轉做秒數')}">${x.kind === 'timed' ? t('kg × sec', 'kg × 秒') : t('kg × reps', 'kg × 次')} ⇄</button>`}
             <button class="ghost x" data-del="${x.id}" aria-label="${t('Delete', '刪除')} ${esc(x.en)}">✕</button></li>`).join('')}</ul>
           <p class="muted small">${t('Renaming changes it for your whole group. Deleting hides its past records too.', '改名會連 group 入面嘅人一齊改。刪除之後，以前嘅記錄都會睇唔到。')}</p>`
           : `<p class="muted">${t('Add things the library doesn’t have, like wall climbing or a machine only your gym has.', '加動作庫冇嘅嘢，例如攀石，或者你 gym 獨有嘅機。')}</p>`}
-        ${groupList().length ? `<div class="grp-ex"><p class="muted small">${t('Added by your group', 'Group 加嘅')}</p><ul class="own-list">${groupList().map(x => `<li><b>${esc(x.en)}</b><span class="muted small">${x.kind === 'minutes' ? t('minutes · in Cardio on the Log page', '分鐘 · 喺記錄頁有氧卡') : t('weight × reps', '重量 × 次數')}</span></li>`).join('')}</ul></div>` : ''}
+        ${groupList().length ? `<div class="grp-ex"><p class="muted small">${t('Added by your group', 'Group 加嘅')}</p><ul class="own-list">${groupList().map(x => `<li><b>${esc(x.en)}</b><span class="muted small">${x.kind === 'minutes' ? t('minutes · in Cardio on the Log page', '分鐘 · 喺記錄頁有氧卡') : x.kind === 'timed' ? t('weight × seconds', '重量 × 秒數') : t('weight × reps', '重量 × 次數')}</span></li>`).join('')}</ul></div>` : ''}
         <button id="addown">+ ${t('Add your own exercise', '加自己嘅動作')}</button>
         <div class="req"><div class="card-head"><h4>${t('Requests', '請求')}</h4><button class="link-btn" id="askex">${t('Request an exercise', '請求加動作')}</button></div>
           ${reqs.length ? `<ul class="own-list">${reqs.map(r => `<li><b>${esc(r.name)}</b><span class="tag st-${r.status}">${esc(STATUS[r.status])}</span>
@@ -180,11 +184,14 @@ export async function libraryScreen(user) {
     el.querySelectorAll('[data-id]').forEach(b => b.onclick = () => openExercise(user, b.dataset.id, 'how'));
     el.querySelector('#askex').onclick = async () => { if (await requestSheet({ name: q })) { await loadReqs(); draw(); toast(t('Request sent.', '請求已送出。')); } };
     el.querySelectorAll('[data-wd]').forEach(b => b.onclick = async () => { try { await api.withdrawRequest(b.dataset.wd); await loadReqs(); draw(); } catch (err) { showError(err); } });
-    el.querySelector('#addown').onclick = async () => { const made = await addCustomSheet(user, { name: q }); if (made) { draw(); toast(made.kind === 'weight' ? t('Added. It’s in the exercise list now.', '加咗，而家喺動作清單入面。') : t('Added. Log it in the Cardio card on the Log page.', '加咗。喺「記錄」頁嘅有氧卡記錄。')); } };
+    el.querySelector('#addown').onclick = async () => { const made = await addCustomSheet(user, { name: q }); if (made) { draw(); toast(made.kind !== 'minutes' ? t('Added. It’s in the exercise list now.', '加咗，而家喺動作清單入面。') : t('Added. Log it in the Cardio card on the Log page.', '加咗。喺「記錄」頁嘅有氧卡記錄。')); } };
     el.querySelectorAll('[data-own] input').forEach(inp => inp.onchange = async () => {
       const id = inp.closest('[data-own]').dataset.own, name = inp.value.trim().replace(/\s+/g, ' ');
       if (!name) { draw(); return; }
       try { await renameCustom(user, id, name); toast(t('Renamed.', '改咗名。')); draw(); } catch (err) { showError(err); }
+    });
+    el.querySelectorAll('[data-unit]').forEach(b => b.onclick = async () => {
+      try { await setCustomKind(user, b.dataset.unit, b.dataset.to); toast(b.dataset.to === 'timed' ? t('Now logged in seconds. Past sets keep their numbers.', '而家用秒數記錄。以前嘅記錄數字不變。') : t('Now logged in reps. Past sets keep their numbers.', '而家用次數記錄。以前嘅記錄數字不變。')); draw(); } catch (err) { showError(err); }
     });
     el.querySelectorAll('[data-del]').forEach(b => b.onclick = async () => {
       if (!b.dataset.sure) { b.dataset.sure = '1'; b.textContent = t('Delete?', '刪除？'); b.classList.add('danger-text'); return; }
@@ -192,10 +199,10 @@ export async function libraryScreen(user) {
     });
   };
   // added by groupmates, both kinds
-  const groupList = () => [...EXERCISES.filter(([id]) => LIB[id]?.custom && !LIB[id].mine).map(([id]) => ({ ...LIB[id], kind: 'weight' })),
+  const groupList = () => [...EXERCISES.filter(([id]) => LIB[id]?.custom && !LIB[id].mine).map(([id]) => ({ ...LIB[id], kind: LIB[id].timed ? 'timed' : 'weight' })),
     ...CUSTOM_CARDIO.filter(c => !c.mine).map(c => ({ ...c, kind: 'minutes' }))];
   // your own, both kinds
-  const mineList = () => [...EXERCISES.filter(([id]) => LIB[id]?.custom && LIB[id].mine).map(([id]) => ({ ...LIB[id], kind: 'weight' })),
+  const mineList = () => [...EXERCISES.filter(([id]) => LIB[id]?.custom && LIB[id].mine).map(([id]) => ({ ...LIB[id], kind: LIB[id].timed ? 'timed' : 'weight' })),
     ...CUSTOM_CARDIO.filter(c => c.mine).map(c => ({ ...c, kind: 'minutes' }))];
   draw();
 }

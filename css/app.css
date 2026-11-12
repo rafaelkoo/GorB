@@ -498,3 +498,9 @@ textarea { resize: vertical; line-height: 1.4; }
 .se-colors button[aria-pressed="true"] { transform: scale(1.2); box-shadow: 0 0 0 2px rgba(0,0,0,.5), 0 0 0 5px #fff; }
 .ex-extra-head { margin: 10px 4px -4px; font-size: .85rem; color: var(--dust); border-top: 1px dashed var(--line); padding-top: 12px; }
 .card.ex.extra { opacity: .85; }
+.hold-cell { display: flex; gap: 4px; align-items: center; min-width: 0; }
+.hold-cell input { flex: 1; min-width: 0; }
+.hold { flex: none; min-width: 40px; height: 40px; min-height: 0; padding: 0 6px; border-radius: 10px; background: var(--mat-2); color: var(--chalk); border: 1px solid var(--line); font-size: .95rem; font-variant-numeric: tabular-nums; }
+.hold.on { background: var(--yellow); color: #111; border-color: var(--yellow); animation: holdpulse 1s ease-in-out infinite; }
+@keyframes holdpulse { 50% { box-shadow: 0 0 0 5px rgba(242,194,48,.25); } }
+.unit-btn { white-space: nowrap; font-size: .78rem; }

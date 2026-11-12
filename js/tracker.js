@@ -1,10 +1,10 @@
 // Gym tracker screens: log today's workout, and a person's progress.
 import * as api from './supa.js';
-import { EXERCISES, EX, CATS, BIG_FOUR } from './exercises.js';
+import { EXERCISES, EX, CATS, BIG_FOUR, isTimed } from './exercises.js';
 import { t, getLang, fmtDay, fmtLongToday } from './i18n.js';
 import { cleanPlan, dayName, suggestDay, findItem } from './plan.js';
 import { openExercise } from './exsheet.js';
-import { nextLoad } from './coach.js';
+import { nextLoad, holdNext } from './coach.js';
 import { startRest } from './timer.js';
 import { points, coverage, levelCardHtml, coverageHtml, habitList } from './score.js';
 import { cardioHtml, wireCardio } from './cardio.js';
@@ -47,10 +47,11 @@ export function bySession(rows) {
 }
 const bestKg = sets => Math.max(0, ...sets.filter(s => s.reps >= 1).map(s => s.kg));
 export const prOf = sessions => sessions.reduce((b, s) => { const k = bestKg(s.sets); return k > b.kg ? { kg: k, date: s.date } : b; }, { kg: 0, date: null });
-function setsText(sets) {
-  // "3 × 5 @ 100 kg" when every set matches, else "100×5, 105×3"
+function setsText(sets, timed) {
+  // "3 × 5 @ 100 kg" when every set matches, else "100×5, 105×3"; timed holds read "3 × 30s @ 20 kg"
+  const u = timed ? 's' : '';
   const same = sets.every(s => s.kg === sets[0].kg && s.reps === sets[0].reps);
-  return same ? `${sets.length} × ${sets[0].reps} @ ${kg(sets[0].kg)}` : sets.map(s => `${+s.kg}×${s.reps}`).join(', ');
+  return same ? `${sets.length} × ${sets[0].reps}${u} @ ${kg(sets[0].kg)}` : sets.map(s => `${+s.kg}×${s.reps}${u}`).join(', ');
 }
 
 // ---------- log today's workout ----------
@@ -74,7 +75,8 @@ export async function logScreen(user) {
   const suggested = suggestDay(fullPlan, weekday, lastIds);
   // the plan's rep range [lo, hi] for an exercise (the chosen day first, then any day)
   const planRange = id => { const e = (pickedDay()?.items || []).find(x => x.id === id) || findItem(fullPlan, id); return e ? [e.lo || e.reps, e.reps] : [10, 10]; };
-  const coach = id => nextLoad(id, history[id], today, ...planRange(id));
+  const inPlan = id => !!((pickedDay()?.items || []).find(x => x.id === id) || findItem(fullPlan, id));
+  const coach = id => (isTimed(id) ? holdNext(id, history[id], today, ...planRange(id), inPlan(id)) : nextLoad(id, history[id], today, ...planRange(id)));
   // plan gives sets; the coach's next load gives kg × reps; otherwise last time's weights
   const itemsFor = day => (day?.items || []).map(e => {
     const c = coach(e.id), last = past(e.id).at(-1)?.sets || [];
@@ -93,6 +95,10 @@ export async function logScreen(user) {
   }
   function pickedDay() { return fullPlan.days.find(d => d.id === draft?.dayId) || null; }
   const keep = () => saveDraft(user.id, draft);
+  // stopwatch for timed holds: tap ⏱ to start, tap again to stop; the seconds go into the set
+  let hold = null, holdTick = null;
+  const holdSecs = () => (hold ? Math.floor((Date.now() - hold.t0) / 1000) : 0);
+  const stopHold = () => { clearInterval(holdTick); holdTick = null; hold = null; };
   let pickMsg = '';
 
   function draw() {
@@ -114,16 +120,18 @@ export async function logScreen(user) {
         const last = past(it.id).at(-1);
         const head = it.extra && !draft.items[i - 1]?.extra ? `<p class="ex-extra-head">${t('Already done today (not in this day)', '今日已做（唔屬於呢日）')}</p>` : '';
         return `${head}<section class="card ex${it.extra ? ' extra' : ''}" data-i="${i}">
-          <div class="ex-head"><button class="ex-name" data-open="${it.id}"><h3>${esc(exName(it.id))}</h3><span class="muted">${esc(exSub(it.id))} · ${t('how to', '教學')} ›</span></button>
+          <div class="ex-head"><button class="ex-name" data-open="${it.id}"><h3>${esc(exName(it.id))}</h3><span class="muted">${EX[it.id]?.custom ? `${isTimed(it.id) ? t('Timed hold', '計時動作') : t('Your own', '自己加')} · ${t('progress', '進度')}` : `${esc(exSub(it.id))} · ${t('how to', '教學')}`} ›</span></button>
             <button class="ghost x" data-act="drop" aria-label="${t('Remove', '移除')} ${esc(exName(it.id))}">✕</button></div>
-          <p class="muted last">${last ? `${t('Last time', '上次')} (${esc(fmtDay(last.date))}): ${esc(setsText(last.sets))}` : t('First time logging this', '第一次記錄呢個動作')}</p>
-          ${(() => { const c = coach(it.id); return c ? `<div class="coach ${c.kind}"><p><b>${t('Next', '下次')}: ${c.kg ? kg(c.kg) + ' × ' : ''}${c.reps}</b> ${esc(t(c.en, c.zh))}</p>
+          <p class="muted last">${last ? `${t('Last time', '上次')} (${esc(fmtDay(last.date))}): ${esc(setsText(last.sets, isTimed(it.id)))}` : t('First time logging this', '第一次記錄呢個動作')}</p>
+          ${(() => { const c = coach(it.id); return c ? `<div class="coach ${c.kind}"><p><b>${t('Next', '下次')}: ${c.kg ? kg(c.kg) + ' × ' : ''}${c.reps}${isTimed(it.id) ? 's' : ''}</b> ${esc(t(c.en, c.zh))}</p>
             <button class="ghost small-btn" data-act="usecoach">${t('Use', '套用')}</button></div>` : ''; })()}
           <div class="sets">
-            <div class="set head"><span>${t('Set', '組')}</span><span>kg</span><span>${t('Reps', '次數')}</span><span>${t('Done', '完成')}</span><span></span></div>
+            <div class="set head"><span>${t('Set', '組')}</span><span>kg</span><span>${isTimed(it.id) ? t('Seconds', '秒數') : t('Reps', '次數')}</span><span>${t('Done', '完成')}</span><span></span></div>
             ${it.sets.map((s, j) => `<div class="set ${s.done ? 'done' : ''}" data-j="${j}"><span>${j + 1}</span>
               <input inputmode="decimal" aria-label="${t(`Set ${j + 1} kg`, `第 ${j + 1} 組 kg`)}" value="${s.kg ?? ''}" data-f="kg">
-              <input inputmode="numeric" aria-label="${t(`Set ${j + 1} reps`, `第 ${j + 1} 組次數`)}" value="${s.reps ?? ''}" data-f="reps">
+              ${isTimed(it.id) ? `<span class="hold-cell"><input inputmode="numeric" aria-label="${t(`Set ${j + 1} seconds`, `第 ${j + 1} 組秒數`)}" value="${s.reps ?? ''}" data-f="reps" placeholder="s">
+                <button class="hold ${hold && hold.i === i && hold.j === j ? 'on' : ''}" data-act="hold" aria-label="${hold && hold.i === i && hold.j === j ? t('Stop the hold timer', '停計時') : t(`Time set ${j + 1}`, `第 ${j + 1} 組計時`)}">${hold && hold.i === i && hold.j === j ? holdSecs() + 's' : '⏱'}</button></span>`
+              : `<input inputmode="numeric" aria-label="${t(`Set ${j + 1} reps`, `第 ${j + 1} 組次數`)}" value="${s.reps ?? ''}" data-f="reps">`}
               <button class="tick ${s.done ? 'on' : ''}" data-act="tick" aria-pressed="${!!s.done}" aria-label="${t(`Set ${j + 1} done, start rest`, `第 ${j + 1} 組完成，開始休息`)}">✓</button>
               <button class="ghost x" data-act="unset" aria-label="${t(`Remove set ${j + 1}`, `移除第 ${j + 1} 組`)}">✕</button></div>`).join('')}
           </div>
@@ -162,6 +170,12 @@ export async function logScreen(user) {
         if (act === 'addset') { const l = it.sets.at(-1) || {}; it.sets.push({ kg: l.kg ?? null, reps: l.reps ?? null }); }
         if (act === 'unset') it.sets.splice(+b.closest('.set').dataset.j, 1);
         if (act === 'tick') { const j = +b.closest('.set').dataset.j, x = it.sets[j]; x.done = !x.done; if (x.done) { startRest(restSec); popAfter(`.ex[data-i="${card.dataset.i}"] .set[data-j="${j}"] .tick`, 1.2); } }
+        if (act === 'hold') {
+          const j = +b.closest('.set').dataset.j;
+          if (hold && hold.i === +card.dataset.i && hold.j === j) {   // stop: write the seconds, tick the set
+            const x = it.sets[j]; x.reps = holdSecs(); x.done = true; stopHold(); startRest(restSec);
+          } else { stopHold(); hold = { i: +card.dataset.i, j, t0: Date.now() }; holdTick = setInterval(() => { const el = $app().querySelector('.hold.on'); if (el) el.textContent = holdSecs() + 's'; else stopHold(); }, 250); }
+        }
         if (act === 'usecoach') { const c = coach(it.id); if (c) it.sets.forEach(x => { x.kg = c.kg; x.reps = c.reps; }); }
         keep(); draw();
       });
@@ -242,7 +256,7 @@ export function picker(onPick, only) {
       const made = await addCustomSheet(user, { name: raw });
       if (!made) { box.hidden = false; return; }
       box.remove();
-      if (made.kind === 'weight') onPick(made.id);
+      if (made.kind !== 'minutes') onPick(made.id);
       else { window.dispatchEvent(new HashChangeEvent('hashchange')); setTimeout(() => note(t('Added. Log it in the Cardio card below.', '加咗。喺下面嘅有氧卡記錄。')), 400); }
     };
   }

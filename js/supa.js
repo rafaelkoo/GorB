@@ -196,6 +196,7 @@ export const upsertTargets = rows => sb.from('lift_targets').upsert(rows, { onCo
 export const customExercises = () => sb.from('custom_exercises').select('id, user_id, name, kind, cat').order('created_at').then(must);
 export const addCustomExercise = row => sb.from('custom_exercises').insert(row).select('id, user_id, name, kind, cat').single().then(must);
 export const renameCustomExercise = (id, name) => sb.from('custom_exercises').update({ name }).eq('id', id).then(must);
+export const setCustomExerciseKind = (id, kind) => sb.from('custom_exercises').update({ kind }).eq('id', id).then(must);
 export const deleteCustomExercise = id => sb.from('custom_exercises').delete().eq('id', id).then(must);
 
 // ---------- requests for new library exercises (each person sees only their own) ----------

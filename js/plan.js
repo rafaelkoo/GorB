@@ -115,7 +115,7 @@ export async function planScreen(user, dayId) {
       ${list.length ? `<ol class="plan-list">${list.map((e, i) => `<li data-i="${i}">
           <button class="pl-name ex-name" data-open="${e.id}"><b>${esc(exName(e.id))}</b><span class="muted small">${esc(t(CATS[EX[e.id].cat], CAT_ZH[EX[e.id].cat]))} · ${t('how to', '教學')} ›</span></button>
           <div class="stepper st-sets" aria-label="${t('Sets', '組數')}"><button class="ghost" data-act="sets" data-v="-1" aria-label="${t('One less set', '減一組')}">−</button><span><b>${e.sets}</b><small>${t('sets', '組')}</small></span><button class="ghost" data-act="sets" data-v="1" aria-label="${t('One more set', '加一組')}">+</button></div>
-          <div class="stepper st-reps" aria-label="${t('Reps', '次數')}"><button class="ghost" data-act="reps" data-v="-1" aria-label="${t('One less rep', '減一次')}">−</button><span><b>${repRange(e)}</b><small>${t('reps', '次')}</small></span><button class="ghost" data-act="reps" data-v="1" aria-label="${t('One more rep', '加一次')}">+</button></div>
+          <div class="stepper st-reps" aria-label="${t('Reps', '次數')}"><button class="ghost" data-act="reps" data-v="-1" aria-label="${t('One less rep', '減一次')}">−</button><span><b>${repRange(e)}</b><small>${EX[e.id]?.timed ? t('sec', '秒') : t('reps', '次')}</small></span><button class="ghost" data-act="reps" data-v="1" aria-label="${t('One more rep', '加一次')}">+</button></div>
           <div class="pl-move"><button class="ghost x" data-act="up" aria-label="${t('Move up', '上移')}" ${i ? '' : 'disabled'}>↑</button><button class="ghost x" data-act="down" aria-label="${t('Move down', '下移')}" ${i < list.length - 1 ? '' : 'disabled'}>↓</button><button class="ghost x" data-act="del" aria-label="${t('Remove', '移除')}">✕</button></div>
         </li>`).join('')}</ol>`
         : `<p class="muted">${t('No exercises yet.', '仲未有動作。')}</p>`}
@@ -165,7 +165,7 @@ export async function planScreen(user, dayId) {
     name.oninput = () => { cur.name = name.value.trim().slice(0, 30); save(); const tab = el.querySelector(`[data-day="${cur.id}"] b`); if (tab) tab.textContent = dayName(cur); };
     el.querySelectorAll('[data-open]').forEach(b => b.onclick = () => openExercise(user, b.dataset.open, 'how'));
     el.querySelector('#add').onclick = () => picker(id => {
-      const [sets, lo, hi] = sc ? schemeFor(sc, id) : [3, 10, 10];
+      const [sets, lo, hi] = EX[id]?.timed ? [3, 30, 30] : sc ? schemeFor(sc, id) : [3, 10, 10];
       cur.items.push({ id, sets, reps: hi, ...(lo < hi ? { lo } : {}) }); save(); draw();
     });
     el.querySelectorAll('.plan-list li').forEach(li => {
