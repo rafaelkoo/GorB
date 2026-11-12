@@ -1,7 +1,8 @@
 // Screens: sign in, groups, group page, check-in camera. Each renders into #app.
 import { btnLoading, btnDone, btnReset } from './motion.js';
 import * as api from './supa.js';
-import { openCamera, stopCamera, snap } from './camera.js';
+import { openCamera, stopCamera, grabFrame, encodeCanvas } from './camera.js';
+import { storyEditor } from './story.js';
 import { FEED_PAGE } from './config.js';
 import { pushSupported, pushState, enablePush } from './push.js';
 import { t, setLang, langSwitchHtml, fmtDateTime, monthName } from './i18n.js';
@@ -273,20 +274,30 @@ export async function checkin(user, groupId) {
   catch (err) { if (gone()) return; showError(err.name === 'NotAllowedError' ? { message: t('Camera blocked. Allow camera for this site in Chrome settings.', '相機被封鎖咗。去 Chrome 設定俾呢個網站用相機。') } : err); return; }
 
   if (gone()) return;
+  // after the shot: Instagram-Stories-style text on the photo (story.js); it's drawn into the photo on Post
+  let frame = null, story = null;
+  const cam = el.querySelector('.cam');
+  const editing = on => cam.classList.toggle('editing', on);
   el.querySelector('#snap').onclick = async () => {
     try {
-      photo = await snap(v);
-      shot.src = URL.createObjectURL(photo.full);
+      frame = grabFrame(v);
+      shot.src = frame.toDataURL('image/jpeg', .9);
       shot.hidden = false; v.hidden = true; live.hidden = true; post.hidden = false;
+      story = storyEditor(cam, frame, shot, { onEditing: editing });
     } catch (err) { showError(err); }
   };
   el.querySelector('#retake').onclick = () => {
-    photo = null; shot.hidden = true; v.hidden = false; live.hidden = false; post.hidden = true;
+    story?.destroy(); story = null; frame = null;
+    shot.hidden = true; v.hidden = false; live.hidden = false; post.hidden = true;
   };
   post.onsubmit = async e => {
-    e.preventDefault(); if (!photo) return;
+    e.preventDefault(); if (!frame) return;
     const b = el.querySelector('#send'); btnLoading(b);
-    try { await api.postCheckin(user.id, photo, el.querySelector('#note').value.trim()); await btnDone(b, t('Posted', '打咗卡')); releaseCamera(); try { sessionStorage.setItem(ASK_KEY, '1'); } catch {} location.hash = `#/g/${groupId}`; }
+    try {
+      const photo = await encodeCanvas(story ? await story.bake() : frame);
+      await api.postCheckin(user.id, photo, el.querySelector('#note').value.trim());
+      await btnDone(b, t('Posted', '打咗卡')); story?.destroy(); releaseCamera(); try { sessionStorage.setItem(ASK_KEY, '1'); } catch {} location.hash = `#/g/${groupId}`;
+    }
     catch (err) { showError(err); btnReset(b); }
   };
 }

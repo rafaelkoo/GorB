@@ -36,3 +36,21 @@ export async function snap(videoEl) {
   ]);
   return { full, thumb };
 }
+
+// For the story-style editor: grab the frame once at full photo size, edit on top, then encode.
+export function grabFrame(videoEl) {
+  const w = videoEl.videoWidth, h = videoEl.videoHeight;
+  if (!w || !h) throw new Error('Camera not ready yet');
+  const scale = Math.min(1, PHOTO_MAX_PX / Math.max(w, h));
+  const c = document.createElement('canvas');
+  c.width = Math.round(w * scale); c.height = Math.round(h * scale);
+  c.getContext('2d').drawImage(videoEl, 0, 0, c.width, c.height);
+  return c;
+}
+export async function encodeCanvas(c) {
+  const [full, thumb] = await Promise.all([
+    encode(c, c.width, c.height, PHOTO_MAX_PX, PHOTO_QUALITY),
+    encode(c, c.width, c.height, THUMB_MAX_PX, THUMB_QUALITY)
+  ]);
+  return { full, thumb };
+}
