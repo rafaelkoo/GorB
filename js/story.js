@@ -33,24 +33,27 @@ function wrap(text, size, maxW) {
   return out;
 }
 
-// item: { text, color, box, size (screen px), x, y (screen px, centre) }
-function paint(g, it, k) {
-  // k = how many photo pixels one screen pixel is; positions are already in photo pixels
-  const size = it.size * k, lines = it.lines, lh = size * LINE;
+// item: { text, color, box, size (screen px, sets the line breaks), k (pinch scale), rot (radians), x, y (screen px, centre) }
+// unit = photo pixels per screen pixel; px, py = the centre in photo pixels
+function paint(g, it, unit) {
+  const size = it.size, lines = it.lines, lh = size * LINE;
+  g.save();
+  g.translate(it.px, it.py); g.rotate(it.rot || 0); g.scale(unit * (it.k || 1), unit * (it.k || 1));
   g.font = `${WEIGHT} ${size}px ${FONT}`; g.textAlign = 'center'; g.textBaseline = 'middle';
-  const top = it.py - (lines.length * lh) / 2;
+  const top = -(lines.length * lh) / 2;
   lines.forEach((ln, i) => {
     const cy = top + lh * i + lh / 2;
     if (it.box && ln) {
       const w = g.measureText(ln).width + size * PAD_X * 2, h = lh + size * PAD_Y * 2, r = size * RADIUS;
-      g.fillStyle = it.color; g.beginPath(); g.roundRect(it.px - w / 2, cy - h / 2, w, h, r); g.fill();
-      g.fillStyle = darkText(it.color) ? '#111111' : '#ffffff'; g.shadowColor = 'transparent';
+      g.fillStyle = it.color; g.beginPath(); g.roundRect(-w / 2, cy - h / 2, w, h, r); g.fill();
+      g.fillStyle = darkText(it.color) ? '#111111' : '#ffffff';
     } else {
-      g.fillStyle = it.color; g.shadowColor = 'rgba(0,0,0,.55)'; g.shadowBlur = size * .12; g.shadowOffsetY = size * .03;
+      g.fillStyle = it.color; g.shadowColor = 'rgba(0,0,0,.55)'; g.shadowBlur = size * .12 * unit * (it.k || 1); g.shadowOffsetY = size * .03 * unit * (it.k || 1);
     }
-    g.fillText(ln, it.px, cy);
+    g.fillText(ln, 0, cy);
     g.shadowColor = 'transparent'; g.shadowBlur = 0; g.shadowOffsetY = 0;
   });
+  g.restore();
 }
 
 export function storyEditor(cam, frame, img, { onEditing } = {}) {
@@ -69,14 +72,17 @@ export function storyEditor(cam, frame, img, { onEditing } = {}) {
     it.el.innerHTML = it.lines.map(l => `<span style="${box ? `background:${it.color};color:${darkText(it.color) ? '#111' : '#fff'}` : `color:${it.color}`}">${esc(l) || '&nbsp;'}</span>`).join('<br>');
     it.el.className = `story-text${box ? ' boxed' : ''}`;
     it.el.style.cssText = `left:${it.x}px;top:${it.y}px;font-size:${it.size}px`;
+    pose(it);
     it.el.setAttribute('aria-label', it.text);
   }
+
+  const pose = it => { it.el.style.setProperty('--k', it.k || 1); it.el.style.setProperty('--r', `${it.rot || 0}rad`); };
 
   // --- editing sheet (dimmed photo, big centred text, colours, box, size) ---
   function edit(it) {
     if (cam.querySelector('.story-edit')) return;   // one editor at a time
     const fresh = !it;
-    it = it || { text: '', color: '#ffffff', box: false, size: Math.round(Math.min(W(), 480) * .09), x: W() / 2, y: H() * .42 };
+    it = it || { text: '', color: '#ffffff', box: false, size: Math.round(Math.min(W(), 480) * .09), k: 1, rot: 0, x: W() / 2, y: H() * .42 };
     if (it.el) it.el.hidden = true;
     onEditing?.(true);
     const ov = document.createElement('div'); ov.className = 'story-edit';
@@ -116,34 +122,71 @@ export function storyEditor(cam, frame, img, { onEditing } = {}) {
 
   function remove(it) { it.el?.remove(); items.splice(items.indexOf(it), 1); }
 
-  // --- drag to move, tap to edit, drop on the bin to delete ---
-  function hook(it) {
-    let start = null, moved = false;
-    it.el.addEventListener('pointerdown', e => {
-      e.preventDefault(); it.el.setPointerCapture(e.pointerId);
-      start = { x: e.clientX, y: e.clientY, ox: it.x, oy: it.y }; moved = false;
-    });
-    it.el.addEventListener('pointermove', e => {
-      if (!start) return;
-      const dx = e.clientX - start.x, dy = e.clientY - start.y;
-      if (!moved && Math.hypot(dx, dy) < 6) return;
-      if (!moved) { moved = true; bin.hidden = false; onEditing?.(true); }
-      it.x = Math.max(0, Math.min(W(), start.ox + dx)); it.y = Math.max(0, Math.min(H(), start.oy + dy));
-      it.el.style.left = it.x + 'px'; it.el.style.top = it.y + 'px';
-      const b = bin.getBoundingClientRect(), over = e.clientX > b.left - 20 && e.clientX < b.right + 20 && e.clientY > b.top - 20;
-      bin.classList.toggle('hot', over); it.el.classList.toggle('dying', over);
-    });
-    const end = e => {
-      if (!start) return;
-      const wasMove = moved; start = null;
-      if (!wasMove) { edit(it); return; }
-      const dropped = bin.classList.contains('hot');
-      bin.hidden = true; bin.classList.remove('hot'); onEditing?.(false);
-      if (dropped) remove(it);
-    };
-    it.el.addEventListener('pointerup', end);
-    it.el.addEventListener('pointercancel', end);
+  // --- one finger: drag (drop on the bin to delete), tap to edit.
+  //     two fingers: pinch to resize, twist to rotate. The second finger can be anywhere on the photo. ---
+  const pts = new Map();          // pointerId → {x, y}
+  let g = null;                   // the gesture in progress
+  const two = () => { const [a, b] = [...pts.values()]; return { d: Math.hypot(b.x - a.x, b.y - a.y), a: Math.atan2(b.y - a.y, b.x - a.x), mx: (a.x + b.x) / 2, my: (a.y + b.y) / 2 }; };
+  const rect = () => cam.getBoundingClientRect();
+  function startPinch() {
+    const m = two();
+    g.pinch = { d0: m.d || 1, a0: m.a, k0: g.it.k || 1, r0: g.it.rot || 0, mx0: m.mx, my0: m.my, x0: g.it.x, y0: g.it.y };
+    g.moved = true; bin.hidden = true; onEditing?.(true);
   }
+  function hook(it) {
+    it.el.addEventListener('pointerdown', e => {
+      if (g) return;          // already holding another text
+      e.preventDefault(); e.stopPropagation();
+      layer.setPointerCapture?.(e.pointerId);
+      pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      g = { it, start: { x: e.clientX, y: e.clientY, ox: it.x, oy: it.y }, moved: false, pinch: null };
+      layer.append(it.el);    // bring to front
+    });
+  }
+  layer.addEventListener('pointerdown', e => {
+    if (!g || pts.has(e.pointerId)) return;
+    e.preventDefault(); layer.setPointerCapture?.(e.pointerId);
+    pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (pts.size === 2) startPinch();
+  });
+  layer.addEventListener('pointermove', e => {
+    if (!g || !pts.has(e.pointerId)) return;
+    pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    const it = g.it;
+    if (g.pinch && pts.size >= 2) {
+      const m = two(), p = g.pinch;
+      it.k = Math.max(.35, Math.min(5, p.k0 * m.d / p.d0));
+      it.rot = p.r0 + (m.a - p.a0);
+      // snap to straight when within ~4°
+      const turns = it.rot / (Math.PI / 2), near = Math.round(turns);
+      if (Math.abs(turns - near) * 90 < 4) it.rot = near * Math.PI / 2;
+      it.x = Math.max(0, Math.min(W(), p.x0 + m.mx - p.mx0)); it.y = Math.max(0, Math.min(H(), p.y0 + m.my - p.my0));
+      it.el.style.left = it.x + 'px'; it.el.style.top = it.y + 'px'; pose(it);
+      return;
+    }
+    if (g.pinch) return;      // one finger left after a pinch: hold still until it lifts
+    const dx = e.clientX - g.start.x, dy = e.clientY - g.start.y;
+    if (!g.moved && Math.hypot(dx, dy) < 6) return;
+    if (!g.moved) { g.moved = true; bin.hidden = false; onEditing?.(true); }
+    it.x = Math.max(0, Math.min(W(), g.start.ox + dx)); it.y = Math.max(0, Math.min(H(), g.start.oy + dy));
+    it.el.style.left = it.x + 'px'; it.el.style.top = it.y + 'px';
+    const b = bin.getBoundingClientRect(), over = e.clientX > b.left - 20 && e.clientX < b.right + 20 && e.clientY > b.top - 20;
+    bin.classList.toggle('hot', over); it.el.classList.toggle('dying', over);
+  });
+  const lift = e => {
+    if (!g || !pts.has(e.pointerId)) return;
+    pts.delete(e.pointerId);
+    if (pts.size) return;     // a finger is still down
+    const { it, moved } = g, dropped = bin.classList.contains('hot');
+    g = null; bin.hidden = true; bin.classList.remove('hot'); it.el.classList.remove('dying');
+    if (!moved) { edit(it); return; }
+    onEditing?.(false);
+    if (dropped) remove(it);
+  };
+  layer.addEventListener('pointerup', lift);
+  layer.addEventListener('pointercancel', lift);
+  // the down event lands on the text, the rest of the gesture on the layer
+  layer.style.touchAction = 'none';
 
   tools.querySelector('.story-aa').onclick = () => { if (items.length < MAX_TEXTS) edit(); };
 

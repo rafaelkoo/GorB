@@ -469,12 +469,12 @@ textarea { resize: vertical; line-height: 1.4; }
 /* ---------- text on the check-in photo (Stories style) ---------- */
 .story-layer { position: absolute; inset: 0; z-index: 1; overflow: hidden; }
 .cam-top, .cam-bottom { z-index: 2; }
-.story-text { position: absolute; transform: translate(-50%, -50%); text-align: center; white-space: nowrap; line-height: 1.18;
+.story-text { position: absolute; transform: translate(-50%, -50%) rotate(var(--r, 0rad)) scale(var(--k, 1)); transform-origin: center; text-align: center; white-space: nowrap; line-height: 1.18;
   font-family: 'Barlow Condensed', 'Arial Narrow', 'Noto Sans HK', 'PingFang HK', system-ui, sans-serif; font-weight: 800;
-  touch-action: none; cursor: grab; user-select: none; -webkit-user-select: none; transition: transform .15s var(--spring), opacity .15s; }
+  touch-action: none; cursor: grab; user-select: none; -webkit-user-select: none; transition: opacity .15s; will-change: transform; }
 .story-text span { text-shadow: 0 .03em .12em rgba(0,0,0,.55); }
 .story-text.boxed span { text-shadow: none; padding: .08em .32em; border-radius: .22em; -webkit-box-decoration-break: clone; box-decoration-break: clone; }
-.story-text.dying { transform: translate(-50%, -50%) scale(.55); opacity: .6; }
+.story-text.dying { transform: translate(-50%, -50%) rotate(var(--r, 0rad)) scale(calc(var(--k, 1) * .55)); opacity: .6; transition: transform .15s var(--spring), opacity .15s; }
 .story-tools { position: absolute; z-index: 3; top: max(12px, env(safe-area-inset-top)); right: 12px; }
 .story-aa { width: 48px; height: 48px; min-height: 0; padding: 0; border-radius: 50%; background: rgba(0,0,0,.45); color: #fff; border: 1.5px solid rgba(255,255,255,.6);
   font: 800 1.15rem/1 'Barlow Condensed', sans-serif; }
