@@ -17,10 +17,12 @@ import { customExercises } from './supa.js';
 // exercises people added (yours + groupmates'), refreshed at most once a minute or when told to
 let customAt = 0;
 async function loadCustom(user) {
-  if (Date.now() - customAt < 60000) return;
+  if (Date.now() - customAt < 5000) return;
   try { registerCustom(await customExercises(), user.id); customAt = Date.now(); } catch { /* keep what we had */ }
 }
 window.addEventListener('customchange', () => { customAt = 0; });
+// coming back to the app (switching from another app or tab) picks up what groupmates added meanwhile
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') { customAt = 0; } });
 
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
 

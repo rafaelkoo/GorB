@@ -164,6 +164,7 @@ export async function libraryScreen(user) {
             <button class="ghost x" data-del="${x.id}" aria-label="${t('Delete', '刪除')} ${esc(x.en)}">✕</button></li>`).join('')}</ul>
           <p class="muted small">${t('Renaming changes it for your whole group. Deleting hides its past records too.', '改名會連 group 入面嘅人一齊改。刪除之後，以前嘅記錄都會睇唔到。')}</p>`
           : `<p class="muted">${t('Add things the library doesn’t have, like wall climbing or a machine only your gym has.', '加動作庫冇嘅嘢，例如攀石，或者你 gym 獨有嘅機。')}</p>`}
+        ${groupList().length ? `<div class="grp-ex"><p class="muted small">${t('Added by your group', 'Group 加嘅')}</p><ul class="own-list">${groupList().map(x => `<li><b>${esc(x.en)}</b><span class="muted small">${x.kind === 'minutes' ? t('minutes · in Cardio on the Log page', '分鐘 · 喺記錄頁有氧卡') : t('weight × reps', '重量 × 次數')}</span></li>`).join('')}</ul></div>` : ''}
         <button id="addown">+ ${t('Add your own exercise', '加自己嘅動作')}</button>
         <div class="req"><div class="card-head"><h4>${t('Requests', '請求')}</h4><button class="link-btn" id="askex">${t('Request an exercise', '請求加動作')}</button></div>
           ${reqs.length ? `<ul class="own-list">${reqs.map(r => `<li><b>${esc(r.name)}</b><span class="tag st-${r.status}">${esc(STATUS[r.status])}</span>
@@ -190,6 +191,9 @@ export async function libraryScreen(user) {
       try { await deleteCustom(user, b.dataset.del); toast(t('Deleted.', '刪除咗。')); draw(); } catch (err) { showError(err); }
     });
   };
+  // added by groupmates, both kinds
+  const groupList = () => [...EXERCISES.filter(([id]) => LIB[id]?.custom && !LIB[id].mine).map(([id]) => ({ ...LIB[id], kind: 'weight' })),
+    ...CUSTOM_CARDIO.filter(c => !c.mine).map(c => ({ ...c, kind: 'minutes' }))];
   // your own, both kinds
   const mineList = () => [...EXERCISES.filter(([id]) => LIB[id]?.custom && LIB[id].mine).map(([id]) => ({ ...LIB[id], kind: 'weight' })),
     ...CUSTOM_CARDIO.filter(c => c.mine).map(c => ({ ...c, kind: 'minutes' }))];

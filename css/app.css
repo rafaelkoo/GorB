@@ -431,3 +431,4 @@ textarea { resize: vertical; line-height: 1.4; }
 .tag.st-open { background: var(--mat-2); color: var(--chalk); }
 .tag.st-added { background: var(--green); color: #fff; }
 .tag.st-declined { background: transparent; color: var(--dust); border: 1px solid var(--line); }
+.grp-ex { margin: 4px 0 10px; } .grp-ex .own-list b { flex: 1; min-width: 0; }
