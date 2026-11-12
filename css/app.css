@@ -504,3 +504,6 @@ textarea { resize: vertical; line-height: 1.4; }
 .hold.on { background: var(--yellow); color: #111; border-color: var(--yellow); animation: holdpulse 1s ease-in-out infinite; }
 @keyframes holdpulse { 50% { box-shadow: 0 0 0 5px rgba(242,194,48,.25); } }
 .unit-btn { white-space: nowrap; font-size: .78rem; }
+.own-list .cat-own { width: auto; min-width: 0; flex: none; padding: 6px 8px; font-size: .8rem; min-height: 36px; }
+.own-ex > .own-list li { flex-wrap: wrap; }
+.own-ex > .own-list li input { flex: 1 1 140px; }

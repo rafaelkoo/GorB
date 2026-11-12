@@ -4,8 +4,8 @@
 import * as api from './supa.js';
 import { EX as FT, bodyParts, muscleZh, equipZh } from './ftdata.js';
 import { MOVES } from './moves.js';
-import { EXERCISES, CATS, EX as LIB, CUSTOM_CARDIO } from './exercises.js';
-import { addCustomSheet, renameCustom, deleteCustom, requestSheet, setCustomKind } from './custom.js';
+import { EXERCISES, CATS, EX as LIB, CUSTOM_CARDIO, searchText } from './exercises.js';
+import { addCustomSheet, renameCustom, deleteCustom, requestSheet, setCustomKind, setCustomCat } from './custom.js';
 import { t, getLang, fmtDay } from './i18n.js';
 import { exName, kg, spark, bySession, prOf } from './tracker.js';
 import { cleanPlan, dayName } from './plan.js';
@@ -157,14 +157,15 @@ export async function libraryScreen(user) {
   const loadReqs = async () => { try { reqs = await api.myRequests(); } catch { reqs = []; } };
   await loadReqs();
   const draw = () => {
-    const list = EXERCISES.filter(([id, en, zh, c]) => (!cat || c === cat) && (!q || `${en} ${zh}`.toLowerCase().includes(q)));
+    const list = EXERCISES.filter(([id, en, zh, c]) => (!cat || c === cat) && (!q || searchText(id).includes(q)));
     const el = render(`
       <header class="page-head"><div><h2>${t('Exercise library', '動作庫')}</h2><p class="muted">${t(`${EXERCISES.filter(([id]) => !LIB[id]?.custom).length} exercises with 3D demos`, `${EXERCISES.filter(([id]) => !LIB[id]?.custom).length} 個動作，全部有 3D 示範`)}</p></div>
         <a class="link" href="#/log">${t('Today', '今日')} ›</a></header>
       <section class="card own-ex"><div class="card-head"><h3>${t('Your own exercises', '自己加嘅動作')}</h3></div>
         ${mineList().length ? `<ul class="own-list">${mineList().map(x => `<li data-own="${x.id}">
             <input value="${esc(x.en)}" maxlength="40" aria-label="${t('Name', '名')}">${x.kind === 'minutes' ? `<span class="muted small">${t('minutes', '分鐘')}</span>`
-              : `<button class="ghost small-btn unit-btn" data-unit="${x.id}" data-to="${x.kind === 'timed' ? 'weight' : 'timed'}" aria-label="${x.kind === 'timed' ? t('Switch to reps', '轉做次數') : t('Switch to seconds', '轉做秒數')}">${x.kind === 'timed' ? t('kg × sec', 'kg × 秒') : t('kg × reps', 'kg × 次')} ⇄</button>`}
+              : `<select class="cat-own" data-catown="${x.id}" aria-label="${t('Body part', '部位')} ${esc(x.en)}">${Object.keys(CATS).map(k => `<option value="${k}" ${x.cat === k ? 'selected' : ''}>${esc(t(CATS[k], CAT_ZH[k]))}</option>`).join('')}</select>
+                <button class="ghost small-btn unit-btn" data-unit="${x.id}" data-to="${x.kind === 'timed' ? 'weight' : 'timed'}" aria-label="${x.kind === 'timed' ? t('Switch to reps', '轉做次數') : t('Switch to seconds', '轉做秒數')}">${x.kind === 'timed' ? t('kg × sec', 'kg × 秒') : t('kg × reps', 'kg × 次')} ⇄</button>`}
             <button class="ghost x" data-del="${x.id}" aria-label="${t('Delete', '刪除')} ${esc(x.en)}">✕</button></li>`).join('')}</ul>
           <p class="muted small">${t('Renaming changes it for your whole group. Deleting hides its past records too.', '改名會連 group 入面嘅人一齊改。刪除之後，以前嘅記錄都會睇唔到。')}</p>`
           : `<p class="muted">${t('Add things the library doesn’t have, like wall climbing or a machine only your gym has.', '加動作庫冇嘅嘢，例如攀石，或者你 gym 獨有嘅機。')}</p>`}
@@ -189,6 +190,9 @@ export async function libraryScreen(user) {
       const id = inp.closest('[data-own]').dataset.own, name = inp.value.trim().replace(/\s+/g, ' ');
       if (!name) { draw(); return; }
       try { await renameCustom(user, id, name); toast(t('Renamed.', '改咗名。')); draw(); } catch (err) { showError(err); }
+    });
+    el.querySelectorAll('[data-catown]').forEach(sel => sel.onchange = async () => {
+      try { await setCustomCat(user, sel.dataset.catown, sel.value); toast(t('Body part changed.', '部位改咗。')); draw(); } catch (err) { showError(err); }
     });
     el.querySelectorAll('[data-unit]').forEach(b => b.onclick = async () => {
       try { await setCustomKind(user, b.dataset.unit, b.dataset.to); toast(b.dataset.to === 'timed' ? t('Now logged in seconds. Past sets keep their numbers.', '而家用秒數記錄。以前嘅記錄數字不變。') : t('Now logged in reps. Past sets keep their numbers.', '而家用次數記錄。以前嘅記錄數字不變。')); draw(); } catch (err) { showError(err); }

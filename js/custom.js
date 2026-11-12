@@ -65,6 +65,7 @@ export function addCustomSheet(user, { kind = 'weight', name = '' } = {}) {
 
 // rename / delete controls for one of your own (used in the library)
 export async function renameCustom(user, id, name) { await api.renameCustomExercise(id, name); await refreshCustom(user.id); }
+export async function setCustomCat(user, id, cat) { await api.setCustomExerciseCat(id, cat); await refreshCustom(user.id); }
 export async function setCustomKind(user, id, kind) { await api.setCustomExerciseKind(id, kind); await refreshCustom(user.id); }
 export async function deleteCustom(user, id) { await api.deleteCustomExercise(id); await refreshCustom(user.id); }
 

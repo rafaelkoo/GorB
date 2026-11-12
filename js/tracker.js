@@ -1,6 +1,6 @@
 // Gym tracker screens: log today's workout, and a person's progress.
 import * as api from './supa.js';
-import { EXERCISES, EX, CATS, BIG_FOUR, isTimed } from './exercises.js';
+import { EXERCISES, EX, CATS, BIG_FOUR, isTimed, searchText } from './exercises.js';
 import { t, getLang, fmtDay, fmtLongToday } from './i18n.js';
 import { cleanPlan, dayName, suggestDay, findItem } from './plan.js';
 import { openExercise } from './exsheet.js';
@@ -228,7 +228,7 @@ export function picker(onPick, only) {
   box.className = 'sheet'; box.setAttribute('role', 'dialog'); box.setAttribute('aria-label', t('Add exercise', '加動作'));
   let cat = '', q = '';
   const pool = only ? EXERCISES.filter(([id]) => only.includes(id)) : EXERCISES;
-  const list = () => pool.filter(([id, en, zh, c]) => (!cat || c === cat) && (!q || `${en} ${zh}`.toLowerCase().includes(q)));
+  const list = () => pool.filter(([id, en, zh, c]) => (!cat || c === cat) && (!q || searchText(id).includes(q)));
   function draw() {
     box.innerHTML = `<div class="sheet-in">
       <div class="ex-head"><h3>${t('Pick an exercise', '揀動作')}</h3><button class="ghost x" id="close" aria-label="${t('Close', '關閉')}">✕</button></div>

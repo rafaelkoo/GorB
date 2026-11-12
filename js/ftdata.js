@@ -123,6 +123,7 @@ const RAW = [
   ['lu_raises', '呂小軍舉', 'Lu raises', 'shoulders', 'Dumbbell', 'I', ['Shoulders', 'Rotator Cuff'], '前平舉然後旋轉成側平舉，一氣呵成。以呂小軍命名。', 'Front raise then rotate to lateral raise in one fluid motion. Named after Lu Xiaojun.', 'lu', 0],
   ['bb_curl', '槓鈴彎舉', 'Barbell curl', 'arms', 'Barbell', 'B', ['Biceps', 'Forearms'], '手肘夾緊身旁，將槓鈴捲至下巴。', 'Curl bar to chin keeping elbows tucked at sides.', 'curl_bb'],
   ['hammer', '啞鈴錘式彎舉', 'Hammer curl', 'arms', 'Dumbbell', 'B', ['Biceps', 'Brachialis'], '中立握（拇指朝上），交替捲起。', 'Neutral grip (thumbs up), curl alternating.', 'hammer'],
+  ['db_curl', '啞鈴二頭彎舉', 'Dumbbell bicep curl', 'arms', 'Dumbbell', 'B', ['Biceps', 'Forearms'], '掌心向前，手肘貼身，捲起時手腕微微向外轉。', 'Palms forward, elbows at your sides; turn the wrists out slightly as you curl.', 'curl_db'],
   ['cable_pd', '滑輪下壓', 'Cable pushdown', 'arms', 'Cable', 'B', ['Triceps'], '手肘貼身固定，只用前臂將把手壓到手伸直。', 'Elbows pinned to your sides, press the handle down until the arms are straight.', 'pushdown'],
   ['skull', '仰臥三頭肌伸展', 'Skull crusher', 'arms', 'Barbell', 'I', ['Triceps'], '只彎手肘將槓鈴降至額頭，再推回原位。', 'Lower bar to forehead by bending only elbows, extend back up.', 'skull'],
   ['dip', '雙槓臂屈伸', 'Dip', 'arms', 'Bodyweight', 'I', ['Triceps', 'Chest'], '下沉至手肘90度，完全推起。', 'Lower until elbows at 90°, press up fully.', 'dip'],

@@ -56,7 +56,7 @@ export const EXERCISES = [["bench_press","Bench press","槓鈴臥推","chest","B
   ["w_press","W-press (prone Y raise)","W字推舉","shoulders","Dumbbell"],
   ["lu_raises","Lu raises","呂小軍舉","shoulders","Dumbbell"],
   ["bb_curl","Barbell curl","槓鈴彎舉","arms","Barbell"],
-  ["hammer","Hammer curl","啞鈴錘式彎舉","arms","Dumbbell"],
+  ["hammer","Hammer curl","啞鈴錘式彎舉","arms","Dumbbell"],["db_curl","Dumbbell bicep curl","啞鈴二頭彎舉","arms","Dumbbell"],
   ["cable_pd","Cable pushdown","滑輪下壓","arms","Cable"],
   ["skull","Skull crusher","仰臥三頭肌伸展","arms","Barbell"],
   ["dip","Dip","雙槓臂屈伸","arms","Bodyweight"],
@@ -107,3 +107,13 @@ export const newCustomId = () => 'c_' + Array.from(crypto.getRandomValues(new Ui
 
 // timed holds (your own 'timed' exercises): the reps column holds seconds
 export const isTimed = id => !!EX[id]?.timed;
+
+// what a search matches: both names, the body part, the muscles it works (English and Chinese) and
+// everyday other names, so "bicep" finds every curl and "二頭" finds them in Chinese too
+import { EX as FT, muscleZh, ALIAS as FT_ALIAS } from './ftdata.js';
+const ALIAS_EN = { db_curl: 'bicep curl biceps curl dumbbell curl 二頭彎舉 二頭', bb_curl: 'bicep curl', bench_press: 'bench', ohp: 'shoulder press overhead press military press', rdl: 'romanian deadlift', lat_pd: 'lat pulldown pull down', pullup: 'pull up chin up' };
+export function searchText(id) {
+  const e = EX[id]; if (!e) return '';
+  const ms = FT[id]?.muscles || [];
+  return `${e.en} ${e.zh} ${CATS[e.cat] || ''} ${ms.join(' ')} ${ms.map(muscleZh).join(' ')} ${FT_ALIAS[id] || ''} ${ALIAS_EN[id] || ''}`.toLowerCase();
+}
