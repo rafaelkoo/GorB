@@ -82,10 +82,12 @@ export async function logScreen(user) {
   });
   // start from: unsaved draft → what was already saved today → the suggested day → empty
   let draft = loadDraft(user.id);
+  // drafts kept from before exercises were marked one by one: treat everything in a saved draft as logged
+  if (draft?.saved && !draft.items.some(it => 'fromSave' in it)) draft.items.forEach(it => { it.fromSave = true; });
   if (!draft) {
     const items = Object.entries(history)
       .filter(([, list]) => list.at(-1)?.date === today)
-      .map(([id, list]) => ({ id, sets: list.at(-1).sets.map(s => ({ kg: s.kg, reps: s.reps })) }));
+      .map(([id, list]) => ({ id, fromSave: true, sets: list.at(-1).sets.map(s => ({ kg: s.kg, reps: s.reps })) }));
     if (items.length) draft = { items, saved: true, dayId: null };
     else draft = { saved: false, dayId: suggested?.id || null, items: itemsFor(suggested) };
   }
@@ -110,7 +112,8 @@ export async function logScreen(user) {
       ${draft.items.length ? `<p class="muted small">${t(`${draft.items.length} exercise${draft.items.length === 1 ? '' : 's'} · ${nSets} set${nSets === 1 ? '' : 's'} · kept on this phone until you save`, `${draft.items.length} 個動作 · ${nSets} 組 · 未儲存之前會暫存喺呢部手機`)}</p>` : ''}
       ${draft.items.map((it, i) => {
         const last = past(it.id).at(-1);
-        return `<section class="card ex" data-i="${i}">
+        const head = it.extra && !draft.items[i - 1]?.extra ? `<p class="ex-extra-head">${t('Already done today (not in this day)', '今日已做（唔屬於呢日）')}</p>` : '';
+        return `${head}<section class="card ex${it.extra ? ' extra' : ''}" data-i="${i}">
           <div class="ex-head"><button class="ex-name" data-open="${it.id}"><h3>${esc(exName(it.id))}</h3><span class="muted">${esc(exSub(it.id))} · ${t('how to', '教學')} ›</span></button>
             <button class="ghost x" data-act="drop" aria-label="${t('Remove', '移除')} ${esc(exName(it.id))}">✕</button></div>
           <p class="muted last">${last ? `${t('Last time', '上次')} (${esc(fmtDay(last.date))}): ${esc(setsText(last.sets))}` : t('First time logging this', '第一次記錄呢個動作')}</p>
@@ -134,13 +137,15 @@ export async function logScreen(user) {
     wireCardio($app(), cst, user, draw);
     $app().querySelectorAll('[data-pick]').forEach(b => b.onclick = () => {
       const id = b.dataset.pick || null; if (id === draft.dayId) return;
-      const ticked = draft.items.some(it => it.sets.some(x => x.done));
-      // keep what's been done; swap only the untouched exercises for the new day's
-      const keepItems = draft.items.filter(it => it.sets.some(x => x.done) || draft.saved);
+      // the list becomes exactly this day's exercises, in its order. Anything already logged today
+      // (ticked, or saved earlier) is kept: on the day's exercise if it's in the day, otherwise
+      // underneath as "already done today", since saving replaces the whole day's record.
+      const logged = it => it.fromSave || it.sets.some(x => x.done);
       const day = fullPlan.days.find(d => d.id === id) || null;
-      const add = itemsFor(day).filter(n => !keepItems.some(k => k.id === n.id));
-      draft = { ...draft, dayId: id, items: [...keepItems, ...add] };
-      pickMsg = ticked || draft.saved ? t('Kept what you’ve done and added the rest.', '做咗嘅會保留，再加埋其餘動作。') : '';
+      const dayItems = itemsFor(day).map(n => { const old = draft.items.find(o => o.id === n.id && logged(o)); return old ? { ...old, extra: false } : n; });
+      const extras = draft.items.filter(o => logged(o) && !dayItems.some(n => n.id === o.id)).map(o => ({ ...o, extra: true }));
+      draft = { ...draft, dayId: id, items: [...dayItems, ...extras] };
+      pickMsg = extras.length ? t('Showing this day’s exercises. What you already did today is kept underneath.', '而家顯示呢日嘅動作。今日已經做咗嘅就放喺下面。') : '';
       keep(); draw(); popAfter(`[data-pick="${id || ''}"]`);
     });
 
