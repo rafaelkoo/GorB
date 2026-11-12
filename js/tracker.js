@@ -10,7 +10,7 @@ import { points, coverage, levelCardHtml, coverageHtml, habitList } from './scor
 import { cardioHtml, wireCardio } from './cardio.js';
 import { schemeOf } from './scheme.js';
 import { reviewDue } from './review.js';
-import { addCustomSheet } from './custom.js';
+import { addCustomSheet, requestSheet } from './custom.js';
 import { btnLoading, btnDone, btnReset, popAfter } from './motion.js';
 
 const $app = () => document.getElementById('app');
@@ -216,13 +216,20 @@ export function picker(onPick, only) {
       <input id="q" placeholder="${t('Search, e.g. bench', '搜尋，例如 臥推')}" value="${esc(q)}" autocomplete="off" aria-label="${t('Search', '搜尋')}">
       <div class="chips"><button data-c="" class="${cat ? '' : 'on'}">${t('All', '全部')}</button>${Object.keys(CATS).map(k => `<button data-c="${k}" class="${cat === k ? 'on' : ''}">${esc(catName(k))}</button>`).join('')}</div>
       <ul class="pick">${list().map(([id, , , , equip]) => `<li><button data-id="${id}"><b>${esc(exName(id))}</b> <span class="muted">${EX[id].custom ? esc(EX[id].mine ? t('Added by you', '你加嘅') : t('Added by your group', 'Group 加嘅')) : `${esc(exSub(id))} · ${esc(equipName(equip))}`}</span></button></li>`).join('') || `<li class="muted">${t('No match', '搵唔到')}</li>`}
-        <li><button class="add-own" id="addown">+ ${q ? t(`Add “${esc(q)}” as your own exercise`, `將「${esc(q)}」加做自己嘅動作`) : t('Add your own exercise', '加自己嘅動作')}</button></li></ul>
+        <li><button class="add-own" id="addown">+ ${q ? t(`Add “${esc(q)}” as your own exercise`, `將「${esc(q)}」加做自己嘅動作`) : t('Add your own exercise', '加自己嘅動作')}</button></li>
+        <li><button class="add-own quiet" id="askex">${t('Request it with a 3D demo', '請求加入動作庫（連 3D 示範）')}</button></li></ul>
     </div>`;
     box.querySelector('#close').onclick = () => box.remove();
     const qi = box.querySelector('#q');
     qi.oninput = () => { q = qi.value.trim().toLowerCase(); const pos = qi.selectionStart; draw(); const n = box.querySelector('#q'); n.focus(); n.setSelectionRange(pos, pos); };
     box.querySelectorAll('[data-c]').forEach(b => b.onclick = () => { cat = b.dataset.c; draw(); });
     box.querySelectorAll('[data-id]').forEach(b => b.onclick = () => { box.remove(); onPick(b.dataset.id); });
+    box.querySelector('#askex').onclick = async () => {
+      box.hidden = true;
+      const sent = await requestSheet({ name: box.querySelector('#q').value.trim() });
+      box.hidden = false;
+      if (sent) { box.remove(); note(t('Request sent. Check the library to see when it’s added.', '請求已送出。加咗之後喺動作庫睇得到。')); }
+    };
     box.querySelector('#addown').onclick = async () => {
       const user = await api.currentUser(); if (!user) return;
       const raw = box.querySelector('#q').value.trim();

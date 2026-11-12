@@ -178,6 +178,11 @@ export const addCustomExercise = row => sb.from('custom_exercises').insert(row).
 export const renameCustomExercise = (id, name) => sb.from('custom_exercises').update({ name }).eq('id', id).then(must);
 export const deleteCustomExercise = id => sb.from('custom_exercises').delete().eq('id', id).then(must);
 
+// ---------- requests for new library exercises (each person sees only their own) ----------
+export const myRequests = () => sb.from('exercise_requests').select('id, name, note, status, created_at').order('created_at', { ascending: false }).then(must);
+export const requestExercise = (name, note) => sb.from('exercise_requests').insert({ name, note: note || null }).then(must);
+export const withdrawRequest = id => sb.from('exercise_requests').delete().eq('id', id).then(must);
+
 // ---------- cardio (private) ----------
 export const cardioLogs = (userId, from) => sb.from('cardio_logs').select('performed_on, kind, minutes').eq('user_id', userId).gte('performed_on', from).order('performed_on').then(must);
 export const setCardio = (userId, kind, minutes) =>

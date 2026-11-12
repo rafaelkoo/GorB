@@ -53,8 +53,8 @@ main > * { min-width: 0; }
 
 /* ---------- controls ---------- */
 form { display: grid; gap: 10px; }
-input, select { font: inherit; color: var(--chalk); background: var(--floor); border: 1px solid var(--line); border-radius: var(--r-ctl); padding: 11px 12px; width: 100%; min-height: 44px; }
-input:focus, select:focus { border-color: var(--dust); outline: none; }
+input, select, textarea { font: inherit; color: var(--chalk); background: var(--floor); border: 1px solid var(--line); border-radius: var(--r-ctl); padding: 11px 12px; width: 100%; min-height: 44px; }
+input:focus, select:focus, textarea:focus { border-color: var(--dust); outline: none; }
 button, .big, .cta { font: 600 1rem/1.2 var(--body); border: 0; border-radius: var(--r-ctl); padding: 12px 16px; min-height: 44px; background: var(--red); color: var(--red-ink); cursor: pointer; text-align: center; text-decoration: none; display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
 button:disabled { opacity: .55; cursor: default; }
 .ghost { background: transparent; color: var(--chalk); border: 1px solid var(--line); }
@@ -422,3 +422,12 @@ button.is-loading:disabled, button.is-done:disabled { opacity: 1; cursor: defaul
 .own-list li { display: flex; align-items: center; gap: 10px; }
 .own-list input { flex: 1; min-width: 0; }
 .own-list .muted { white-space: nowrap; }
+textarea { resize: vertical; line-height: 1.4; }
+.link-btn { background: none; border: 0; color: var(--blue); font-weight: 600; padding: 6px 0; min-height: 0; }
+.pick .add-own.quiet { border-style: solid; border-color: transparent; color: var(--dust); font-weight: 500; }
+.req { border-top: 1px solid var(--line); margin-top: 14px; padding-top: 10px; }
+.req h4 { margin: 0; font-size: 1rem; }
+.req .own-list b { flex: 1; min-width: 0; }
+.tag.st-open { background: var(--mat-2); color: var(--chalk); }
+.tag.st-added { background: var(--green); color: #fff; }
+.tag.st-declined { background: transparent; color: var(--dust); border: 1px solid var(--line); }

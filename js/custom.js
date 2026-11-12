@@ -64,3 +64,32 @@ export function addCustomSheet(user, { kind = 'weight', name = '' } = {}) {
 // rename / delete controls for one of your own (used in the library)
 export async function renameCustom(user, id, name) { await api.renameCustomExercise(id, name); await refreshCustom(user.id); }
 export async function deleteCustom(user, id) { await api.deleteCustomExercise(id); await refreshCustom(user.id); }
+
+// ask for an exercise to be added to the library with a 3D demo; resolves true when sent
+export function requestSheet({ name = '' } = {}) {
+  return new Promise(resolve => {
+    const box = document.createElement('div');
+    box.className = 'sheet'; box.setAttribute('role', 'dialog'); box.setAttribute('aria-modal', 'true');
+    box.setAttribute('aria-label', t('Request an exercise', '請求加動作'));
+    const close = v => { box.remove(); resolve(v); };
+    box.innerHTML = `<form class="sheet-in custom-add">
+      <div class="ex-head"><h3>${t('Request an exercise', '請求加動作')}</h3><button type="button" class="ghost x" id="rclose" aria-label="${t('Close', '關閉')}">✕</button></div>
+      <p class="muted small">${t('Ask for an exercise to be added to the library with a 3D demo. You can see whether it’s been added in the library.', '請求將一個動作加入動作庫，連 3D 示範。加咗未，喺動作庫睇得到。')}</p>
+      <label class="field">${t('Exercise', '動作')}<input id="rname" maxlength="60" required value="${esc(name)}" placeholder="${t('e.g. Hip abduction machine', '例如：髖外展機')}" autocomplete="off"></label>
+      <label class="field">${t('Anything else? (optional)', '補充（可以唔填）')}<textarea id="rnote" maxlength="300" rows="3" placeholder="${t('A video link, or what it works', '影片連結，或者練邊度')}"></textarea></label>
+      <p class="error" id="rerr" hidden></p>
+      <button type="submit" id="rsend">${t('Send request', '送出請求')}</button>
+    </form>`;
+    box.querySelector('#rclose').onclick = () => close(false);
+    box.addEventListener('click', e => { if (e.target === box) close(false); });
+    box.querySelector('form').onsubmit = async e => {
+      e.preventDefault();
+      const n = box.querySelector('#rname').value.trim().replace(/\s+/g, ' '); if (!n) return;
+      const btn = box.querySelector('#rsend'); btn.disabled = true;
+      try { await api.requestExercise(n, box.querySelector('#rnote').value.trim()); close(true); }
+      catch (err) { const p = box.querySelector('#rerr'); p.hidden = false; p.textContent = err?.message || String(err); btn.disabled = false; }
+    };
+    document.body.append(box);
+    box.querySelector('#rname').focus();
+  });
+}
