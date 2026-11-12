@@ -1,10 +1,10 @@
 // Service worker: offline app shell + push notifications.
 // Bump VERSION whenever app files change so phones pick up the new copy.
-const VERSION = 'gob-v0.21.1';
+const VERSION = 'gob-v0.22.0';
 const SHELL = [
   './', 'index.html', 'manifest.json', 'css/app.css',
   'js/main.js', 'js/config.js', 'js/supa.js', 'js/camera.js', 'js/ui.js', 'js/push.js', 'js/tracker.js', 'js/exercises.js', 'js/i18n.js', 'js/icons.js', 'js/me.js', 'js/ranks.js', 'js/plan.js', 'js/importer.js', 'js/exsheet.js', 'js/coach.js', 'js/timer.js', 'js/score.js', 'js/scheme.js', 'js/cardio.js', 'js/review.js', 'js/motion.js', 'js/custom.js',
-  'icons/icon-192.png', 'icons/icon-512.png'
+  'icons/icon-192.png', 'icons/icon-512.png', 'icons/icon-maskable-512.png', 'icons/apple-touch-icon.png', 'icons/favicon-32.png'
 ];
 
 self.addEventListener('install', e => {
@@ -37,7 +37,7 @@ self.addEventListener('push', e => {
   e.waitUntil(self.registration.showNotification(data.title || 'Gym or Bitch', {
     body: data.body || 'Someone is at the gym. Are you?',
     icon: 'icons/icon-192.png',
-    badge: 'icons/icon-192.png',
+    badge: 'icons/icon-monochrome-512.png',
     data: { url: data.url || './' }
   }));
 });
