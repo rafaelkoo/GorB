@@ -3,7 +3,7 @@
 // someone in the group has logged appear, with only the people who logged them.
 import * as api from './supa.js';
 import { t, monthName, fmtDay } from './i18n.js';
-import { EX } from './exercises.js';
+import { EX, vGrade } from './exercises.js';
 import { exName } from './tracker.js';
 import { esc, render } from './ui.js';
 
@@ -41,7 +41,19 @@ export async function ranksScreen(user, groupId, measureId = 'days') {
   const chip = (id, label, on) => `<button role="tab" aria-selected="${on}" data-m="${id}" class="${on ? 'on' : ''}">${esc(label)}</button>`;
 
   let body;
-  if (isEx) {
+  if (isEx && EX[measureId].climb) {
+    // climbing: hardest V grade topped, then most climbs topped
+    const list = byEx[measureId].map(r => ({ r, g: +r.best_kg })).sort((a, b) => b.g - a.g || b.r.sets_total - a.r.sets_total);
+    const top = Math.max(...list.map(x => x.g + 1), 1);
+    body = `<div class="card-head"><h3>${esc(exName(measureId))}</h3><span class="muted small">${t('Other', '其他')}</span></div>
+      <p class="muted small">${t('Hardest grade topped, then most climbs topped', '頂過最難嘅級數，然後頂得最多條')}</p>
+      <ol class="rank">${list.map((x, i) => `<li class="${x.r.user_id === user.id ? 'me' : ''}">
+          <span class="pos">${MEDAL[i] || i + 1}</span>
+          <div class="who"><a href="#/p/${x.r.user_id}">${esc(x.r.display_name)}</a>
+            <span class="muted small">${esc(t(`${x.r.sets_total} topped`, `頂咗 ${x.r.sets_total} 條`))} · ${t('last', '上次')} ${esc(fmtDay(x.r.last_on))}</span>
+            <span class="bar"><i style="width:${Math.round((x.g + 1) / top * 100)}%"></i></span></div>
+          <b>${vGrade(x.g)}</b></li>`).join('')}</ol>`;
+  } else if (isEx) {
     const list = byEx[measureId].map(r => ({ r, kg: +r.best_kg, reps: r.best_reps || 0 }))
       .sort((a, b) => b.kg - a.kg || b.reps - a.reps);
     const bw = list.every(x => x.kg === 0), top = Math.max(...list.map(x => (bw ? x.reps : x.kg)), 1);

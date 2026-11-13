@@ -84,6 +84,13 @@ export const EXERCISES = [["bench_press","Bench press","槓鈴臥推","chest","B
   ["cable_woodchop","Cable woodchop","滑輪伐木","core","Cable"],
   ["landmine_rotation","Landmine rotation","地雷管旋轉","core","Barbell"]];
 export const EX = Object.fromEntries(EXERCISES.map(([id, en, zh, cat, equip]) => [id, { id, en, zh, cat, equip }]));
+// Wall climbing (bouldering): each "set" is one climb. weight_kg holds the V grade (V0 = 0 … V17 = 17)
+// and reps is 1 if you topped it, 0 if it was an attempt. No 3D demo.
+EXERCISES.push(['wall_climb', 'Wall climbing', '攀石', 'other', 'Bodyweight']);
+EX.wall_climb = { id: 'wall_climb', en: 'Wall climbing', zh: '攀石', cat: 'other', equip: 'Bodyweight', climb: true };
+export const isClimb = id => !!EX[id]?.climb;
+export const GRADES = Array.from({ length: 18 }, (_, i) => i);
+export const vGrade = n => `V${Math.max(0, Math.round(+n || 0))}`;
 // The four lifts on the group's PB board (the old Excel "Personal Bests" sheet)
 export const BIG_FOUR = ['bench_press', 'deadlift', 'squat', 'ohp'];
 // FitTrack's default weekly plan (cardio items left out)
@@ -111,7 +118,7 @@ export const isTimed = id => !!EX[id]?.timed;
 // what a search matches: both names, the body part, the muscles it works (English and Chinese) and
 // everyday other names, so "bicep" finds every curl and "二頭" finds them in Chinese too
 import { EX as FT, muscleZh, ALIAS as FT_ALIAS } from './ftdata.js';
-const ALIAS_EN = { db_curl: 'bicep curl biceps curl dumbbell curl 二頭彎舉 二頭', bb_curl: 'bicep curl', bench_press: 'bench', ohp: 'shoulder press overhead press military press', rdl: 'romanian deadlift', lat_pd: 'lat pulldown pull down', pullup: 'pull up chin up' };
+const ALIAS_EN = { wall_climb: 'climbing climb bouldering boulder rock climbing wall 攀石 抱石 攀岩 石牆', db_curl: 'bicep curl biceps curl dumbbell curl 二頭彎舉 二頭', bb_curl: 'bicep curl', bench_press: 'bench', ohp: 'shoulder press overhead press military press', rdl: 'romanian deadlift', lat_pd: 'lat pulldown pull down', pullup: 'pull up chin up' };
 export function searchText(id) {
   const e = EX[id]; if (!e) return '';
   const ms = FT[id]?.muscles || [];

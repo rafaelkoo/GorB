@@ -36,7 +36,7 @@ export function weeklyReview(d, today) {
 
   // lifts trained this week: against a target if there is one, otherwise est. 1RM vs the last session before this week
   const tg = Object.fromEntries(d.targets.map(x => [x.exercise_id, x]));
-  const ids = Object.keys(hist).filter(id => EX[id] && !EX[id].timed && hist[id].some(s => s.date >= from && s.date <= today));
+  const ids = Object.keys(hist).filter(id => EX[id] && !EX[id].timed && !EX[id].climb && hist[id].some(s => s.date >= from && s.date <= today));
   const lifts = ids.map(id => {
     const ses = coachSessions(hist[id]), now = ses.filter(s => s.date >= from), old = ses.filter(s => s.date < from);
     if (!now.length) return null;
@@ -63,7 +63,7 @@ export function weeklyReview(d, today) {
   const sets = coverage(d.rows.filter(r => r.performed_on <= today), from);
 
   // next week: what to lift on each planned exercise (rep range from the plan)
-  const next = plan ? [...new Map(allItems(plan).map(e => [e.id, e])).values()]
+  const next = plan ? [...new Map(allItems(plan).filter(e => !EX[e.id]?.climb).map(e => [e.id, e])).values()]
     .map(e => ({ id: e.id, timed: !!EX[e.id]?.timed, s: (EX[e.id]?.timed ? holdNext : nextLoad)(e.id, hist[e.id], today, e.lo || e.reps, e.reps) })).filter(x => x.s && x.s.kg).slice(0, 8) : [];
 
   const judged = lifts.filter(l => !l.base);

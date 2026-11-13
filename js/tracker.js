@@ -1,6 +1,6 @@
 // Gym tracker screens: log today's workout, and a person's progress.
 import * as api from './supa.js';
-import { EXERCISES, EX, CATS, BIG_FOUR, isTimed, searchText } from './exercises.js';
+import { EXERCISES, EX, CATS, BIG_FOUR, isTimed, isClimb, GRADES, vGrade, searchText } from './exercises.js';
 import { t, getLang, fmtDay, fmtLongToday } from './i18n.js';
 import { cleanPlan, dayName, suggestDay, findItem } from './plan.js';
 import { openExercise } from './exsheet.js';
@@ -47,9 +47,17 @@ export function bySession(rows) {
 }
 const bestKg = sets => Math.max(0, ...sets.filter(s => s.reps >= 1).map(s => s.kg));
 export const prOf = sessions => sessions.reduce((b, s) => { const k = bestKg(s.sets); return k > b.kg ? { kg: k, date: s.date } : b; }, { kg: 0, date: null });
-function setsText(sets, timed) {
+// a weight, or a V grade for climbing
+const amt = (id, v) => (isClimb(id) ? vGrade(v) : kg(v));
+function setsText(sets, id) {
+  // climbing: "Topped V5, V4, V4 · tried V6"
+  if (isClimb(id)) {
+    const desc = xs => xs.map(s => s.kg).sort((a, b) => b - a).map(vGrade).join(', ');
+    const top = sets.filter(s => s.reps >= 1), tried = sets.filter(s => !(s.reps >= 1));
+    return [top.length ? t(`Topped ${desc(top)}`, `頂咗 ${desc(top)}`) : '', tried.length ? t(`tried ${desc(tried)}`, `試咗 ${desc(tried)}`) : ''].filter(Boolean).join(' · ');
+  }
   // "3 × 5 @ 100 kg" when every set matches, else "100×5, 105×3"; timed holds read "3 × 30s @ 20 kg"
-  const u = timed ? 's' : '';
+  const timed = isTimed(id), u = timed ? 's' : '';
   const same = sets.every(s => s.kg === sets[0].kg && s.reps === sets[0].reps);
   return same ? `${sets.length} × ${sets[0].reps}${u} @ ${kg(sets[0].kg)}` : sets.map(s => `${+s.kg}×${s.reps}${u}`).join(', ');
 }
@@ -70,16 +78,19 @@ export async function logScreen(user) {
   const history = bySession(rows);
   const fullPlan = cleanPlan(savedPlan || {});
   const past = id => (history[id] || []).filter(s => s.date < today);
+  // a new climb starts at the hardest grade you topped last time (V0 if none)
+  const climbStart = id => Math.max(0, ...(past(id).at(-1)?.sets || []).filter(s => s.reps >= 1).map(s => s.kg));
   const lastDate = rows.filter(r => r.performed_on < today).map(r => r.performed_on).sort().at(-1);
   const lastIds = [...new Set(rows.filter(r => r.performed_on === lastDate).map(r => r.exercise_id))];
   const suggested = suggestDay(fullPlan, weekday, lastIds);
   // the plan's rep range [lo, hi] for an exercise (the chosen day first, then any day)
   const planRange = id => { const e = (pickedDay()?.items || []).find(x => x.id === id) || findItem(fullPlan, id); return e ? [e.lo || e.reps, e.reps] : [10, 10]; };
   const inPlan = id => !!((pickedDay()?.items || []).find(x => x.id === id) || findItem(fullPlan, id));
-  const coach = id => (isTimed(id) ? holdNext(id, history[id], today, ...planRange(id), inPlan(id)) : nextLoad(id, history[id], today, ...planRange(id)));
+  const coach = id => (isClimb(id) ? null : isTimed(id) ? holdNext(id, history[id], today, ...planRange(id), inPlan(id)) : nextLoad(id, history[id], today, ...planRange(id)));
   // plan gives sets; the coach's next load gives kg × reps; otherwise last time's weights
   const itemsFor = day => (day?.items || []).map(e => {
     const c = coach(e.id), last = past(e.id).at(-1)?.sets || [];
+    if (isClimb(e.id)) return { id: e.id, sets: Array.from({ length: e.sets }, () => ({ kg: climbStart(e.id), reps: 0 })) };
     return { id: e.id, sets: Array.from({ length: e.sets }, (_, j) => c ? { kg: c.kg, reps: c.reps } : { kg: (last[j] || last.at(-1))?.kg ?? null, reps: e.lo || e.reps }) };
   });
   // start from: unsaved draft → what was already saved today → the suggested day → empty
@@ -100,6 +111,15 @@ export async function logScreen(user) {
   const holdSecs = () => (hold ? Math.floor((Date.now() - hold.t0) / 1000) : 0);
   const stopHold = () => { clearInterval(holdTick); holdTick = null; hold = null; };
   let pickMsg = '';
+  // climbing: one row per climb, a V grade and whether you topped it
+  const climbRows = (it, i) => `<div class="sets climb">
+      <div class="set head"><span>#</span><span>${t('Grade', '級數')}</span><span>${t('Topped', '頂咗')}</span><span></span></div>
+      ${it.sets.map((s, j) => `<div class="set ${s.reps >= 1 ? 'done' : ''}" data-j="${j}"><span>${j + 1}</span>
+        <select data-f="kg" aria-label="${t(`Climb ${j + 1} grade`, `第 ${j + 1} 條線級數`)}">${GRADES.map(g => `<option value="${g}" ${+s.kg === g ? 'selected' : ''}>${vGrade(g)}</option>`).join('')}</select>
+        <button class="tick ${s.reps >= 1 ? 'on' : ''}" data-act="top" aria-pressed="${s.reps >= 1}" aria-label="${t(`Climb ${j + 1} topped`, `第 ${j + 1} 條線頂咗`)}">✓</button>
+        <button class="ghost x" data-act="unset" aria-label="${t(`Remove climb ${j + 1}`, `移除第 ${j + 1} 條線`)}">✕</button></div>`).join('')}
+    </div>
+    <p class="muted small">${t('Untick for an attempt you didn’t finish. Only topped climbs count on the rankings.', '未頂到就唔好剔。排名只計頂咗嘅線。')}</p>`;
 
   function draw() {
     const nSets = draft.items.reduce((n, it) => n + it.sets.length, 0);
@@ -120,12 +140,12 @@ export async function logScreen(user) {
         const last = past(it.id).at(-1);
         const head = it.extra && !draft.items[i - 1]?.extra ? `<p class="ex-extra-head">${t('Already done today (not in this day)', '今日已做（唔屬於呢日）')}</p>` : '';
         return `${head}<section class="card ex${it.extra ? ' extra' : ''}" data-i="${i}">
-          <div class="ex-head"><button class="ex-name" data-open="${it.id}"><h3>${esc(exName(it.id))}</h3><span class="muted">${EX[it.id]?.custom ? `${isTimed(it.id) ? t('Timed hold', '計時動作') : t('Your own', '自己加')} · ${t('progress', '進度')}` : `${esc(exSub(it.id))} · ${t('how to', '教學')}`} ›</span></button>
+          <div class="ex-head"><button class="ex-name" data-open="${it.id}"><h3>${esc(exName(it.id))}</h3><span class="muted">${isClimb(it.id) ? `${t('One row per climb', '每條線一行')} · ${t('progress', '進度')}` : EX[it.id]?.custom ? `${isTimed(it.id) ? t('Timed hold', '計時動作') : t('Your own', '自己加')} · ${t('progress', '進度')}` : `${esc(exSub(it.id))} · ${t('how to', '教學')}`} ›</span></button>
             <button class="ghost x" data-act="drop" aria-label="${t('Remove', '移除')} ${esc(exName(it.id))}">✕</button></div>
-          <p class="muted last">${last ? `${t('Last time', '上次')} (${esc(fmtDay(last.date))}): ${esc(setsText(last.sets, isTimed(it.id)))}` : t('First time logging this', '第一次記錄呢個動作')}</p>
+          <p class="muted last">${last ? `${t('Last time', '上次')} (${esc(fmtDay(last.date))}): ${esc(setsText(last.sets, it.id))}` : t('First time logging this', '第一次記錄呢個動作')}</p>
           ${(() => { const c = coach(it.id); return c ? `<div class="coach ${c.kind}"><p><b>${t('Next', '下次')}: ${c.kg ? kg(c.kg) + ' × ' : ''}${c.reps}${isTimed(it.id) ? 's' : ''}</b> ${esc(t(c.en, c.zh))}</p>
             <button class="ghost small-btn" data-act="usecoach">${t('Use', '套用')}</button></div>` : ''; })()}
-          <div class="sets">
+          ${isClimb(it.id) ? climbRows(it, i) : `<div class="sets">
             <div class="set head"><span>${t('Set', '組')}</span><span>kg</span><span>${isTimed(it.id) ? t('Seconds', '秒數') : t('Reps', '次數')}</span><span>${t('Done', '完成')}</span><span></span></div>
             ${it.sets.map((s, j) => `<div class="set ${s.done ? 'done' : ''}" data-j="${j}"><span>${j + 1}</span>
               <input inputmode="decimal" aria-label="${t(`Set ${j + 1} kg`, `第 ${j + 1} 組 kg`)}" value="${s.kg ?? ''}" data-f="kg">
@@ -134,8 +154,8 @@ export async function logScreen(user) {
               : `<input inputmode="numeric" aria-label="${t(`Set ${j + 1} reps`, `第 ${j + 1} 組次數`)}" value="${s.reps ?? ''}" data-f="reps">`}
               <button class="tick ${s.done ? 'on' : ''}" data-act="tick" aria-pressed="${!!s.done}" aria-label="${t(`Set ${j + 1} done, start rest`, `第 ${j + 1} 組完成，開始休息`)}">✓</button>
               <button class="ghost x" data-act="unset" aria-label="${t(`Remove set ${j + 1}`, `移除第 ${j + 1} 組`)}">✕</button></div>`).join('')}
-          </div>
-          <button class="ghost" data-act="addset">+ ${t('Set', '加一組')}</button>
+          </div>`}
+          <button class="ghost" data-act="addset">+ ${isClimb(it.id) ? t('Climb', '加一條線') : t('Set', '加一組')}</button>
         </section>`;
       }).join('')}
       ${draft.items.length ? '' : `<section class="card empty"><p>${t('Nothing logged today yet.', '今日仲未記錄。')}</p><p class="muted">${t('Add your first exercise. Last time’s numbers fill in for you.', '加第一個動作，上次嘅數字會自動填好。')}</p></section>`}
@@ -159,6 +179,7 @@ export async function logScreen(user) {
 
     $app().querySelectorAll('.ex').forEach(card => {
       const it = draft.items[+card.dataset.i];
+      card.querySelectorAll('select[data-f]').forEach(sel => sel.onchange = () => { it.sets[+sel.closest('.set').dataset.j].kg = +sel.value; keep(); });
       card.querySelectorAll('input').forEach(inp => inp.oninput = () => {
         const s = it.sets[+inp.closest('.set').dataset.j];
         s[inp.dataset.f] = inp.value === '' ? null : Number(inp.value.replace(',', '.'));
@@ -167,7 +188,8 @@ export async function logScreen(user) {
       card.querySelectorAll('[data-act]').forEach(b => b.onclick = () => {
         const act = b.dataset.act;
         if (act === 'drop') draft.items.splice(+card.dataset.i, 1);
-        if (act === 'addset') { const l = it.sets.at(-1) || {}; it.sets.push({ kg: l.kg ?? null, reps: l.reps ?? null }); }
+        if (act === 'addset') { const l = it.sets.at(-1) || {}; it.sets.push(isClimb(it.id) ? { kg: l.kg ?? climbStart(it.id), reps: 0 } : { kg: l.kg ?? null, reps: l.reps ?? null }); }
+        if (act === 'top') { const j = +b.closest('.set').dataset.j, x = it.sets[j]; x.reps = x.reps >= 1 ? 0 : 1; x.done = x.reps >= 1; if (x.done) popAfter(`.ex[data-i="${card.dataset.i}"] .set[data-j="${j}"] .tick`, 1.2); }
         if (act === 'unset') it.sets.splice(+b.closest('.set').dataset.j, 1);
         if (act === 'tick') { const j = +b.closest('.set').dataset.j, x = it.sets[j]; x.done = !x.done; if (x.done) { startRest(restSec); popAfter(`.ex[data-i="${card.dataset.i}"] .set[data-j="${j}"] .tick`, 1.2); } }
         if (act === 'hold') {
@@ -188,7 +210,8 @@ export async function logScreen(user) {
     });
     $app().querySelector('#addex').onclick = () => picker(id => {
       const last = past(id).at(-1);
-      draft.items.push({ id, sets: last ? last.sets.map(s => ({ kg: s.kg, reps: s.reps })) : [{ kg: null, reps: null }] });
+      if (isClimb(id)) draft.items.push({ id, sets: [{ kg: climbStart(id), reps: 0 }] });
+      else draft.items.push({ id, sets: last ? last.sets.map(s => ({ kg: s.kg, reps: s.reps })) : [{ kg: null, reps: null }] });
       keep(); draw();
     });
     $app().querySelector('#save')?.addEventListener('click', save);
@@ -199,7 +222,7 @@ export async function logScreen(user) {
     for (const it of draft.items) {
       let n = 0;
       for (const s of it.sets) {
-        if (!(s.reps >= 1) && !(s.kg > 0)) continue;              // skip empty rows
+        if (isClimb(it.id) ? s.kg == null : !(s.reps >= 1) && !(s.kg > 0)) continue;   // skip empty rows
         if (!(s.kg >= 0) || !(Number.isInteger(s.reps) && s.reps >= 0)) return showError({ message: t(`Check the numbers for ${exName(it.id)}.`, `檢查吓「${exName(it.id)}」嘅數字。`) });
         rows.push({ exercise_id: it.id, set_no: ++n, weight_kg: s.kg, reps: s.reps });
       }
@@ -214,7 +237,7 @@ export async function logScreen(user) {
         .filter(p => p.before > 0 && p.now > p.before);
       location.hash = '#/p/me';
       setTimeout(() => note(prs.length
-        ? t(`Saved. New PR: ${prs.map(p => `${exName(p.id)} ${kg(p.now)}`).join(', ')} 🏆`, `已儲存。破咗 PR：${prs.map(p => `${exName(p.id)} ${kg(p.now)}`).join('、')} 🏆`)
+        ? t(`Saved. New PR: ${prs.map(p => `${exName(p.id)} ${amt(p.id, p.now)}`).join(', ')} 🏆`, `已儲存。破咗 PR：${prs.map(p => `${exName(p.id)} ${amt(p.id, p.now)}`).join('、')} 🏆`)
         : t('Workout saved.', '訓練已儲存。')), 300);
     } catch (err) { showError(err); btnReset(btn); }
   }
@@ -300,9 +323,9 @@ export async function progressScreen(user, who) {
       const list = sessions[id], pr = prOf(list), last = list.at(-1);
       const series = list.map(s => bestKg(s.sets));
       return `<section class="card"><div class="ex-head"><button class="ex-name" data-open="${id}"><h3>${esc(exName(id))}</h3><span class="muted">${esc(exSub(id))} · ${t('details', '詳情')} ›</span></button>
-          <div class="pr"><span class="muted">PR</span><b>${pr.kg ? kg(pr.kg) : '—'}</b></div></div>
-        ${spark(series, t(`Best set per session, ${kg(series[0])} to ${kg(series.at(-1))}`, `每次最重一組，由 ${kg(series[0])} 到 ${kg(series.at(-1))}`))}
-        <p class="muted">${t('Last', '上次')} (${esc(fmtDay(last.date))}): ${esc(setsText(last.sets))} · ${t(`${list.length} session${list.length === 1 ? '' : 's'}`, `${list.length} 次`)}</p></section>`;
+          <div class="pr"><span class="muted">${isClimb(id) ? t('Hardest', '最難') : 'PR'}</span><b>${pr.kg || (isClimb(id) && pr.date) ? amt(id, pr.kg) : '—'}</b></div></div>
+        ${spark(series, isClimb(id) ? t(`Hardest topped per session, ${vGrade(series[0])} to ${vGrade(series.at(-1))}`, `每次頂到最難，由 ${vGrade(series[0])} 到 ${vGrade(series.at(-1))}`) : t(`Best set per session, ${kg(series[0])} to ${kg(series.at(-1))}`, `每次最重一組，由 ${kg(series[0])} 到 ${kg(series.at(-1))}`))}
+        <p class="muted">${t('Last', '上次')} (${esc(fmtDay(last.date))}): ${esc(setsText(last.sets, id))} · ${t(`${list.length} session${list.length === 1 ? '' : 's'}`, `${list.length} 次`)}</p></section>`;
     }).join('') : `<section class="card empty"><p class="muted">${mine ? t('Nothing logged yet. Log your first workout.', '仲未有記錄，記低你第一次訓練啦。') : t('Nothing logged yet.', '仲未有記錄。')}</p></section>`}`;
   $app().querySelectorAll('[data-open]').forEach(b => b.onclick = () => openExercise(user, b.dataset.open, 'prog', uid));
 }

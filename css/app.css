@@ -522,3 +522,10 @@ textarea { resize: vertical; line-height: 1.4; }
 .reply-sheet .quote { background: var(--floor); }
 .reply-sheet textarea { margin: 10px 0; }
 .lightbox .lb-reply { position: absolute; bottom: calc(24px + env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%); display: inline-flex; align-items: center; gap: 8px; border-radius: 999px; padding: 10px 20px; }
+
+/* ---------- wall climbing: one row per climb ---------- */
+.sets.climb .set { grid-template-columns: 30px 1fr 64px 40px; }
+.sets.climb .set.head span:nth-child(3) { text-align: center; }
+.sets.climb select { text-align: center; text-align-last: center; font: 700 1.15rem/1 var(--display); font-variant-numeric: tabular-nums; }
+.sets.climb .tick { justify-self: center; }
+.sets.climb .set.done select { border-color: var(--green); }

@@ -4,7 +4,7 @@
 import * as api from './supa.js';
 import { EX as FT, bodyParts, muscleZh, equipZh } from './ftdata.js';
 import { MOVES } from './moves.js';
-import { EXERCISES, CATS, EX as LIB, CUSTOM_CARDIO, searchText } from './exercises.js';
+import { EXERCISES, CATS, EX as LIB, CUSTOM_CARDIO, searchText, isClimb, vGrade } from './exercises.js';
 import { addCustomSheet, renameCustom, deleteCustom, requestSheet, setCustomKind, setCustomCat } from './custom.js';
 import { t, getLang, fmtDay } from './i18n.js';
 import { exName, kg, spark, bySession, prOf } from './tracker.js';
@@ -22,7 +22,7 @@ export function closeExercise() {
 
 export async function openExercise(user, id, tab = 'how', who = user.id) {
   // your own exercises have no 3D demo: the sheet opens on Progress
-  const own = LIB[id]?.custom ? LIB[id] : null;
+  const climb = isClimb(id), own = LIB[id]?.custom || climb ? LIB[id] : null;
   const ex = FT[id] || (own && { en: own.en, zh: own.zh, equip: 'Other', muscles: [], move: null }); if (!ex) return;
   if (own && tab === 'how') tab = 'prog';
   closeExercise();
@@ -41,7 +41,7 @@ export async function openExercise(user, id, tab = 'how', who = user.id) {
     dispose();
     const tabs = [...(own ? [] : [['how', t('How to', '教學')]]), ['prog', t('Progress', '進度')], ['hist', t('History', '記錄')]];
     box.innerHTML = `<div class="sheet-in tall">
-      <div class="ex-head"><div><h3>${esc(exName(id))}</h3><span class="muted small">${own ? esc(own.mine ? t('Added by you · no 3D demo', '你加嘅 · 冇 3D 示範') : t('Added by your group · no 3D demo', 'Group 加嘅 · 冇 3D 示範')) : `${esc(getLang() === 'zh' ? ex.en : ex.zh)} · ${esc(t(ex.equip, equipZh(ex.equip)))}`}</span></div>
+      <div class="ex-head"><div><h3>${esc(exName(id))}</h3><span class="muted small">${climb ? esc(t('Bouldering grades V0–V17 · no 3D demo', '抱石級數 V0–V17 · 冇 3D 示範')) : own ? esc(own.mine ? t('Added by you · no 3D demo', '你加嘅 · 冇 3D 示範') : t('Added by your group · no 3D demo', 'Group 加嘅 · 冇 3D 示範')) : `${esc(getLang() === 'zh' ? ex.en : ex.zh)} · ${esc(t(ex.equip, equipZh(ex.equip)))}`}</span></div>
         <button class="ghost x" id="close" aria-label="${t('Close', '關閉')}">✕</button></div>
       <div class="seg wide" role="tablist">${tabs.map(([v, l]) => `<button role="tab" data-tab="${v}" aria-selected="${v === tab}" class="${v === tab ? 'on' : ''}">${l}</button>`).join('')}</div>
       <div id="body">${tab === 'how' ? howHtml() : tab === 'prog' ? progHtml() : histHtml()}</div>
@@ -85,6 +85,7 @@ export async function openExercise(user, id, tab = 'how', who = user.id) {
   }
   function progHtml() {
     if (!sessions.length) return `<section class="card empty"><p class="muted">${t('Save a workout with this exercise to see your trend here.', '儲存一次有呢個動作嘅訓練，就會見到走勢。')}</p></section>${mine ? planHtml() : ''}`;
+    if (climb) return climbProg();
     const pr = prOf(sessions);
     const timed = LIB[id]?.timed;
     const best1 = Math.max(...sessions.flatMap(s => s.sets.filter(x => x.reps >= 1).map(x => e1rm(x.kg, x.reps))));
@@ -103,11 +104,36 @@ export async function openExercise(user, id, tab = 'how', who = user.id) {
   }
   function histHtml() {
     if (!sessions.length) return `<section class="card empty"><p class="muted">${t('Nothing logged yet.', '仲未有記錄。')}</p></section>`;
+    if (climb) return climbHist();
     let run = 0;
     const withPr = sessions.map(s => { const h = Math.max(0, ...s.sets.filter(x => x.reps >= 1).map(x => x.kg)); const isPr = h > run && run > 0; run = Math.max(run, h); return { ...s, isPr }; });
     return withPr.reverse().map(s => `<section class="card"><div class="card-head"><h3>${esc(fmtDay(s.date))}</h3>${s.isPr ? '<span class="pill gold">🏆 PR</span>' : ''}</div>
       <ol class="hist">${s.sets.map(x => LIB[id]?.timed ? `<li><span>${+x.kg} kg × ${x.reps}s</span></li>` : `<li><span>${+x.kg} kg × ${x.reps}</span><span class="muted small">1RM ${Math.round(e1rm(x.kg, x.reps))}</span></li>`).join('')}</ol>
       ${LIB[id]?.timed ? `<p class="muted small">${t('Total', '總共')} ${s.sets.reduce((a, x) => a + x.reps, 0)}s</p>` : `<p class="muted small">${t('Volume', '總容量')} ${Math.round(s.sets.reduce((a, x) => a + x.kg * x.reps, 0)).toLocaleString()} kg</p>`}</section>`).join('');
+  }
+
+  // climbing: hardest grade topped, how many tops, per session
+  const tops = s => s.sets.filter(x => x.reps >= 1);
+  const hardest = s => Math.max(-1, ...tops(s).map(x => x.kg));
+  function climbProg() {
+    const best = Math.max(-1, ...sessions.map(hardest)), bestS = sessions.find(s => hardest(s) === best);
+    const nTops = sessions.reduce((a, s) => a + tops(s).length, 0);
+    const series = sessions.map(s => Math.max(0, hardest(s))), counts = sessions.map(s => tops(s).length);
+    return `<section class="card"><div class="stats">
+        <div><span class="muted">${t('Hardest topped', '頂過最難')}</span><b>${best >= 0 ? vGrade(best) : '—'}</b><span class="muted small">${bestS && best >= 0 ? esc(fmtDay(bestS.date)) : ''}</span></div>
+        <div><span class="muted">${t('Climbs topped', '頂咗幾多條')}</span><b>${nTops}</b></div>
+        <div><span class="muted">${t('Sessions', '次數')}</span><b>${sessions.length}</b></div></div></section>
+      <section class="card"><h3>${t('Hardest topped per session', '每次頂到最難')}</h3>${spark(series, t('V grade per session', '每次嘅 V 級')) || `<p class="muted small">${t('One session so far.', '暫時得一次。')}</p>`}
+        <p class="muted small">${t(`Last: ${vGrade(series.at(-1))}`, `上次：${vGrade(series.at(-1))}`)}</p></section>
+      <section class="card"><h3>${t('Climbs topped per session', '每次頂咗幾多條')}</h3>${spark(counts, t('Tops per session', '每次頂咗幾多條')) || ''}</section>
+      ${mine ? planHtml() : ''}`;
+  }
+  function climbHist() {
+    let run = -1;
+    const withPr = sessions.map(s => { const h = hardest(s); const isPr = h > run && run >= 0; run = Math.max(run, h); return { ...s, isPr }; });
+    return withPr.reverse().map(s => `<section class="card"><div class="card-head"><h3>${esc(fmtDay(s.date))}</h3>${s.isPr ? `<span class="pill gold">🏆 ${t('New hardest', '新高')}</span>` : ''}</div>
+      <ol class="hist">${s.sets.map(x => `<li><span>${vGrade(x.kg)}</span><span class="muted small">${x.reps >= 1 ? t('topped', '頂咗') : t('attempt', '試咗')}</span></li>`).join('')}</ol>
+      <p class="muted small">${t(`${tops(s).length} of ${s.sets.length} topped`, `${s.sets.length} 條頂咗 ${tops(s).length} 條`)}</p></section>`).join('');
   }
 
   async function mount() {
@@ -159,7 +185,7 @@ export async function libraryScreen(user) {
   const draw = () => {
     const list = EXERCISES.filter(([id, en, zh, c]) => (!cat || c === cat) && (!q || searchText(id).includes(q)));
     const el = render(`
-      <header class="page-head"><div><h2>${t('Exercise library', '動作庫')}</h2><p class="muted">${t(`${EXERCISES.filter(([id]) => !LIB[id]?.custom).length} exercises with 3D demos`, `${EXERCISES.filter(([id]) => !LIB[id]?.custom).length} 個動作，全部有 3D 示範`)}</p></div>
+      <header class="page-head"><div><h2>${t('Exercise library', '動作庫')}</h2><p class="muted">${t(`${EXERCISES.filter(([id]) => !LIB[id]?.custom && !LIB[id]?.climb).length} exercises with 3D demos`, `${EXERCISES.filter(([id]) => !LIB[id]?.custom && !LIB[id]?.climb).length} 個動作，全部有 3D 示範`)}</p></div>
         <a class="link" href="#/log">${t('Today', '今日')} ›</a></header>
       <section class="card own-ex"><div class="card-head"><h3>${t('Your own exercises', '自己加嘅動作')}</h3></div>
         ${mineList().length ? `<ul class="own-list">${mineList().map(x => `<li data-own="${x.id}">
