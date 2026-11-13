@@ -130,11 +130,39 @@ function postHtml(r, user) {
       <img src="${esc(r.thumb)}" alt="${t('Check-in photo by', '打卡相：')} ${name}" loading="lazy"></button>`}
     <div class="post-meta"><b>${name}</b> <span class="muted">${esc(fmtDateTime(r.created_at))}</span>
       ${r.note ? `<p>${esc(r.note)}</p>` : ''}
-      ${r.user_id === user.id ? `<button class="ghost del" data-id="${r.id}">${t('Delete', '刪除')}</button>` : ''}</div>
+      <div class="post-acts"><button class="ghost reply-btn" data-reply="${r.id}">${ICON.chat(16)} ${t('Reply', '回覆')}</button>
+      ${r.user_id === user.id ? `<button class="ghost del" data-id="${r.id}">${t('Delete', '刪除')}</button>` : ''}</div></div>
   </article>`;
 }
 
-async function openPhoto(path) {
+// reply to a check-in photo: the message goes into the group chat with the photo attached as a quote
+export function replySheet(user, groupId, r) {
+  const box = document.createElement('div');
+  box.className = 'sheet'; box.setAttribute('role', 'dialog'); box.setAttribute('aria-modal', 'true');
+  box.setAttribute('aria-label', t('Reply to this photo', '回覆呢張相'));
+  const name = esc(r.profiles?.display_name || r.name || '');
+  box.innerHTML = `<form class="sheet-in reply-sheet">
+    <div class="ex-head"><h3>${t('Reply in the group chat', '喺 group 傾偈度回覆')}</h3><button type="button" class="ghost x" id="rclose" aria-label="${t('Close', '關閉')}">✕</button></div>
+    <div class="quote">${r.thumb && !r.gone ? `<img src="${esc(r.thumb)}" alt="">` : `<span class="quote-gone">${ICON.camera(18)}</span>`}
+      <span><b>${t(`${name}'s check-in`, `${name} 嘅打卡`)}</b><small class="muted">${esc(fmtDateTime(r.created_at))}</small>${r.note ? `<small>${esc(r.note)}</small>` : ''}</span></div>
+    <textarea id="rtext" rows="2" maxlength="1000" required placeholder="${t('Say something about it', '講吓呢張相')}" aria-label="${t('Reply', '回覆')}"></textarea>
+    <button type="submit" id="rsend">${t('Send to chat', '傳去傾偈')}</button>
+  </form>`;
+  const close = () => box.remove();
+  box.querySelector('#rclose').onclick = close;
+  box.addEventListener('click', e => { if (e.target === box) close(); });
+  box.querySelector('form').onsubmit = async e => {
+    e.preventDefault();
+    const body = box.querySelector('#rtext').value.trim(); if (!body) return;
+    const b = box.querySelector('#rsend'); btnLoading(b);
+    try { await api.sendChat(user.id, groupId, body, r.id); await btnDone(b, t('Sent', '傳咗')); close(); location.hash = `#/c/${groupId}`; }
+    catch (err) { showError(err); btnReset(b); }
+  };
+  document.body.append(box);
+  box.querySelector('#rtext').focus();
+}
+
+export async function openPhoto(path, onReply) {
   const box = document.createElement('div');
   box.className = 'lightbox'; box.setAttribute('role', 'dialog'); box.setAttribute('aria-label', t('Photo', '相'));
   box.innerHTML = `<p class="muted">${t('Loading photo…', '載入緊…')}</p>`;
@@ -142,7 +170,11 @@ async function openPhoto(path) {
   box.onclick = close;
   document.addEventListener('keydown', function esc_(e) { if (e.key === 'Escape') { close(); document.removeEventListener('keydown', esc_); } });
   document.body.append(box);
-  try { const url = await api.fullPhoto(path); box.innerHTML = `<img src="${esc(url)}" alt="${t('Check-in photo, full size', '打卡相（原圖）')}">`; }
+  try {
+    const url = await api.fullPhoto(path);
+    box.innerHTML = `<img src="${esc(url)}" alt="${t('Check-in photo, full size', '打卡相（原圖）')}">${onReply ? `<button class="lb-reply">${ICON.chat(18)} ${t('Reply', '回覆')}</button>` : ''}`;
+    box.querySelector('.lb-reply')?.addEventListener('click', e => { e.stopPropagation(); close(); onReply(); });
+  }
   catch (err) { box.innerHTML = `<p class="error">${esc(err.message)}</p>`; }
 }
 
@@ -224,7 +256,9 @@ export async function group(user, groupId, limit = FEED_PAGE) {
     catch (err) { showError(err); busy(btn, false); }
   });
   el.querySelector('#more')?.addEventListener('click', e => { busy(e.currentTarget, true, t('Loading…', '載入緊…')); group(user, groupId, limit + FEED_PAGE).catch(showError); });
-  el.querySelectorAll('button.photo').forEach(b => b.onclick = () => openPhoto(b.dataset.path));
+  const byId = Object.fromEntries(feed.map(r => [r.id, r]));
+  el.querySelectorAll('[data-reply]').forEach(b => b.onclick = () => replySheet(user, groupId, byId[b.dataset.reply]));
+  el.querySelectorAll('button.photo').forEach(b => b.onclick = () => { const r = feed.find(x => x.photo_path === b.dataset.path); openPhoto(b.dataset.path, r ? () => replySheet(user, groupId, r) : null); });
   el.querySelectorAll('.del').forEach(b => b.onclick = async () => {
     if (!confirm(t('Delete this check-in and its photo?', '刪除呢次打卡同張相？'))) return;
     try { await api.deleteCheckin(feed.find(r => r.id === b.dataset.id)); group(user, groupId, limit); } catch (err) { showError(err); }

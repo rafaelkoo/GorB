@@ -39,14 +39,25 @@ export const joinGroup = code => sb.rpc('join_group', { p_code: code }).then(mus
 export const renameGroup = (groupId, name) => sb.rpc('rename_group', { p_group: groupId, p_name: name }).then(must);
 
 // ---------- group chat (members only, kept forever) ----------
-const CHAT_COLS = 'id, group_id, user_id, kind, body, created_at';
+const CHAT_COLS = 'id, group_id, user_id, kind, body, created_at, checkin_id';
 export const chatPage = (groupId, before, limit = 50) => {
   let q = sb.from('chat_messages').select(CHAT_COLS).eq('group_id', groupId).order('created_at', { ascending: false }).limit(limit);
   if (before) q = q.lt('created_at', before);
   return q.then(must).then(rows => rows.reverse());
 };
 export const chatSince = (groupId, after) => sb.from('chat_messages').select(CHAT_COLS).eq('group_id', groupId).gt('created_at', after).order('created_at').then(must);
-export const sendChat = (userId, groupId, body) => sb.from('chat_messages').insert({ group_id: groupId, user_id: userId, body }).select(CHAT_COLS).single().then(must);
+export const sendChat = (userId, groupId, body, checkinId = null) =>
+  sb.from('chat_messages').insert({ group_id: groupId, user_id: userId, body, ...(checkinId ? { checkin_id: checkinId } : {}) }).select(CHAT_COLS).single().then(must);
+// the check-in photos chat replies point at: { id: { user_id, name, created_at, photo_path, thumb, gone } }
+export async function checkinCards(ids) {
+  if (!ids.length) return {};
+  const rows = must(await sb.from('checkins').select('id, user_id, photo_path, photo_expired, created_at, profiles(display_name)').in('id', ids));
+  const cutoff = Date.now() - PHOTO_DAYS * 864e5;
+  const live = rows.filter(r => !r.photo_expired && new Date(r.created_at).getTime() > cutoff);
+  const url = live.length ? await photoLinks(live.map(r => thumbPath(r.photo_path))) : {};
+  return Object.fromEntries(rows.map(r => [r.id, { user_id: r.user_id, name: r.profiles?.display_name, created_at: r.created_at, photo_path: r.photo_path,
+    gone: !live.includes(r), thumb: live.includes(r) ? url[thumbPath(r.photo_path)] : null }]));
+}
 export const markChatRead = (userId, groupId) =>
   sb.from('chat_reads').upsert({ user_id: userId, group_id: groupId, read_at: new Date().toISOString() }, { onConflict: 'user_id,group_id' }).then(must);
 export const chatUnread = () => sb.rpc('chat_unread').then(must).then(rows => Object.fromEntries(rows.map(r => [r.group_id, r.unread])));

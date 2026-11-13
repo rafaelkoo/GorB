@@ -24,7 +24,7 @@ Deno.serve(async req => {
   const tenMin = new Date(Date.now() - 10 * 60 * 1000).toISOString();
   const { data: msg } = await db.from('chat_messages').update({ notified_at: new Date().toISOString() })
     .eq('id', id).is('notified_at', null).eq('kind', 'text').gte('created_at', tenMin)
-    .select('id, group_id, user_id, body').maybeSingle();
+    .select('id, group_id, user_id, body, checkin_id').maybeSingle();
   if (!msg) return json({ skipped: 'already sent, too old or not found' });
 
   const [{ data: group }, { data: sender }, { data: mates }] = await Promise.all([
@@ -37,7 +37,8 @@ Deno.serve(async req => {
   const { data: subs } = await db.from('push_subscriptions').select('endpoint, user_id, p256dh, auth').in('user_id', ids);
 
   const name = sender?.display_name || 'Someone';
-  const line = `${name}: ${msg.body.length > 180 ? msg.body.slice(0, 177) + '…' : msg.body}`;
+  // a reply to a check-in photo gets a camera in front, so people know which kind of message it is
+  const line = `${name}: ${msg.checkin_id ? '📷 ' : ''}${msg.body.length > 180 ? msg.body.slice(0, 177) + '…' : msg.body}`;
   const payload = JSON.stringify({
     title: group?.name || 'Gym or Bitch', body: line, line,
     url: `./#/c/${msg.group_id}`, tag: `chat-${msg.group_id}`, chat: msg.group_id

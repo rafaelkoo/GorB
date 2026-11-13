@@ -507,3 +507,18 @@ textarea { resize: vertical; line-height: 1.4; }
 .own-list .cat-own { width: auto; min-width: 0; flex: none; padding: 6px 8px; font-size: .8rem; min-height: 36px; }
 .own-ex > .own-list li { flex-wrap: wrap; }
 .own-ex > .own-list li input { flex: 1 1 140px; }
+
+/* ---------- replying to a check-in photo ---------- */
+.post-acts { display: flex; gap: 8px; align-items: center; margin-top: 6px; }
+.reply-btn { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; min-height: 36px; font-size: .9rem; }
+.quote { display: flex; align-items: center; gap: 10px; text-align: left; background: rgba(0,0,0,.18); border: 0; border-left: 3px solid var(--yellow); border-radius: 10px; padding: 6px 10px 6px 6px; margin: 2px 0 6px; color: inherit; min-height: 0; width: 100%; font: inherit; }
+.msg .quote { min-width: 180px; }
+.msg.me .quote { background: rgba(0,0,0,.2); border-left-color: #fff; }
+.quote img, .quote-gone { width: 44px; height: 44px; border-radius: 8px; object-fit: cover; flex: none; }
+.quote-gone { display: grid; place-items: center; background: var(--floor); color: var(--dust); }
+.quote b { display: block; font-size: .82rem; }
+.quote small { display: block; font-size: .74rem; opacity: .8; }
+.quote.loading { opacity: .6; }
+.reply-sheet .quote { background: var(--floor); }
+.reply-sheet textarea { margin: 10px 0; }
+.lightbox .lb-reply { position: absolute; bottom: calc(24px + env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%); display: inline-flex; align-items: center; gap: 8px; border-radius: 999px; padding: 10px 20px; }

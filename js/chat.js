@@ -3,7 +3,8 @@
 // the service worker skips them while you're looking at this chat.
 import * as api from './supa.js';
 import { t, getLang } from './i18n.js';
-import { esc, render, showError } from './ui.js';
+import { esc, render, showError, openPhoto } from './ui.js';
+import { ICON } from './icons.js';
 
 let stop = null, poll = null, onVis = null;
 // leave the chat: stop live updates (called on every route change)
@@ -37,6 +38,23 @@ export async function chatScreen(user, groupId) {
   const names = Object.fromEntries((await api.profilesOf(ids)).map(p => [p.id, p.display_name]));
   const nameOf = uid => (uid === user.id ? t('You', '你') : names[uid] || t('Someone', '有人'));
   let msgs = first, more = first.length === 50, pending = [];
+  // photos that messages reply to, fetched as needed: id → card (or null while loading)
+  const cards = {};
+  async function loadCards() {
+    const need = [...new Set(msgs.map(m => m.checkin_id).filter(id => id && !(id in cards)))];
+    if (!need.length) return;
+    need.forEach(id => { cards[id] = null; });
+    try { Object.assign(cards, await api.checkinCards(need)); draw(); } catch { /* shown without the photo */ }
+  }
+  const quoteHtml = m => {
+    if (!m.checkin_id) return '';
+    const c = cards[m.checkin_id];
+    if (c === null || c === undefined) return `<span class="quote loading"><span class="quote-gone">${ICON.camera(16)}</span><small>${t('Photo…', '相…')}</small></span>`;
+    const who = c.user_id === user.id ? t('Your check-in', '你嘅打卡') : t(`${c.name || ''}'s check-in`, `${c.name || ''} 嘅打卡`);
+    return c.gone
+      ? `<span class="quote"><span class="quote-gone">${ICON.camera(16)}</span><span><b>${esc(who)}</b><small>${t('Photo removed after a week', '相片一星期後已刪除')}</small></span></span>`
+      : `<button type="button" class="quote" data-photo="${esc(c.photo_path)}" aria-label="${t('Open the photo', '睇張相')}"><img src="${esc(c.thumb)}" alt=""><span><b>${esc(who)}</b><small>${esc(dayLabel(c.created_at))} ${esc(timeOf(c.created_at))}</small></span></button>`;
+  };
 
   const el = render(`
     <header class="chat-head">
@@ -66,7 +84,7 @@ export async function chatScreen(user, groupId) {
       && new Date(m.created_at) - new Date(prev.created_at) < 5 * 60 * 1000;
     return out + `<div class="msg ${mine ? 'me' : ''} ${grouped ? 'cont' : ''} ${m.pending ? 'pending' : ''} ${m.failed ? 'failed' : ''}" data-id="${esc(m.id)}">
       ${!mine && !grouped ? `<b class="msg-who">${esc(nameOf(m.user_id))}</b>` : ''}
-      <p>${esc(m.body)}</p><span class="msg-time">${m.failed ? t('Not sent · tap to retry', '傳送失敗 · 撳一下再試') : m.pending ? t('Sending…', '傳送緊…') : esc(timeOf(m.created_at))}</span></div>`;
+      ${quoteHtml(m)}<p>${esc(m.body)}</p><span class="msg-time">${m.failed ? t('Not sent · tap to retry', '傳送失敗 · 撳一下再試') : m.pending ? t('Sending…', '傳送緊…') : esc(timeOf(m.created_at))}</span></div>`;
   }
   function draw(stick) {
     const near = stick || window.innerHeight + window.scrollY > document.body.scrollHeight - 160;
@@ -76,6 +94,8 @@ export async function chatScreen(user, groupId) {
     older.innerHTML = more ? `<button class="ghost small-btn" id="loadOlder">${t('Earlier messages', '之前嘅訊息')}</button>` : '';
     older.querySelector('#loadOlder')?.addEventListener('click', loadOlder);
     list.querySelectorAll('.msg.failed').forEach(b => b.onclick = () => retry(b.dataset.id));
+    list.querySelectorAll('[data-photo]').forEach(b => b.onclick = () => openPhoto(b.dataset.photo));
+    loadCards();
     if (near) requestAnimationFrame(() => window.scrollTo(0, document.body.scrollHeight));
   }
   // mark everything here as read, then let the tab bar drop its red dot
