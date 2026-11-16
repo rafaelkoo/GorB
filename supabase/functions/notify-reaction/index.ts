@@ -1,4 +1,5 @@
-// Supabase Edge Function: tells the owner of a check-in photo that someone reacted to it.
+// Supabase Edge Function: tells the owner of a check-in photo, or the author of a chat message
+// (called with { id, chat: true }, migration 020), that someone reacted to it.
 // Called by the reaction_notify trigger (migration 018) with just { id }. It claims the reaction by
 // setting notified_at, so a repeat call, an old reaction or a made-up id sends nothing; that's why it
 // needs no secret (Verify JWT is off). All reactions to one photo share a tag, so the newest replaces
@@ -15,11 +16,12 @@ webpush.setVapidDetails('https://rafaelkoo.github.io/GorB/', Deno.env.get('VAPID
 const json = (o: unknown, status = 200) => new Response(JSON.stringify(o), { status, headers: { 'content-type': 'application/json' } });
 
 Deno.serve(async req => {
-  let id = '';
-  try { id = String((await req.json())?.id ?? ''); } catch { /* no body */ }
+  let id = '', chat = false;
+  try { const b = await req.json(); id = String(b?.id ?? ''); chat = b?.chat === true; } catch { /* no body */ }
   if (!/^[0-9a-f-]{36}$/i.test(id)) return json({ skipped: 'no reaction id' }, 400);
 
   const tenMin = new Date(Date.now() - 10 * 60 * 1000).toISOString();
+  if (chat) return chatReaction(id, tenMin);
   const { data: rx } = await db.from('checkin_reactions').update({ notified_at: new Date().toISOString() })
     .eq('id', id).is('notified_at', null).gte('created_at', tenMin)
     .select('checkin_id, user_id, emoji').maybeSingle();
@@ -60,3 +62,38 @@ Deno.serve(async req => {
   if (gone.length) await db.from('push_subscriptions').delete().in('endpoint', gone);
   return json({ sent, removed: gone.length });
 });
+
+// a reaction to a chat message: goes into that group's chat notification, like WhatsApp
+async function chatReaction(id: string, since: string) {
+  const { data: rx } = await db.from('chat_reactions').update({ notified_at: new Date().toISOString() })
+    .eq('id', id).is('notified_at', null).gte('created_at', since)
+    .select('message_id, user_id, emoji, group_id').maybeSingle();
+  if (!rx) return json({ skipped: 'already sent, too old or not found' });
+  const { data: msg } = await db.from('chat_messages').select('user_id, body').eq('id', rx.message_id).maybeSingle();
+  if (!msg?.user_id || msg.user_id === rx.user_id) return json({ sent: 0 });
+
+  const [{ data: who }, { data: owner }, { data: group }, { data: subs }] = await Promise.all([
+    db.from('profiles').select('display_name').eq('id', rx.user_id).single(),
+    db.from('profiles').select('lang').eq('id', msg.user_id).single(),
+    db.from('groups').select('name').eq('id', rx.group_id).single(),
+    db.from('push_subscriptions').select('endpoint, p256dh, auth').eq('user_id', msg.user_id)
+  ]);
+  if (!subs?.length) return json({ sent: 0 });
+  const name = who?.display_name || 'Someone';
+  const quote = msg.body.length > 60 ? msg.body.slice(0, 57) + '…' : msg.body;
+  const line = owner?.lang === 'zh' ? `${name} 對「${quote}」回應咗 ${rx.emoji}` : `${name} reacted ${rx.emoji} to “${quote}”`;
+  const payload = JSON.stringify({ title: group?.name || 'Gym or Bitch', body: line, line, url: `./#/c/${rx.group_id}`, tag: `chat-${rx.group_id}`, chat: rx.group_id });
+
+  let sent = 0;
+  const gone: string[] = [];
+  await Promise.all(subs.map(async s => {
+    try { await webpush.sendNotification({ endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } }, payload, { TTL: 86400, urgency: 'normal' }); sent++; }
+    catch (e) {
+      const code = (e as { statusCode?: number }).statusCode;
+      if (code === 404 || code === 410) gone.push(s.endpoint);
+      else console.error('push failed', code, (e as { body?: string }).body);
+    }
+  }));
+  if (gone.length) await db.from('push_subscriptions').delete().in('endpoint', gone);
+  return json({ sent, removed: gone.length });
+}

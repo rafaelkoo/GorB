@@ -565,3 +565,48 @@ textarea { resize: vertical; line-height: 1.4; }
 .dots i.on { background: var(--green); border-color: var(--green); }
 .dots i.on.extra { background: var(--yellow); border-color: var(--yellow); }
 .wk-pb { margin: 4px 0 0; font-size: .88rem; }
+
+/* ---------- chat: reply to a message, emoji reactions (WhatsApp style) ---------- */
+.msg { position: relative; touch-action: pan-y; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+.msg:focus-visible { outline: 2px solid var(--yellow); outline-offset: 2px; }
+.msg.has-rx { margin-bottom: 14px; }
+.msg.picked { filter: brightness(1.25); }
+.msg.flash { animation: msgflash 1.2s ease; }
+@keyframes msgflash { 0%, 40% { box-shadow: 0 0 0 3px var(--yellow); } 100% { box-shadow: 0 0 0 0 transparent; } }
+.swipe-hint { position: absolute; left: -34px; top: 50%; transform: translateY(-50%) scale(.6); opacity: 0; width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; background: var(--mat-2); color: var(--chalk); font-size: .9rem; transition: opacity .12s, transform .12s; pointer-events: none; }
+.msg.swiping .swipe-hint { opacity: 1; transform: translateY(-50%) scale(1); }
+/* the quoted message, in a bubble and above the composer */
+.rq { display: grid; text-align: left; width: 100%; min-height: 0; margin: 2px 0 5px; padding: 5px 9px; border: 0; border-left: 3px solid var(--yellow); border-radius: 8px; background: rgba(0,0,0,.22); color: inherit; font: inherit; }
+.rq.mine { border-left-color: #8fb8ff; }
+.msg.me .rq { background: rgba(0,0,0,.2); }
+.msg.me .rq.mine { border-left-color: #fff; }
+.rq b { font-size: .78rem; color: var(--yellow); }
+.rq.mine b { color: #8fb8ff; }
+.msg.me .rq.mine b { color: #fff; }
+.rq small { font-size: .82rem; opacity: .85; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; white-space: pre-wrap; overflow-wrap: anywhere; }
+.rq.loading { opacity: .6; }
+.composer { flex-wrap: wrap; }
+.reply-bar { flex-basis: 100%; display: flex; align-items: center; gap: 6px; background: var(--mat-2); border-radius: 12px; padding: 6px 6px 6px 8px; }
+.reply-bar[hidden] { display: none; }
+.reply-bar .rq { margin: 0; flex: 1; min-width: 0; }
+.reply-bar .ghost.x { width: 36px; height: 36px; min-height: 0; border-radius: 50%; background: none; border: 0; color: var(--dust); }
+/* reactions sit on the bubble's bottom edge */
+.msg-rx { position: absolute; bottom: -15px; right: 8px; display: inline-flex; align-items: center; gap: 1px; min-height: 0; height: 24px; padding: 0 7px; border-radius: 999px; background: var(--mat); border: 2px solid var(--floor); color: var(--chalk); font-size: .85rem; line-height: 1; }
+.msg.me .msg-rx { right: auto; left: 8px; }
+.msg-rx b { font-size: .72rem; margin-left: 3px; font-variant-numeric: tabular-nums; }
+.msg-rx.mine { background: var(--mat-2); }
+/* long-press menu */
+.msg-menu-wrap { position: fixed; inset: 0; z-index: 60; background: rgba(0,0,0,.35); }
+.msg-menu { position: fixed; top: 30%; left: 8px; max-width: calc(100vw - 16px); display: grid; gap: 6px; animation: menuin .14s ease-out; }
+@keyframes menuin { from { opacity: 0; transform: scale(.94); } }
+.mm-emoji { display: flex; gap: 2px; padding: 5px; border-radius: 999px; background: var(--mat-2); box-shadow: 0 8px 24px rgba(0,0,0,.45); width: max-content; max-width: 100%; }
+.mm-emoji button { width: 42px; height: 42px; min-height: 0; padding: 0; border: 0; border-radius: 50%; background: none; font-size: 1.5rem; transition: transform .1s; }
+.mm-emoji button:active { transform: scale(1.3); }
+.mm-emoji button.on { background: var(--floor); }
+.mm-who { list-style: none; margin: 0; padding: 6px 12px; border-radius: 12px; background: var(--mat-2); max-height: 160px; overflow: auto; width: max-content; min-width: 180px; }
+.mm-who li { display: flex; justify-content: space-between; gap: 20px; padding: 3px 0; font-size: .9rem; }
+.mm-acts { display: grid; border-radius: 12px; overflow: hidden; background: var(--mat-2); width: max-content; min-width: 180px; box-shadow: 0 8px 24px rgba(0,0,0,.45); }
+.mm-acts button { text-align: left; background: none; border: 0; border-radius: 0; padding: 12px 16px; min-height: 44px; color: var(--chalk); font: inherit; }
+.mm-acts button + button { border-top: 1px solid var(--line); }
+.mm-acts button:focus-visible, .mm-emoji button:focus-visible { outline: 2px solid var(--yellow); outline-offset: -2px; }
+@media (prefers-reduced-motion: reduce) { .msg.flash, .msg-menu { animation: none; } .msg.flash { outline: 3px solid var(--yellow); } }

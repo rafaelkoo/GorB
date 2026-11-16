@@ -1,5 +1,6 @@
 // Group chat, WhatsApp style: live messages, day separators, your messages on the right,
-// renames shown as a grey line, unread counts. Pushes come from the notify-chat Edge Function;
+// renames shown as a grey line, unread counts. Swipe a message right (or long-press → Reply) to
+// reply to it; long-press to react with an emoji (one per person, like WhatsApp). Pushes come from the notify-chat Edge Function;
 // the service worker skips them while you're looking at this chat.
 import * as api from './supa.js';
 import { t, getLang } from './i18n.js';
@@ -9,6 +10,7 @@ import { ICON } from './icons.js';
 let stop = null, poll = null, onVis = null;
 // leave the chat: stop live updates (called on every route change)
 export function closeChat() {
+  document.querySelector('.msg-menu-wrap')?.remove();
   if (stop) { stop(); stop = null; }
   clearInterval(poll); poll = null;
   if (onVis) { document.removeEventListener('visibilitychange', onVis); onVis = null; }
@@ -38,6 +40,46 @@ export async function chatScreen(user, groupId) {
   const names = Object.fromEntries((await api.profilesOf(ids)).map(p => [p.id, p.display_name]));
   const nameOf = uid => (uid === user.id ? t('You', '你') : names[uid] || t('Someone', '有人'));
   let msgs = first, more = first.length === 50, pending = [];
+  const REACTS = ['👍', '❤️', '😂', '😮', '🔥', '💪', '🙏'];
+  const rx = {};                 // message id → [{ user_id, emoji }]
+  const refs = {};               // older messages that replies point at: id → message, null while loading, false if gone
+  let replyTo = null;            // the message the composer is replying to
+  const findMsg = id => msgs.find(m => m.id === id) || refs[id] || null;
+  const snip = (s, n = 90) => (s.length > n ? s.slice(0, n - 1) + '…' : s);
+  async function loadRefs() {
+    const need = [...new Set(msgs.map(m => m.reply_to).filter(id => id && !msgs.some(m => m.id === id) && !(id in refs)))];
+    if (!need.length) return;
+    need.forEach(id => { refs[id] = null; });
+    try { const rows = await api.chatByIds(need); need.forEach(id => { refs[id] = rows.find(r => r.id === id) || false; }); draw(); }
+    catch { need.forEach(id => { delete refs[id]; }); }
+  }
+  // reactions for the messages on screen (the newest `limit`, or all); redraws only if something changed
+  async function loadRx(limit = 0) {
+    const ids = msgs.filter(m => m.kind === 'text').map(m => m.id);
+    const want = limit ? ids.slice(-limit) : ids;
+    try {
+      const got = await api.chatReactions(want);
+      let changed = false;
+      for (const id of want) {
+        const a = JSON.stringify(rx[id] || []), b = JSON.stringify(got[id] || []);
+        if (a !== b) { changed = true; if (got[id]) rx[id] = got[id]; else delete rx[id]; }
+      }
+      if (changed) draw();
+    } catch { /* shown without reactions */ }
+  }
+  const replyHtml = m => {
+    if (!m.reply_to) return '';
+    const o = findMsg(m.reply_to);
+    if (o === false) return '';
+    if (!o) return `<span class="rq loading"><small>${t('Message…', '訊息…')}</small></span>`;
+    return `<button type="button" class="rq ${o.user_id === user.id ? 'mine' : ''}" data-goto="${esc(o.id)}" aria-label="${esc(t(`Replying to ${nameOf(o.user_id)}: ${snip(o.body, 60)}`, `回覆 ${nameOf(o.user_id)}：${snip(o.body, 60)}`))}"><b>${esc(nameOf(o.user_id))}</b><small>${o.checkin_id ? '📷 ' : ''}${esc(snip(o.body))}</small></button>`;
+  };
+  const rxHtml = m => {
+    const l = rx[m.id]; if (!l?.length) return '';
+    const es = [...new Set(l.map(x => x.emoji))], mine = l.some(x => x.user_id === user.id);
+    const who = l.map(x => `${nameOf(x.user_id)} ${x.emoji}`).join(', ');
+    return `<button type="button" class="msg-rx ${mine ? 'mine' : ''}" data-rx="${esc(m.id)}" aria-label="${esc(t(`Reactions: ${who}`, `回應：${who}`))}">${es.slice(0, 3).join('')}${l.length > 1 ? `<b>${l.length}</b>` : ''}</button>`;
+  };
   // photos that messages reply to, fetched as needed: id → card (or null while loading)
   const cards = {};
   async function loadCards() {
@@ -68,6 +110,7 @@ export async function chatScreen(user, groupId) {
     </form>
     <section class="chat" aria-live="polite" aria-label="${t('Messages', '訊息')}"><div id="older"></div><div id="list"></div></section>
     <form class="composer" id="send">
+      <div class="reply-bar" id="replyBar" hidden></div>
       <textarea id="text" rows="1" maxlength="1000" placeholder="${t('Message', '訊息')}" aria-label="${t('Message', '訊息')}"></textarea>
       <button type="submit" id="sendBtn" aria-label="${t('Send', '傳送')}"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"></path></svg></button>
     </form>`);
@@ -82,9 +125,11 @@ export async function chatScreen(user, groupId) {
     const mine = m.user_id === user.id;
     const grouped = prev && prev.kind === 'text' && prev.user_id === m.user_id && ukDay(prev.created_at) === ukDay(m.created_at)
       && new Date(m.created_at) - new Date(prev.created_at) < 5 * 60 * 1000;
-    return out + `<div class="msg ${mine ? 'me' : ''} ${grouped ? 'cont' : ''} ${m.pending ? 'pending' : ''} ${m.failed ? 'failed' : ''}" data-id="${esc(m.id)}">
+    const real = !m.pending && !m.failed;
+    return out + `<div class="msg ${mine ? 'me' : ''} ${grouped ? 'cont' : ''} ${m.pending ? 'pending' : ''} ${m.failed ? 'failed' : ''} ${rx[m.id]?.length ? 'has-rx' : ''}" data-id="${esc(m.id)}"${real ? ` tabindex="0" aria-label="${esc(`${nameOf(m.user_id)}: ${snip(m.body, 120)}`)}" aria-haspopup="menu"` : ''}>
+      <span class="swipe-hint" aria-hidden="true">↩</span>
       ${!mine && !grouped ? `<b class="msg-who">${esc(nameOf(m.user_id))}</b>` : ''}
-      ${quoteHtml(m)}<p>${esc(m.body)}</p><span class="msg-time">${m.failed ? t('Not sent · tap to retry', '傳送失敗 · 撳一下再試') : m.pending ? t('Sending…', '傳送緊…') : esc(timeOf(m.created_at))}</span></div>`;
+      ${replyHtml(m)}${quoteHtml(m)}<p>${esc(m.body)}</p><span class="msg-time">${m.failed ? t('Not sent · tap to retry', '傳送失敗 · 撳一下再試') : m.pending ? t('Sending…', '傳送緊…') : esc(timeOf(m.created_at))}</span>${rxHtml(m)}</div>`;
   }
   function draw(stick) {
     const near = stick || window.innerHeight + window.scrollY > document.body.scrollHeight - 160;
@@ -95,7 +140,9 @@ export async function chatScreen(user, groupId) {
     older.querySelector('#loadOlder')?.addEventListener('click', loadOlder);
     list.querySelectorAll('.msg.failed').forEach(b => b.onclick = () => retry(b.dataset.id));
     list.querySelectorAll('[data-photo]').forEach(b => b.onclick = () => openPhoto(b.dataset.photo));
-    loadCards();
+    list.querySelectorAll('[data-goto]').forEach(b => b.onclick = e => { e.stopPropagation(); goTo(b.dataset.goto); });
+    list.querySelectorAll('[data-rx]').forEach(b => b.onclick = e => { e.stopPropagation(); const m = findMsg(b.dataset.rx); if (m) openMenu(m, b.closest('.msg')); });
+    loadCards(); loadRefs();
     if (near) requestAnimationFrame(() => window.scrollTo(0, document.body.scrollHeight));
   }
   // mark everything here as read, then let the tab bar drop its red dot
@@ -106,6 +153,7 @@ export async function chatScreen(user, groupId) {
       const page = await api.chatPage(g.id, msgs[0]?.created_at);
       more = page.length === 50; msgs = [...page, ...msgs]; draw();
       window.scrollTo(0, document.body.scrollHeight - h + window.scrollY);
+      loadRx();
     } catch (err) { showError(err); }
   }
   // add rows from the server (live, poll or our own send), no duplicates, in time order
@@ -120,11 +168,118 @@ export async function chatScreen(user, groupId) {
   async function catchUp() {
     const last = msgs.at(-1)?.created_at;
     try { addRows(last ? await api.chatSince(g.id, last) : await api.chatPage(g.id)); } catch { /* try again next time */ }
+    loadRx(100);
   }
 
-  async function sendBody(body, tmpId) {
+  // jump to the message a reply quotes, and flash it
+  function goTo(id) {
+    const b = list.querySelector(`.msg[data-id="${CSS.escape(id)}"]`);
+    if (!b) return;
+    b.scrollIntoView({ block: 'center', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+    b.classList.remove('flash'); void b.offsetWidth; b.classList.add('flash');
+  }
+
+  // ----- reply -----
+  const bar = el.querySelector('#replyBar');
+  function setReply(m) {
+    replyTo = m;
+    if (!m) { bar.hidden = true; bar.innerHTML = ''; return; }
+    bar.hidden = false;
+    bar.innerHTML = `<div class="rq ${m.user_id === user.id ? 'mine' : ''}"><b>${esc(nameOf(m.user_id))}</b><small>${m.checkin_id ? '📷 ' : ''}${esc(snip(m.body))}</small></div>
+      <button type="button" class="ghost x" id="noReply" aria-label="${t('Cancel reply', '取消回覆')}">✕</button>`;
+    bar.querySelector('#noReply').onclick = () => { setReply(null); ta.focus(); };
+    ta.focus();
+  }
+
+  // ----- long-press menu: emojis, reply, copy -----
+  let menu = null;
+  function closeMenu() { if (!menu) return; const back = menu.dataset.back; menu.remove(); menu = null; list.querySelector('.msg.picked')?.classList.remove('picked'); if (back) list.querySelector(`.msg[data-id="${CSS.escape(back)}"]`)?.focus(); }
+  function openMenu(m, bubble) {
+    if (menu || m.kind !== 'text') return;
+    navigator.vibrate?.(15);
+    const mine = (rx[m.id] || []).find(x => x.user_id === user.id)?.emoji;
+    const who = (rx[m.id] || []);
+    bubble?.classList.add('picked');
+    menu = document.createElement('div');
+    menu.className = 'msg-menu-wrap'; menu.dataset.back = m.id;
+    menu.innerHTML = `<div class="msg-menu" role="menu" aria-label="${t('Message options', '訊息選項')}">
+        <div class="mm-emoji">${REACTS.map(e => `<button role="menuitem" data-e="${e}" class="${e === mine ? 'on' : ''}" aria-label="${e === mine ? t(`Remove ${e}`, `取消 ${e}`) : t(`React ${e}`, `回應 ${e}`)}">${e}</button>`).join('')}</div>
+        ${who.length ? `<ul class="mm-who">${who.map(x => `<li><span>${esc(nameOf(x.user_id))}</span><span>${x.emoji}</span></li>`).join('')}</ul>` : ''}
+        <div class="mm-acts"><button role="menuitem" data-act="reply">↩ ${t('Reply', '回覆')}</button><button role="menuitem" data-act="copy">${t('Copy', '複製')}</button></div>
+      </div>`;
+    document.body.appendChild(menu);
+    // place it above the bubble (or below if there's no room)
+    const box = menu.querySelector('.msg-menu'), r = bubble?.getBoundingClientRect();
+    if (r) {
+      const h = box.offsetHeight, top = r.top - h - 8 > 70 ? r.top - h - 8 : Math.min(r.bottom + 8, innerHeight - h - 80);
+      box.style.top = `${Math.max(70, top)}px`;
+      box.style[m.user_id === user.id ? 'right' : 'left'] = `${Math.max(8, m.user_id === user.id ? innerWidth - r.right : r.left)}px`;
+    }
+    menu.onclick = e => { if (e.target === menu) closeMenu(); };
+    menu.onkeydown = e => {
+      if (e.key === 'Escape') { e.preventDefault(); closeMenu(); }
+      if (['ArrowRight', 'ArrowLeft', 'ArrowDown', 'ArrowUp'].includes(e.key)) {
+        const bs = [...menu.querySelectorAll('button')], i = bs.indexOf(document.activeElement);
+        e.preventDefault(); bs[(i + (e.key === 'ArrowRight' || e.key === 'ArrowDown' ? 1 : bs.length - 1)) % bs.length].focus();
+      }
+    };
+    menu.querySelectorAll('[data-e]').forEach(b => b.onclick = () => { closeMenu(); react(m, b.dataset.e); });
+    menu.querySelector('[data-act="reply"]').onclick = () => { closeMenu(); setReply(m); };
+    menu.querySelector('[data-act="copy"]').onclick = async () => { closeMenu(); try { await navigator.clipboard.writeText(m.body); } catch { /* not allowed */ } };
+    menu.querySelector(mine ? 'button.on' : '[data-e]').focus({ preventScroll: true });
+  }
+  async function react(m, e) {
+    const before = rx[m.id] || [], cur = before.find(x => x.user_id === user.id)?.emoji;
+    const rest = before.filter(x => x.user_id !== user.id);
+    rx[m.id] = e === cur ? rest : [...rest, { user_id: user.id, emoji: e }];
+    if (!rx[m.id].length) delete rx[m.id];
+    draw();
+    try { await api.setChatReaction(user.id, m.id, e, cur); }
+    catch (err) { if (before.length) rx[m.id] = before; else delete rx[m.id]; draw(); showError(err); }
+  }
+
+  // gestures on a message: hold to open the menu, swipe right to reply
+  let press = null;
+  const pressed = e => {
+    const b = e.target.closest('.msg[tabindex]');
+    return b && !e.target.closest('.rq, .quote, .msg-rx') ? b : null;
+  };
+  list.addEventListener('pointerdown', e => {
+    const b = pressed(e); if (!b || e.button > 0) return;
+    const m = findMsg(b.dataset.id); if (!m) return;
+    press = { b, m, x: e.clientX, y: e.clientY, dx: 0, swipe: false, timer: setTimeout(() => { if (press && !press.swipe) { openMenu(m, b); press = null; } }, 450) };
+  });
+  list.addEventListener('pointermove', e => {
+    if (!press) return;
+    const dx = e.clientX - press.x, dy = e.clientY - press.y;
+    if (!press.swipe && (Math.abs(dy) > 12 || dx < -12)) { clearTimeout(press.timer); press = null; return; }
+    if (dx > 12 && Math.abs(dx) > Math.abs(dy)) { press.swipe = true; clearTimeout(press.timer); }
+    if (press.swipe) {
+      press.dx = Math.min(Math.max(dx, 0), 90);
+      press.b.style.transform = `translateX(${press.dx}px)`; press.b.classList.toggle('swiping', press.dx >= 60);
+    }
+  });
+  const endPress = () => {
+    if (!press) return;
+    clearTimeout(press.timer);
+    const { b, m, dx, swipe } = press; press = null;
+    if (swipe) {
+      b.style.transition = 'transform .18s ease'; b.style.transform = ''; b.classList.remove('swiping');
+      setTimeout(() => { b.style.transition = ''; }, 200);
+      if (dx >= 60) { navigator.vibrate?.(10); setReply(m); }
+    }
+  };
+  list.addEventListener('pointerup', endPress);
+  list.addEventListener('pointercancel', endPress);
+  list.addEventListener('contextmenu', e => { const b = pressed(e); if (!b) return; e.preventDefault(); if (press) { clearTimeout(press.timer); press = null; } const m = findMsg(b.dataset.id); if (m) openMenu(m, b); });
+  list.addEventListener('keydown', e => {
+    const b = e.target.closest?.('.msg[tabindex]'); if (!b || e.target !== b) return;
+    if (e.key === 'Enter' || e.key === ' ' || e.key === 'ContextMenu') { e.preventDefault(); const m = findMsg(b.dataset.id); if (m) openMenu(m, b); }
+  });
+
+  async function sendBody(body, tmpId, reply) {
     try {
-      const row = await api.sendChat(user.id, g.id, body);
+      const row = await api.sendChat(user.id, g.id, body, null, reply);
       pending = pending.filter(p => p.id !== tmpId);
       addRows([row]); draw(true);
     } catch (err) {
@@ -133,7 +288,7 @@ export async function chatScreen(user, groupId) {
   }
   function retry(id) {
     const p = pending.find(x => x.id === id); if (!p) return;
-    p.failed = false; p.pending = true; draw(); sendBody(p.body, id);
+    p.failed = false; p.pending = true; draw(); sendBody(p.body, id, p.reply_to);
   }
   const ta = el.querySelector('#text');
   const grow = () => { ta.style.height = 'auto'; ta.style.height = Math.min(ta.scrollHeight, 140) + 'px'; };
@@ -142,9 +297,9 @@ export async function chatScreen(user, groupId) {
   el.querySelector('#send').onsubmit = e => {
     e.preventDefault();
     const body = ta.value.trim(); if (!body) return;
-    const tmp = { id: 'tmp-' + Date.now(), user_id: user.id, kind: 'text', body, created_at: new Date().toISOString(), pending: true };
-    pending.push(tmp); ta.value = ''; grow(); ta.focus(); draw(true);
-    sendBody(body, tmp.id);
+    const tmp = { id: 'tmp-' + Date.now(), user_id: user.id, kind: 'text', body, created_at: new Date().toISOString(), pending: true, reply_to: replyTo?.id || null };
+    pending.push(tmp); ta.value = ''; grow(); setReply(null); ta.focus(); draw(true);
+    sendBody(body, tmp.id, tmp.reply_to);
   };
 
   // rename: anyone in the group; shows up as a grey line for everyone
@@ -160,6 +315,7 @@ export async function chatScreen(user, groupId) {
 
   draw(true);
   markRead();
+  loadRx();
   // clear this chat's notifications now that it's open
   navigator.serviceWorker?.ready?.then(r => r.getNotifications({ tag: `chat-${g.id}` })).then(ns => ns?.forEach(n => n.close())).catch(() => {});
 
@@ -167,6 +323,10 @@ export async function chatScreen(user, groupId) {
   stop = api.chatLive(g.id, row => {
     addRows([row]);
     if (row.kind === 'rename') { g.name = row.body; const h = el.querySelector('#gname'); if (h) h.textContent = row.body; }
+  }, null, p => {
+    const r = p.new; if (!r?.message_id || r.user_id === user.id) return;
+    rx[r.message_id] = [...(rx[r.message_id] || []).filter(x => x.user_id !== r.user_id), { user_id: r.user_id, emoji: r.emoji }];
+    draw();
   });
   // a safety net in case live updates drop (phone asleep, network change)
   poll = setInterval(() => { if (document.visibilityState === 'visible') catchUp(); }, 15000);

@@ -39,15 +39,35 @@ export const joinGroup = code => sb.rpc('join_group', { p_code: code }).then(mus
 export const renameGroup = (groupId, name) => sb.rpc('rename_group', { p_group: groupId, p_name: name }).then(must);
 
 // ---------- group chat (members only, kept forever) ----------
-const CHAT_COLS = 'id, group_id, user_id, kind, body, created_at, checkin_id';
+const CHAT_COLS = 'id, group_id, user_id, kind, body, created_at, checkin_id, reply_to';
 export const chatPage = (groupId, before, limit = 50) => {
   let q = sb.from('chat_messages').select(CHAT_COLS).eq('group_id', groupId).order('created_at', { ascending: false }).limit(limit);
   if (before) q = q.lt('created_at', before);
   return q.then(must).then(rows => rows.reverse());
 };
 export const chatSince = (groupId, after) => sb.from('chat_messages').select(CHAT_COLS).eq('group_id', groupId).gt('created_at', after).order('created_at').then(must);
-export const sendChat = (userId, groupId, body, checkinId = null) =>
-  sb.from('chat_messages').insert({ group_id: groupId, user_id: userId, body, ...(checkinId ? { checkin_id: checkinId } : {}) }).select(CHAT_COLS).single().then(must);
+export const sendChat = (userId, groupId, body, checkinId = null, replyTo = null) =>
+  sb.from('chat_messages').insert({ group_id: groupId, user_id: userId, body, ...(checkinId ? { checkin_id: checkinId } : {}), ...(replyTo ? { reply_to: replyTo } : {}) })
+    .select(CHAT_COLS).single().then(must);
+// messages by id (the ones replies point at, when they're older than what's loaded)
+export const chatByIds = ids => (ids.length ? sb.from('chat_messages').select(CHAT_COLS).in('id', ids).then(must) : Promise.resolve([]));
+// emoji reactions on chat messages: { messageId: [{ user_id, emoji }] }
+export async function chatReactions(messageIds) {
+  if (!messageIds.length) return {};
+  const out = {};
+  for (let i = 0; i < messageIds.length; i += 150) {   // keep the URL short
+    const rows = must(await sb.from('chat_reactions').select('message_id, user_id, emoji, created_at').in('message_id', messageIds.slice(i, i + 150)).order('created_at'));
+    for (const r of rows) (out[r.message_id] ||= []).push({ user_id: r.user_id, emoji: r.emoji });
+  }
+  return out;
+}
+// set my reaction on a message; the same emoji again (or null) takes it off
+export async function setChatReaction(userId, messageId, emoji, current) {
+  const q = sb.from('chat_reactions');
+  if (!emoji || emoji === current) return must(await q.delete().eq('message_id', messageId).eq('user_id', userId));
+  if (current) return must(await q.update({ emoji }).eq('message_id', messageId).eq('user_id', userId));
+  return must(await q.insert({ message_id: messageId, user_id: userId, emoji }));
+}
 // the check-in photos chat replies point at: { id: { user_id, name, created_at, photo_path, thumb, gone } }
 export async function checkinCards(ids) {
   if (!ids.length) return {};
@@ -62,10 +82,12 @@ export const markChatRead = (userId, groupId) =>
   sb.from('chat_reads').upsert({ user_id: userId, group_id: groupId, read_at: new Date().toISOString() }, { onConflict: 'user_id,group_id' }).then(must);
 export const chatUnread = () => sb.rpc('chat_unread').then(must).then(rows => Object.fromEntries(rows.map(r => [r.group_id, r.unread])));
 // live new messages for one group; returns a function that stops listening
-export function chatLive(groupId, onRow, onStatus) {
+export function chatLive(groupId, onRow, onStatus, onReaction) {
   if (!sb.channel) return () => {};
   const ch = sb.channel(`chat-${groupId}`)
     .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chat_messages', filter: `group_id=eq.${groupId}` }, p => onRow(p.new))
+    // new or changed reactions arrive live; removed ones show up on the next 15-second check
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'chat_reactions', filter: `group_id=eq.${groupId}` }, p => onReaction?.(p))
     .subscribe(st => onStatus?.(st));
   return () => { try { sb.removeChannel(ch); } catch { /* already gone */ } };
 }
