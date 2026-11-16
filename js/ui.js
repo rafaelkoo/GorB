@@ -1,7 +1,7 @@
 // Screens: sign in, groups, group page, check-in camera. Each renders into #app.
-import { btnLoading, btnDone, btnReset } from './motion.js';
+import { btnLoading, btnDone, btnReset, pop } from './motion.js';
 import * as api from './supa.js';
-import { openCamera, stopCamera, grabFrame, encodeCanvas } from './camera.js';
+import { openCamera, stopCamera, grabFrame, encodeCanvas, cameraCount } from './camera.js';
 import { storyEditor } from './story.js';
 import { FEED_PAGE } from './config.js';
 import { pushSupported, pushState, enablePush } from './push.js';
@@ -122,6 +122,20 @@ function boardHtml(board, user) {
   }).join('')}</ol>`;
 }
 
+// Instagram-style emoji reactions under a photo
+export const REACTIONS = ['🔥', '💪', '👏', '😂', '😮', '❤️'];
+function reactsHtml(r, user) {
+  const list = r.reactions || [], mine = list.find(x => x.user_id === user.id)?.emoji;
+  const groups = [...new Set(list.map(x => x.emoji))].map(e => ({ e, who: list.filter(x => x.emoji === e) }));
+  return `${groups.map(g => {
+      const names = g.who.map(x => (x.user_id === user.id ? t('You', '你') : x.name)).join(', ');
+      return `<button class="react-chip ${g.e === mine ? 'on' : ''}" data-react="${r.id}" data-e="${esc(g.e)}" aria-pressed="${g.e === mine}" title="${esc(names)}" aria-label="${esc(g.e)} ${g.who.length}: ${esc(names)}">${esc(g.e)}<b>${g.who.length}</b></button>`;
+    }).join('')}
+    <button class="react-add" data-reactadd="${r.id}" aria-expanded="false" aria-label="${t('React with an emoji', '用 emoji 回應')}">${ICON.smile(18)}<span>+</span></button>
+    <div class="react-pick" hidden role="group" aria-label="${t('Pick an emoji', '揀個 emoji')}">${REACTIONS.map(e => `<button data-react="${r.id}" data-e="${e}" class="${e === mine ? 'on' : ''}" aria-pressed="${e === mine}">${e}</button>`).join('')}</div>
+    ${list.length ? `<p class="react-who muted small">${esc(list.slice(-3).reverse().map(x => x.user_id === user.id ? t('You', '你') : x.name).join(', '))}${list.length > 3 ? t(` and ${list.length - 3} more`, ` 同另外 ${list.length - 3} 個人`) : ''}</p>` : ''}`;
+}
+
 function postHtml(r, user) {
   const name = esc(r.profiles?.display_name);
   return `<article class="post">
@@ -130,6 +144,7 @@ function postHtml(r, user) {
       <img src="${esc(r.thumb)}" alt="${t('Check-in photo by', '打卡相：')} ${name}" loading="lazy"></button>`}
     <div class="post-meta"><b>${name}</b> <span class="muted">${esc(fmtDateTime(r.created_at))}</span>
       ${r.note ? `<p>${esc(r.note)}</p>` : ''}
+      <div class="reacts" data-reacts="${r.id}">${reactsHtml(r, user)}</div>
       <div class="post-acts"><button class="ghost reply-btn" data-reply="${r.id}">${ICON.chat(16)} ${t('Reply', '回覆')}</button>
       ${r.user_id === user.id ? `<button class="ghost del" data-id="${r.id}">${t('Delete', '刪除')}</button>` : ''}</div></div>
   </article>`;
@@ -259,6 +274,26 @@ export async function group(user, groupId, limit = FEED_PAGE) {
   const byId = Object.fromEntries(feed.map(r => [r.id, r]));
   el.querySelectorAll('[data-reply]').forEach(b => b.onclick = () => replySheet(user, groupId, byId[b.dataset.reply]));
   el.querySelectorAll('button.photo').forEach(b => b.onclick = () => { const r = feed.find(x => x.photo_path === b.dataset.path); openPhoto(b.dataset.path, r ? () => replySheet(user, groupId, r) : null); });
+  // reactions: change right away on screen, then save; put it back if saving fails
+  const wireReacts = box => {
+    const r = byId[box.dataset.reacts];
+    box.querySelector('[data-reactadd]').onclick = e => {
+      const pick = box.querySelector('.react-pick'), open = pick.hidden;
+      el.querySelectorAll('.react-pick').forEach(p => { p.hidden = true; p.previousElementSibling?.setAttribute('aria-expanded', 'false'); });
+      pick.hidden = !open; e.currentTarget.setAttribute('aria-expanded', String(open));
+      if (open) pick.querySelector('button')?.focus();
+    };
+    box.querySelectorAll('[data-react]').forEach(b => b.onclick = async () => {
+      const before = r.reactions || [], cur = before.find(x => x.user_id === user.id)?.emoji, e = b.dataset.e;
+      const rest = before.filter(x => x.user_id !== user.id);
+      r.reactions = e === cur ? rest : [...rest, { user_id: user.id, emoji: e, name: '' }];
+      box.innerHTML = reactsHtml(r, user); wireReacts(box);
+      if (e !== cur) pop(box.querySelector(`.react-chip.on`));
+      try { await api.setReaction(user.id, r.id, e, cur); }
+      catch (err) { r.reactions = before; box.innerHTML = reactsHtml(r, user); wireReacts(box); showError(err); }
+    });
+  };
+  el.querySelectorAll('[data-reacts]').forEach(wireReacts);
   el.querySelectorAll('.del').forEach(b => b.onclick = async () => {
     if (!confirm(t('Delete this check-in and its photo?', '刪除呢次打卡同張相？'))) return;
     try { await api.deleteCheckin(feed.find(r => r.id === b.dataset.id)); group(user, groupId, limit); } catch (err) { showError(err); }
@@ -285,7 +320,9 @@ export async function checkin(user, groupId) {
         <p class="error" role="alert" hidden></p>
       </div>
       <div class="cam-bottom" id="live">
+        <span></span>
         <button id="snap" class="shutter" aria-label="${t('Take photo', '影相')}"></button>
+        <button id="flip" class="cam-flip" type="button" hidden aria-label="${t('Switch camera', '轉鏡頭')}">${ICON.flip(26)}</button>
       </div>
       <form id="post" class="cam-bottom" hidden>
         <input id="note" maxlength="140" placeholder="${t('Message to your group (optional)', '同 group 講句嘢（可以唔填）')}" enterkeyhint="send" aria-label="${t('Message to your group', '同 group 講句嘢')}">
@@ -300,21 +337,38 @@ export async function checkin(user, groupId) {
   let photo = null;
   // the camera can take a while (permission prompt); if you've left the screen by then, switch it off and stop
   const gone = () => !document.body.contains(v);
-  try {
-    const stream = await openCamera(v);
-    if (gone()) { stopCamera(stream); return; }
+  // back camera by default; the front (selfie) camera is remembered once you flip to it
+  let facing = 'environment'; try { facing = localStorage.getItem('gob_cam') === 'user' ? 'user' : 'environment'; } catch {}
+  const start = async () => {
+    stopCamera(liveStream); liveStream = null;
+    const stream = await openCamera(v, facing);
+    if (gone()) { stopCamera(stream); return false; }
     liveStream = stream;
-  }
+    // which way it really faces (a laptop webcam says user or nothing)
+    const real = stream.getVideoTracks()[0]?.getSettings?.().facingMode;
+    el.querySelector('.cam').classList.toggle('selfie', (real || facing) === 'user');
+    return true;
+  };
+  try { if (!(await start())) return; }
   catch (err) { if (gone()) return; showError(err.name === 'NotAllowedError' ? { message: t('Camera blocked. Allow camera for this site in Chrome settings.', '相機被封鎖咗。去 Chrome 設定俾呢個網站用相機。') } : err); return; }
 
   if (gone()) return;
+  const flip = el.querySelector('#flip');
+  if (await cameraCount() > 1 && !gone()) flip.hidden = false;
+  flip.onclick = async () => {
+    facing = facing === 'user' ? 'environment' : 'user';
+    try { localStorage.setItem('gob_cam', facing); } catch {}
+    flip.disabled = true; flip.classList.add('spin');
+    try { await start(); } catch (err) { showError(err); }
+    flip.disabled = false; setTimeout(() => flip.classList.remove('spin'), 400);
+  };
   // after the shot: Instagram-Stories-style text on the photo (story.js); it's drawn into the photo on Post
   let frame = null, story = null;
   const cam = el.querySelector('.cam');
   const editing = on => cam.classList.toggle('editing', on);
   el.querySelector('#snap').onclick = async () => {
     try {
-      frame = grabFrame(v);
+      frame = grabFrame(v, el.querySelector('.cam').classList.contains('selfie'));
       shot.src = frame.toDataURL('image/jpeg', .9);
       shot.hidden = false; v.hidden = true; live.hidden = true; post.hidden = false;
       story = storyEditor(cam, frame, shot, { onEditing: editing });

@@ -125,7 +125,23 @@ export async function groupFeed(groupId, limit) {
   // check-ins from before thumbnails existed fall back to the full photo
   const missing = live.filter(r => !url[thumbPath(r.photo_path)]).map(r => r.photo_path);
   const full = missing.length ? await photoLinks(missing) : {};
-  return rows.map(r => live.includes(r) ? { ...r, gone: false, thumb: url[thumbPath(r.photo_path)] || full[r.photo_path] } : { ...r, gone: true, thumb: null });
+  const rx = await reactionsFor(rows.map(r => r.id)).catch(() => ({}));
+  return rows.map(r => ({ ...(live.includes(r) ? { ...r, gone: false, thumb: url[thumbPath(r.photo_path)] || full[r.photo_path] } : { ...r, gone: true, thumb: null }), reactions: rx[r.id] || [] }));
+}
+
+// emoji reactions under check-in photos: one per person per photo
+export async function reactionsFor(ids) {
+  if (!ids.length) return {};
+  const rows = must(await sb.from('checkin_reactions').select('checkin_id, user_id, emoji, created_at, profiles(display_name)').in('checkin_id', ids).order('created_at'));
+  const out = {};
+  for (const r of rows) (out[r.checkin_id] ||= []).push({ user_id: r.user_id, emoji: r.emoji, name: r.profiles?.display_name || '' });
+  return out;
+}
+// set my reaction to emoji; null (or the same emoji again) takes it off
+export async function setReaction(userId, checkinId, emoji, current) {
+  if (!emoji || emoji === current) return must(await sb.from('checkin_reactions').delete().eq('checkin_id', checkinId).eq('user_id', userId));
+  if (current) return must(await sb.from('checkin_reactions').update({ emoji }).eq('checkin_id', checkinId).eq('user_id', userId));
+  return must(await sb.from('checkin_reactions').insert({ checkin_id: checkinId, user_id: userId, emoji }));
 }
 
 export async function fullPhoto(path) { return (await photoLinks([path]))[path]; }

@@ -3,10 +3,11 @@
 // Drawing the frame onto a canvas and re-encoding also drops all EXIF data (GPS, phone model).
 import { PHOTO_MAX_PX, PHOTO_QUALITY, THUMB_MAX_PX, THUMB_QUALITY } from './config.js';
 
-export async function openCamera(videoEl) {
+// facing: 'environment' = back camera, 'user' = front (selfie)
+export async function openCamera(videoEl, facing = 'environment') {
   if (!navigator.mediaDevices?.getUserMedia) throw new Error('This browser has no camera access. Open the app in Chrome.');
   const stream = await navigator.mediaDevices.getUserMedia({
-    video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } },
+    video: { facingMode: { ideal: facing }, width: { ideal: 1920 }, height: { ideal: 1080 } },
     audio: false
   });
   videoEl.srcObject = stream;
@@ -16,6 +17,11 @@ export async function openCamera(videoEl) {
 }
 
 export function stopCamera(stream) { stream?.getTracks().forEach(t => t.stop()); }
+
+// more than one camera means there's a front one to flip to (labels/ids need permission first)
+export async function cameraCount() {
+  try { return (await navigator.mediaDevices.enumerateDevices()).filter(d => d.kind === 'videoinput').length; } catch { return 1; }
+}
 
 function encode(source, w, h, maxPx, quality) {
   const scale = Math.min(1, maxPx / Math.max(w, h));
@@ -38,13 +44,16 @@ export async function snap(videoEl) {
 }
 
 // For the story-style editor: grab the frame once at full photo size, edit on top, then encode.
-export function grabFrame(videoEl) {
+// mirror: selfies are saved the way you saw them on screen (like Instagram)
+export function grabFrame(videoEl, mirror = false) {
   const w = videoEl.videoWidth, h = videoEl.videoHeight;
   if (!w || !h) throw new Error('Camera not ready yet');
   const scale = Math.min(1, PHOTO_MAX_PX / Math.max(w, h));
   const c = document.createElement('canvas');
   c.width = Math.round(w * scale); c.height = Math.round(h * scale);
-  c.getContext('2d').drawImage(videoEl, 0, 0, c.width, c.height);
+  const x = c.getContext('2d');
+  if (mirror) { x.translate(c.width, 0); x.scale(-1, 1); }
+  x.drawImage(videoEl, 0, 0, c.width, c.height);
   return c;
 }
 export async function encodeCanvas(c) {
