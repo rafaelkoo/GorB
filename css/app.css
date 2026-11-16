@@ -284,7 +284,7 @@ button:disabled { opacity: .55; cursor: default; }
 .set.done input { border-color: var(--green); }
 .set.head span:nth-child(4) { text-align: center; }
 #timer { position: fixed; left: 0; right: 0; bottom: calc(62px + env(safe-area-inset-bottom)); z-index: 6; padding: 0 12px 8px; pointer-events: none; }
-#timer .tm { pointer-events: auto; max-width: 560px; margin: 0 auto; display: grid; grid-template-columns: 1fr auto auto; grid-template-areas: "text add stop" "bar bar bar"; gap: 6px 8px; align-items: center; background: var(--mat-2); border: 1px solid var(--blue); border-radius: var(--r-card); padding: 10px 12px; box-shadow: 0 6px 24px rgba(0,0,0,.45); }
+#timer .tm { pointer-events: auto; max-width: 560px; margin: 0 auto; display: grid; grid-template-columns: auto 1fr auto auto; grid-template-areas: "grip text add stop" "bar bar bar bar"; gap: 6px 8px; align-items: center; background: var(--mat-2); border: 1px solid var(--blue); border-radius: var(--r-card); padding: 10px 12px; box-shadow: 0 6px 24px rgba(0,0,0,.45); }
 #timer.go .tm { border-color: var(--green); }
 .tm-text { grid-area: text; display: flex; align-items: baseline; gap: 10px; }
 .tm-text span { color: var(--dust); font-weight: 600; }
@@ -610,3 +610,12 @@ textarea { resize: vertical; line-height: 1.4; }
 .mm-acts button + button { border-top: 1px solid var(--line); }
 .mm-acts button:focus-visible, .mm-emoji button:focus-visible { outline: 2px solid var(--yellow); outline-offset: -2px; }
 @media (prefers-reduced-motion: reduce) { .msg.flash, .msg-menu { animation: none; } .msg.flash { outline: 3px solid var(--yellow); } }
+
+/* ---------- rest timer you can drag around ---------- */
+#timer .tm { touch-action: none; cursor: grab; }
+.tm-grip { grid-area: grip; width: 30px; height: 40px; min-height: 0; padding: 0; margin-left: -6px; display: grid; place-items: center; background: none; border: 0; color: var(--dust); cursor: grab; }
+.tm-grip:focus-visible { outline: 2px solid var(--yellow); border-radius: 8px; }
+#timer.moved { right: auto; bottom: auto; width: min(560px, calc(100vw - 8px)); padding: 0; }
+#timer.moved .tm { box-shadow: 0 10px 28px rgba(0,0,0,.5); }
+#timer.dragging .tm { cursor: grabbing; transform: scale(1.02); box-shadow: 0 16px 36px rgba(0,0,0,.6); }
+#timer.moved:not([hidden]) { animation: none; }
