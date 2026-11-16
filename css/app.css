@@ -552,3 +552,16 @@ textarea { resize: vertical; line-height: 1.4; }
 .react-pick button.on { background: var(--floor); }
 .react-who { flex-basis: 100%; margin: 0; }
 @media (prefers-reduced-motion: reduce) { .react-pick button, .cam-flip.spin svg { transition: none; animation: none; } }
+
+/* ---------- last week's review on the group page ---------- */
+.week-list { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 2px; }
+.week-list li { padding: 9px 10px; border-radius: 10px; }
+.week-list li.me { background: var(--floor); }
+.wk-row { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
+.wk-row a { color: inherit; text-decoration: none; }
+.wk-days { margin-left: auto; display: inline-flex; align-items: center; gap: 8px; font-variant-numeric: tabular-nums; font-size: .9rem; }
+.dots { display: inline-flex; gap: 3px; }
+.dots i { width: 9px; height: 9px; border-radius: 50%; border: 1.5px solid var(--dust); }
+.dots i.on { background: var(--green); border-color: var(--green); }
+.dots i.on.extra { background: var(--yellow); border-color: var(--yellow); }
+.wk-pb { margin: 4px 0 0; font-size: .88rem; }

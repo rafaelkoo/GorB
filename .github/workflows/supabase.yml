@@ -76,3 +76,4 @@ jobs:
           supabase functions deploy cleanup-photos --no-verify-jwt --use-api --yes
           supabase functions deploy notify-chat --no-verify-jwt --use-api --yes
           supabase functions deploy notify-reaction --no-verify-jwt --use-api --yes
+          supabase functions deploy weekly-review --no-verify-jwt --use-api --yes

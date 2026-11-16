@@ -5,8 +5,9 @@ import { openCamera, stopCamera, grabFrame, encodeCanvas, cameraCount } from './
 import { storyEditor } from './story.js';
 import { FEED_PAGE } from './config.js';
 import { pushSupported, pushState, enablePush } from './push.js';
-import { t, setLang, langSwitchHtml, fmtDateTime, monthName } from './i18n.js';
+import { t, setLang, langSwitchHtml, fmtDateTime, monthName, getLang } from './i18n.js';
 import { ICON, tally } from './icons.js';
+import { EX, isClimb, vGrade } from './exercises.js';
 
 const $app = () => document.getElementById('app');
 export const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -108,6 +109,28 @@ export async function home(user) {
 }
 
 // Month table with a bar per person. Ties at the bottom are all marked (tie rule not decided yet).
+// last week (Mon–Sun) in this group: days against each person's target, and new PBs
+function weekHtml(rv, user) {
+  const ms = rv?.members || [];
+  if (ms.length < 2) return '';
+  const nm = id => (getLang() === 'zh' ? EX[id]?.zh : EX[id]?.en) || t('an exercise', '一個動作');
+  const amt = (id, v) => (isClimb(id) ? vGrade(v) : `${+v} kg`);
+  const day = s => new Date(`${s}T12:00:00`).toLocaleDateString(getLang() === 'zh' ? 'zh-HK' : 'en-GB', { day: 'numeric', month: 'short' });
+  const top = Math.max(0, ...ms.map(m => m.days));
+  const hit = ms.filter(m => m.target && m.days >= m.target).length, withTarget = ms.filter(m => m.target).length;
+  return `<section class="card week"><div class="card-head"><h3>${t('Last week', '上星期')}</h3><span class="muted small">${esc(day(rv.week_start))} – ${esc(day(rv.week_end))}</span></div>
+    ${withTarget ? `<p class="muted small">${t(`${hit} of ${withTarget} hit their days target`, `${withTarget} 個人入面 ${hit} 個達標`)}</p>` : ''}
+    <ol class="week-list">${ms.map(m => {
+      const goal = m.target || 0, met = goal && m.days >= goal;
+      const dots = Array.from({ length: Math.max(goal, m.days, 1) }, (_, i) => `<i class="${i < m.days ? 'on' : ''} ${i >= goal && goal ? 'extra' : ''}"></i>`).join('');
+      return `<li class="${m.user_id === user.id ? 'me' : ''}">
+        <div class="wk-row"><a href="#/p/${m.user_id}"><b>${esc(m.name)}</b></a>${m.days === top && top > 0 ? ' 🏆' : ''}${met ? ' 🎯' : ''}${m.days === 0 ? ' 😴' : ''}
+          <span class="wk-days"><span class="dots" aria-hidden="true">${dots}</span>${goal ? t(`${m.days}/${goal} days`, `${m.days}/${goal} 日`) : t(`${m.days} day${m.days === 1 ? '' : 's'}`, `${m.days} 日`)}</span></div>
+        ${m.prs.length ? `<p class="wk-pb">💪 ${m.prs.slice(0, 3).map(p => `${esc(nm(p.exercise_id))} ${esc(amt(p.exercise_id, p.kg))} <span class="muted">(${isClimb(p.exercise_id) ? t(`was ${vGrade(p.was)}`, `之前 ${vGrade(p.was)}`) : `+${+(p.kg - p.was).toFixed(2)}`})</span>`).join(', ')}${m.prs.length > 3 ? t(` +${m.prs.length - 3} more`, ` 仲有 ${m.prs.length - 3} 個`) : ''}</p>` : ''}
+      </li>`;
+    }).join('')}</ol></section>`;
+}
+
 function boardHtml(board, user) {
   board = [...board].sort((a, b) => b.days - a.days || String(a.display_name).localeCompare(b.display_name));
   const low = board.length > 1 ? Math.min(...board.map(r => r.days)) : null;
@@ -199,8 +222,9 @@ export async function group(user, groupId, limit = FEED_PAGE) {
   const groups = await api.myGroups();
   const g = groups.find(x => x.id === groupId);
   if (!g) { location.hash = '#/all'; return; }
-  const [board, feed, doneToday, unread] = await Promise.all([
-    api.leaderboard(groupId), api.groupFeed(groupId, limit + 1), api.checkedInToday(user.id), api.chatUnread().catch(() => ({}))
+  const [board, feed, doneToday, unread, week] = await Promise.all([
+    api.leaderboard(groupId), api.groupFeed(groupId, limit + 1), api.checkedInToday(user.id), api.chatUnread().catch(() => ({})),
+    api.weekReview(groupId).catch(() => null)
   ]);
   const nUnread = unread[groupId] || 0;
   const more = feed.length > limit; if (more) feed.pop();
@@ -224,6 +248,7 @@ export async function group(user, groupId, limit = FEED_PAGE) {
     ${pushSupported() && asked ? '<section class="card notif ask" id="notif" hidden></section>' : ''}
     <section class="card"><div class="card-head"><h3>${esc(monthName())} · ${t('days at the gym', '去 gym 日數')}</h3>
       <a class="link" href="#/r/${g.id}">${t('All rankings', '全部排名')} ›</a></div>${boardHtml(board, user)}</section>
+    ${weekHtml(week, user)}
     <section class="card"><div class="card-head"><h3>${t('Latest', '最新')}</h3><span class="muted small">${t('Photos stay for 7 days', '相片保留 7 日')}</span></div>
       ${feed.length ? feed.map(r => postHtml(r, user)).join('') : `<p class="muted">${t('Nobody has checked in yet. Be first.', '仲未有人打卡，做第一個啦。')}</p>`}
       ${more ? `<button id="more" class="ghost">${t('Show more', '睇多啲')}</button>` : ''}
