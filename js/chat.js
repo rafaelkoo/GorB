@@ -6,6 +6,7 @@ import * as api from './supa.js';
 import { t, getLang } from './i18n.js';
 import { esc, render, showError, openPhoto } from './ui.js';
 import { ICON } from './icons.js';
+import { pickEmoji } from './emoji.js';
 
 let stop = null, poll = null, onVis = null;
 // leave the chat: stop live updates (called on every route change)
@@ -203,7 +204,7 @@ export async function chatScreen(user, groupId) {
     menu = document.createElement('div');
     menu.className = 'msg-menu-wrap'; menu.dataset.back = m.id;
     menu.innerHTML = `<div class="msg-menu" role="menu" aria-label="${t('Message options', '訊息選項')}">
-        <div class="mm-emoji">${REACTS.map(e => `<button role="menuitem" data-e="${e}" class="${e === mine ? 'on' : ''}" aria-label="${e === mine ? t(`Remove ${e}`, `取消 ${e}`) : t(`React ${e}`, `回應 ${e}`)}">${e}</button>`).join('')}</div>
+        <div class="mm-emoji">${(mine && !REACTS.includes(mine) ? [mine, ...REACTS.slice(0, -1)] : REACTS).map(e => `<button role="menuitem" data-e="${e}" class="${e === mine ? 'on' : ''}" aria-label="${e === mine ? t(`Remove ${e}`, `取消 ${e}`) : t(`React ${e}`, `回應 ${e}`)}">${e}</button>`).join('')}<button role="menuitem" class="mm-more" data-more aria-label="${t('Any other emoji', '其他 emoji')}">+</button></div>
         ${who.length ? `<ul class="mm-who">${who.map(x => `<li><span>${esc(nameOf(x.user_id))}</span><span>${x.emoji}</span></li>`).join('')}</ul>` : ''}
         <div class="mm-acts"><button role="menuitem" data-act="reply">↩ ${t('Reply', '回覆')}</button><button role="menuitem" data-act="copy">${t('Copy', '複製')}</button></div>
       </div>`;
@@ -224,6 +225,7 @@ export async function chatScreen(user, groupId) {
       }
     };
     menu.querySelectorAll('[data-e]').forEach(b => b.onclick = () => { closeMenu(); react(m, b.dataset.e); });
+    menu.querySelector('[data-more]').onclick = async () => { closeMenu(); const e = await pickEmoji(mine); if (e) react(m, e); };
     menu.querySelector('[data-act="reply"]').onclick = () => { closeMenu(); setReply(m); };
     menu.querySelector('[data-act="copy"]').onclick = async () => { closeMenu(); try { await navigator.clipboard.writeText(m.body); } catch { /* not allowed */ } };
     menu.querySelector(mine ? 'button.on' : '[data-e]').focus({ preventScroll: true });

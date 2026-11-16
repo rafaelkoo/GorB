@@ -3,6 +3,7 @@ import { btnLoading, btnDone, btnReset, pop } from './motion.js';
 import * as api from './supa.js';
 import { openCamera, stopCamera, grabFrame, encodeCanvas, cameraCount } from './camera.js';
 import { storyEditor } from './story.js';
+import { pickEmoji } from './emoji.js';
 import { FEED_PAGE } from './config.js';
 import { pushSupported, pushState, enablePush } from './push.js';
 import { t, setLang, langSwitchHtml, fmtDateTime, monthName, getLang } from './i18n.js';
@@ -155,7 +156,7 @@ function reactsHtml(r, user) {
       return `<button class="react-chip ${g.e === mine ? 'on' : ''}" data-react="${r.id}" data-e="${esc(g.e)}" aria-pressed="${g.e === mine}" title="${esc(names)}" aria-label="${esc(g.e)} ${g.who.length}: ${esc(names)}">${esc(g.e)}<b>${g.who.length}</b></button>`;
     }).join('')}
     <button class="react-add" data-reactadd="${r.id}" aria-expanded="false" aria-label="${t('React with an emoji', '用 emoji 回應')}">${ICON.smile(18)}<span>+</span></button>
-    <div class="react-pick" hidden role="group" aria-label="${t('Pick an emoji', '揀個 emoji')}">${REACTIONS.map(e => `<button data-react="${r.id}" data-e="${e}" class="${e === mine ? 'on' : ''}" aria-pressed="${e === mine}">${e}</button>`).join('')}</div>
+    <div class="react-pick" hidden role="group" aria-label="${t('Pick an emoji', '揀個 emoji')}">${(mine && !REACTIONS.includes(mine) ? [mine, ...REACTIONS] : REACTIONS).map(e => `<button data-react="${r.id}" data-e="${e}" class="${e === mine ? 'on' : ''}" aria-pressed="${e === mine}">${e}</button>`).join('')}<button class="react-more" data-reactmore="${r.id}" aria-label="${t('Any other emoji', '其他 emoji')}">+</button></div>
     ${list.length ? `<p class="react-who muted small">${esc(list.slice(-3).reverse().map(x => x.user_id === user.id ? t('You', '你') : x.name).join(', '))}${list.length > 3 ? t(` and ${list.length - 3} more`, ` 同另外 ${list.length - 3} 個人`) : ''}</p>` : ''}`;
 }
 
@@ -308,15 +309,20 @@ export async function group(user, groupId, limit = FEED_PAGE) {
       pick.hidden = !open; e.currentTarget.setAttribute('aria-expanded', String(open));
       if (open) pick.querySelector('button')?.focus();
     };
-    box.querySelectorAll('[data-react]').forEach(b => b.onclick = async () => {
-      const before = r.reactions || [], cur = before.find(x => x.user_id === user.id)?.emoji, e = b.dataset.e;
+    const doReact = async e => {
+      const before = r.reactions || [], cur = before.find(x => x.user_id === user.id)?.emoji;
       const rest = before.filter(x => x.user_id !== user.id);
       r.reactions = e === cur ? rest : [...rest, { user_id: user.id, emoji: e, name: '' }];
       box.innerHTML = reactsHtml(r, user); wireReacts(box);
       if (e !== cur) pop(box.querySelector(`.react-chip.on`));
       try { await api.setReaction(user.id, r.id, e, cur); }
       catch (err) { r.reactions = before; box.innerHTML = reactsHtml(r, user); wireReacts(box); showError(err); }
-    });
+    };
+    box.querySelectorAll('[data-react]').forEach(b => b.onclick = () => doReact(b.dataset.e));
+    box.querySelector('[data-reactmore]').onclick = async () => {
+      const e = await pickEmoji((r.reactions || []).find(x => x.user_id === user.id)?.emoji);
+      if (e) doReact(e);
+    };
   };
   el.querySelectorAll('[data-reacts]').forEach(wireReacts);
   el.querySelectorAll('.del').forEach(b => b.onclick = async () => {

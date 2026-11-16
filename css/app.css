@@ -619,3 +619,16 @@ textarea { resize: vertical; line-height: 1.4; }
 #timer.moved .tm { box-shadow: 0 10px 28px rgba(0,0,0,.5); }
 #timer.dragging .tm { cursor: grabbing; transform: scale(1.02); box-shadow: 0 16px 36px rgba(0,0,0,.6); }
 #timer.moved:not([hidden]) { animation: none; }
+
+/* ---------- pick any emoji ---------- */
+.mm-emoji .mm-more, .react-pick .react-more { font-size: 1.3rem; font-weight: 700; color: var(--dust); background: var(--floor); }
+.emoji-sheet { z-index: 70; }
+.emoji-sheet .sheet-in { max-height: 70vh; display: grid; grid-template-rows: auto auto 1fr; gap: 8px; overflow: hidden; }
+.emoji-type input { font-size: 1.2rem; }
+.emoji-scroll { overflow: auto; overscroll-behavior: contain; }
+.emoji-scroll h4 { margin: 10px 0 4px; font-size: .82rem; color: var(--dust); font-weight: 600; }
+.emoji-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(44px, 1fr)); gap: 2px; }
+.emoji-grid button { height: 46px; min-height: 0; padding: 0; border: 0; border-radius: 10px; background: none; font-size: 1.6rem; }
+.emoji-grid button:active, .emoji-grid button:hover { background: var(--mat-2); }
+.emoji-grid button.on { background: var(--mat-2); outline: 2px solid var(--yellow); }
+.emoji-grid button:focus-visible { outline: 2px solid var(--yellow); }
