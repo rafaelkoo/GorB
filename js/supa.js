@@ -51,7 +51,7 @@ export const sendChat = (userId, groupId, body, checkinId = null) =>
 // the check-in photos chat replies point at: { id: { user_id, name, created_at, photo_path, thumb, gone } }
 export async function checkinCards(ids) {
   if (!ids.length) return {};
-  const rows = must(await sb.from('checkins').select('id, user_id, photo_path, photo_expired, created_at, profiles(display_name)').in('id', ids));
+  const rows = must(await sb.from('checkins').select('id, user_id, photo_path, photo_expired, created_at, profiles!checkins_user_id_fkey(display_name)').in('id', ids));
   const cutoff = Date.now() - PHOTO_DAYS * 864e5;
   const live = rows.filter(r => !r.photo_expired && new Date(r.created_at).getTime() > cutoff);
   const url = live.length ? await photoLinks(live.map(r => thumbPath(r.photo_path))) : {};
@@ -117,7 +117,7 @@ export async function groupFeed(groupId, limit) {
   const ids = (await members(groupId)).map(m => m.user_id);
   if (!ids.length) return [];
   const rows = must(await sb.from('checkins')
-    .select('id, user_id, photo_path, photo_expired, note, created_at, profiles(display_name)')
+    .select('id, user_id, photo_path, photo_expired, note, created_at, profiles!checkins_user_id_fkey(display_name)')
     .in('user_id', ids).order('created_at', { ascending: false }).limit(limit));
   if (!rows.length) return rows;
   const cutoff = Date.now() - PHOTO_DAYS * 864e5;
@@ -133,7 +133,7 @@ export async function groupFeed(groupId, limit) {
 // emoji reactions under check-in photos: one per person per photo
 export async function reactionsFor(ids) {
   if (!ids.length) return {};
-  const rows = must(await sb.from('checkin_reactions').select('checkin_id, user_id, emoji, created_at, profiles(display_name)').in('checkin_id', ids).order('created_at'));
+  const rows = must(await sb.from('checkin_reactions').select('checkin_id, user_id, emoji, created_at, profiles!checkin_reactions_user_id_fkey(display_name)').in('checkin_id', ids).order('created_at'));
   const out = {};
   for (const r of rows) (out[r.checkin_id] ||= []).push({ user_id: r.user_id, emoji: r.emoji, name: r.profiles?.display_name || '' });
   return out;
