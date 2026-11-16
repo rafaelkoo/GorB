@@ -632,3 +632,19 @@ textarea { resize: vertical; line-height: 1.4; }
 .emoji-grid button:active, .emoji-grid button:hover { background: var(--mat-2); }
 .emoji-grid button.on { background: var(--mat-2); outline: 2px solid var(--yellow); }
 .emoji-grid button:focus-visible { outline: 2px solid var(--yellow); }
+
+/* ---------- exercise cards fold when finished (FitTrack style) ---------- */
+.ex.folded { padding: 0; }
+.ex-fold { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 60px; padding: 10px 14px; background: none; border: 0; border-radius: inherit; color: inherit; text-align: left; font: inherit; }
+.ex-badge { flex: none; width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; background: var(--floor); border: 1px solid var(--line); font-weight: 700; font-size: .9rem; font-variant-numeric: tabular-nums; }
+.ex.is-done .ex-badge { background: var(--green); border-color: var(--green); color: #0d1a12; }
+.ex-fold-t { flex: 1; min-width: 0; display: grid; }
+.ex-fold-t b { font: 700 1.1rem/1.2 var(--display); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ex-fold-t small { color: var(--dust); font-size: .85rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ex.is-done .ex-fold-t small { color: var(--green); }
+.chev { flex: none; font-size: 1.6rem; line-height: 1; color: var(--dust); transition: transform .18s; display: inline-block; }
+.chev.down { transform: rotate(90deg); }
+.chev-btn { width: 36px; height: 36px; min-height: 0; padding: 0; margin-left: -6px; border: 0; background: none; display: grid; place-items: center; flex: none; }
+.ex.open .ex-head { align-items: center; }
+@media (prefers-reduced-motion: reduce) { .chev { transition: none; } }
+.ex.open .ex-name { flex: 1; min-width: 0; text-align: left; justify-items: start; justify-content: start; }

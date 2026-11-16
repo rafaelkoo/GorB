@@ -108,6 +108,18 @@ export async function logScreen(user) {
   }
   function pickedDay() { return fullPlan.days.find(d => d.id === draft?.dayId) || null; }
   const keep = () => saveDraft(user.id, draft);
+  // FitTrack's fold logic: a finished exercise (every set ticked, or saved earlier today) folds to one
+  // line; the first unfinished one is open; the rest wait folded. Tapping a card's arrow overrides that
+  // (it.fold: true = you folded it, false = you opened it). Climbing never counts as finished on its own,
+  // since attempts stay unticked.
+  const exDone = it => !!it.fromSave || (!isClimb(it.id) && it.sets.length > 0 && it.sets.every(s => s.done));
+  const isOpen = (it, i) => {
+    if (it.fold === true) return false;
+    if (it.fold === false) return true;
+    if (exDone(it)) return false;
+    return i === draft.items.findIndex(x => !exDone(x) && x.fold !== true);
+  };
+  let foldedNow = null;
   // stopwatch for timed holds: tap ⏱ to start, tap again to stop; the seconds go into the set
   let hold = null, holdTick = null;
   const holdSecs = () => (hold ? Math.floor((Date.now() - hold.t0) / 1000) : 0);
@@ -141,8 +153,18 @@ export async function logScreen(user) {
       ${draft.items.map((it, i) => {
         const last = past(it.id).at(-1);
         const head = it.extra && !draft.items[i - 1]?.extra ? `<p class="ex-extra-head">${t('Already done today (not in this day)', '今日已做（唔屬於呢日）')}</p>` : '';
-        return `${head}<section class="card ex${it.extra ? ' extra' : ''}" data-i="${i}">
-          <div class="ex-head"><button class="ex-name" data-open="${it.id}"><h3>${esc(exName(it.id))}</h3><span class="muted">${isClimb(it.id) ? `${t('One row per climb', '每條線一行')} · ${t('progress', '進度')}` : EX[it.id]?.custom ? `${isTimed(it.id) ? t('Timed hold', '計時動作') : t('Your own', '自己加')} · ${t('progress', '進度')}` : `${esc(exSub(it.id))} · ${t('how to', '教學')}`} ›</span></button>
+        const done = exDone(it), nDone = it.sets.filter(s => s.done).length;
+        if (!isOpen(it, i)) {
+          // folded (FitTrack style): one line, tap to open
+          const right = done ? setsText(it.sets.filter(s => s.done || it.fromSave), it.id) : nDone ? t(`${nDone}/${it.sets.length} sets`, `${nDone}/${it.sets.length} 組`) : t(`${it.sets.length} set${it.sets.length === 1 ? '' : 's'}`, `${it.sets.length} 組`);
+          return `${head}<section class="card ex folded ${done ? 'is-done' : ''}${it.extra ? ' extra' : ''}" data-i="${i}">
+            <button class="ex-fold" data-act="fold" aria-expanded="false" aria-label="${esc(`${exName(it.id)}: ${done ? t('done', '完成') : right}. ${t('Open', '打開')}`)}">
+              <span class="ex-badge" aria-hidden="true">${done ? '✓' : i + 1}</span>
+              <span class="ex-fold-t"><b>${esc(exName(it.id))}</b><small>${esc(right)}</small></span>
+              <span class="chev" aria-hidden="true">›</span></button></section>`;
+        }
+        return `${head}<section class="card ex open${done ? ' is-done' : ''}${it.extra ? ' extra' : ''}" data-i="${i}">
+          <div class="ex-head"><button class="ghost chev-btn" data-act="fold" aria-expanded="true" aria-label="${t('Fold', '收埋')} ${esc(exName(it.id))}"><span class="chev down" aria-hidden="true">›</span></button><button class="ex-name" data-open="${it.id}"><h3>${esc(exName(it.id))}</h3><span class="muted">${isClimb(it.id) ? `${t('One row per climb', '每條線一行')} · ${t('progress', '進度')}` : EX[it.id]?.custom ? `${isTimed(it.id) ? t('Timed hold', '計時動作') : t('Your own', '自己加')} · ${t('progress', '進度')}` : `${esc(exSub(it.id))} · ${t('how to', '教學')}`} ›</span></button>
             <button class="ghost x" data-act="drop" aria-label="${t('Remove', '移除')} ${esc(exName(it.id))}">✕</button></div>
           <p class="muted last">${last ? `${t('Last time', '上次')} (${esc(fmtDay(last.date))}): ${esc(setsText(last.sets, it.id))}` : t('First time logging this', '第一次記錄呢個動作')}</p>
           ${(() => { const c = coach(it.id); return c ? `<div class="coach ${c.kind}"><p><b>${t('Next', '下次')}: ${c.kg ? kg(c.kg) + ' × ' : ''}${c.reps}${isTimed(it.id) ? 's' : ''}</b> ${esc(t(c.en, c.zh))}</p>
@@ -195,17 +217,31 @@ export async function logScreen(user) {
         if (act === 'addset') { const l = it.sets.at(-1) || {}; it.sets.push(isClimb(it.id) ? { kg: l.kg ?? climbStart(it.id), reps: 0 } : { kg: l.kg ?? null, reps: l.reps ?? null }); }
         if (act === 'top') { const j = +b.closest('.set').dataset.j, x = it.sets[j]; x.reps = x.reps >= 1 ? 0 : 1; x.done = x.reps >= 1; if (x.done) popAfter(`.ex[data-i="${card.dataset.i}"] .set[data-j="${j}"] .tick`, 1.2); }
         if (act === 'unset') it.sets.splice(+b.closest('.set').dataset.j, 1);
-        if (act === 'tick') { const j = +b.closest('.set').dataset.j, x = it.sets[j]; x.done = !x.done; if (x.done) { startRest(restSec); popAfter(`.ex[data-i="${card.dataset.i}"] .set[data-j="${j}"] .tick`, 1.2); } }
+        if (act === 'fold') { it.fold = isOpen(it, +card.dataset.i); }
+        if (act === 'tick') {
+          const j = +b.closest('.set').dataset.j, x = it.sets[j]; x.done = !x.done;
+          if (x.done) { startRest(restSec); popAfter(`.ex[data-i="${card.dataset.i}"] .set[data-j="${j}"] .tick`, 1.2); }
+          // last set ticked: this one folds and the next unfinished one opens
+          if (x.done && exDone(it)) { delete it.fold; foldedNow = +card.dataset.i; }
+        }
         if (act === 'hold') {
           const j = +b.closest('.set').dataset.j;
           if (hold && hold.i === +card.dataset.i && hold.j === j) {   // stop: write the seconds, tick the set
             const x = it.sets[j]; x.reps = holdSecs(); x.done = true; stopHold(); startRest(restSec);
+            if (exDone(it)) { delete it.fold; foldedNow = +card.dataset.i; }
           } else { stopHold(); hold = { i: +card.dataset.i, j, t0: Date.now() }; holdTick = setInterval(() => { const el = $app().querySelector('.hold.on'); if (el) el.textContent = holdSecs() + 's'; else stopHold(); }, 250); }
         }
         if (act === 'usecoach') { const c = coach(it.id); if (c) it.sets.forEach(x => { x.kg = c.kg; x.reps = c.reps; }); }
         // back to what you did last time
         if (act === 'uselast') { const l = past(it.id).at(-1)?.sets || []; if (l.length) it.sets.forEach((x, j) => { const s = l[j] || l.at(-1); x.kg = s.kg; x.reps = s.reps; }); }
         keep(); draw();
+        if (act === 'fold' && !it.fold) $app().querySelector(`.ex[data-i="${card.dataset.i}"]`)?.scrollIntoView({ block: 'nearest' });
+        // after a fold, bring the next open exercise into view
+        if (foldedNow !== null) {
+          const next = $app().querySelector('.ex.open');
+          if (next && +next.dataset.i > foldedNow) next.scrollIntoView({ block: 'start', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+          popAfter(`.ex[data-i="${foldedNow}"] .ex-badge`, 1.3); foldedNow = null;
+        }
       });
     });
     $app().querySelectorAll('[data-open]').forEach(b => b.onclick = () => openExercise(user, b.dataset.open, 'how'));
