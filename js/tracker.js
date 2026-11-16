@@ -91,7 +91,9 @@ export async function logScreen(user) {
   const itemsFor = day => (day?.items || []).map(e => {
     const c = coach(e.id), last = past(e.id).at(-1)?.sets || [];
     if (isClimb(e.id)) return { id: e.id, sets: Array.from({ length: e.sets }, () => ({ kg: climbStart(e.id), reps: 0 })) };
-    return { id: e.id, sets: Array.from({ length: e.sets }, (_, j) => c ? { kg: c.kg, reps: c.reps } : { kg: (last[j] || last.at(-1))?.kg ?? null, reps: e.lo || e.reps }) };
+    // start from what you did last time; the suggestion is only used when you tap Use (or there's no last time)
+    return { id: e.id, sets: Array.from({ length: e.sets }, (_, j) => { const l = last[j] || last.at(-1);
+      return l ? { kg: l.kg ?? null, reps: l.reps ?? e.lo ?? e.reps } : c ? { kg: c.kg, reps: c.reps } : { kg: null, reps: e.lo || e.reps }; }) };
   });
   // start from: unsaved draft → what was already saved today → the suggested day → empty
   let draft = loadDraft(user.id);
@@ -144,7 +146,9 @@ export async function logScreen(user) {
             <button class="ghost x" data-act="drop" aria-label="${t('Remove', '移除')} ${esc(exName(it.id))}">✕</button></div>
           <p class="muted last">${last ? `${t('Last time', '上次')} (${esc(fmtDay(last.date))}): ${esc(setsText(last.sets, it.id))}` : t('First time logging this', '第一次記錄呢個動作')}</p>
           ${(() => { const c = coach(it.id); return c ? `<div class="coach ${c.kind}"><p><b>${t('Next', '下次')}: ${c.kg ? kg(c.kg) + ' × ' : ''}${c.reps}${isTimed(it.id) ? 's' : ''}</b> ${esc(t(c.en, c.zh))}</p>
-            <button class="ghost small-btn" data-act="usecoach">${t('Use', '套用')}</button></div>` : ''; })()}
+            ${last && it.sets.length && it.sets.every(x => +x.kg === +c.kg && +x.reps === +c.reps)
+              ? `<button class="ghost small-btn" data-act="uselast">${t('Undo', '還原')}</button>`
+              : `<button class="ghost small-btn" data-act="usecoach">${t('Use', '套用')}</button>`}</div>` : ''; })()}
           ${isClimb(it.id) ? climbRows(it, i) : `<div class="sets">
             <div class="set head"><span>${t('Set', '組')}</span><span>kg</span><span>${isTimed(it.id) ? t('Seconds', '秒數') : t('Reps', '次數')}</span><span>${t('Done', '完成')}</span><span></span></div>
             ${it.sets.map((s, j) => `<div class="set ${s.done ? 'done' : ''}" data-j="${j}"><span>${j + 1}</span>
@@ -199,6 +203,8 @@ export async function logScreen(user) {
           } else { stopHold(); hold = { i: +card.dataset.i, j, t0: Date.now() }; holdTick = setInterval(() => { const el = $app().querySelector('.hold.on'); if (el) el.textContent = holdSecs() + 's'; else stopHold(); }, 250); }
         }
         if (act === 'usecoach') { const c = coach(it.id); if (c) it.sets.forEach(x => { x.kg = c.kg; x.reps = c.reps; }); }
+        // back to what you did last time
+        if (act === 'uselast') { const l = past(it.id).at(-1)?.sets || []; if (l.length) it.sets.forEach((x, j) => { const s = l[j] || l.at(-1); x.kg = s.kg; x.reps = s.reps; }); }
         keep(); draw();
       });
     });
