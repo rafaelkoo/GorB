@@ -30,7 +30,7 @@ function needText(m, basis, learned, byId) {
   switch (m.req_kind) {
     case 'fusion': { const parts = m.req_moves || [], have = parts.filter(id => learned.has(id));
       return [parts.map(id => `${learned.has(id) ? '✓' : '✗'} ${moveName(byId[id] || { en: id, zh: id })}`).join(' + '), have.length / Math.max(1, parts.length)]; }
-    case 'climbs': return [t(`Top ${m.req_val} climbs in 60 days (you: ${b.climbs || 0})`, `60 日內爬完 ${m.req_val} 條線（你而家 ${b.climbs || 0} 條）`), (b.climbs || 0) / m.req_val];
+    case 'climbs': return [t(`Top ${m.req_val} climbs in 60 days (you: ${b.climbs || 0}; 4 bouldering minutes count as 1)`, `60 日內爬完 ${m.req_val} 條線（你而家 ${b.climbs || 0} 條；抱石每 4 分鐘當 1 條）`), (b.climbs || 0) / m.req_val];
     case 'lift': { const [en, zh] = CAT[m.req_cat] || [m.req_cat, m.req_cat]; const now = b.lifts?.[m.req_cat] || 0;
       return [t(`Best ${en} lift ${m.req_val} kg (you: ${now} kg)`, `${zh}最好做到 ${m.req_val} kg（你而家 ${now} kg）`), now / m.req_val]; }
     case 'maxlift': return [t(`Any lift ${m.req_val} kg (you: ${b.max || 0} kg)`, `任何動作做到 ${m.req_val} kg（你而家 ${b.max || 0} kg）`), (b.max || 0) / m.req_val];

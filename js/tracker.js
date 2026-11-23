@@ -78,6 +78,12 @@ export async function logScreen(user) {
   const restSec = body?.rest_sec || 90;
   const history = bySession(rows);
   const fullPlan = cleanPlan(savedPlan || {});
+  // exercises from the last 14 days, most often first (the free workout's quick picks)
+  const recent = () => {
+    const from = new Date(Date.now() - 14 * 864e5).toISOString().slice(0, 10), n = {};
+    for (const r of rows) if (r.performed_on >= from && EX[r.exercise_id]) n[r.exercise_id] = (n[r.exercise_id] || 0) + 1;
+    return Object.keys(n).sort((a, b) => n[b] - n[a]).slice(0, 12);
+  };
   const past = id => (history[id] || []).filter(s => s.date < today);
   // a new climb starts at the hardest grade you topped last time (V0 if none)
   const climbStart = id => Math.max(0, ...(past(id).at(-1)?.sets || []).filter(s => s.reps >= 1).map(s => s.kg));
@@ -105,7 +111,7 @@ export async function logScreen(user) {
       .filter(([, list]) => list.at(-1)?.date === today)
       .map(([id, list]) => ({ id, fromSave: true, sets: list.at(-1).sets.map(s => ({ kg: s.kg, reps: s.reps })) }));
     if (items.length) draft = { items, saved: true, dayId: null };
-    else draft = { saved: false, dayId: suggested?.id || null, items: itemsFor(suggested) };
+    else draft = fullPlan.free ? { saved: false, dayId: null, items: [] } : { saved: false, dayId: suggested?.id || null, items: itemsFor(suggested) };
   }
   function pickedDay() { return fullPlan.days.find(d => d.id === draft?.dayId) || null; }
   // the pixel gym follows what you tick: send the ticked sets per exercise a moment after each change
@@ -162,8 +168,13 @@ export async function logScreen(user) {
       ${fullPlan.days.some(d => d.items.length) ? `<section class="pickday" aria-label="${t('Which workout today', '今日練邊樣')}">
         <div class="chips scroll">${fullPlan.days.filter(d => d.items.length).map(d => `<button data-pick="${d.id}" aria-pressed="${draft.dayId === d.id}" class="${draft.dayId === d.id ? 'on' : ''}">${esc(dayName(d))}${d === suggested ? ' <span class="sugg">★</span>' : ''}</button>`).join('')}
           <button data-pick="" aria-pressed="${!draft.dayId}" class="${draft.dayId ? '' : 'on'}">${t('Free workout', '自由訓練')}</button></div>
-        ${pickMsg ? `<p class="muted small">${esc(pickMsg)}</p>` : suggested && !draft.saved ? `<p class="muted small">★ ${esc(suggested.on.includes(weekday) ? t('Set for today', '今日嘅計劃') : t('Next in your rotation', '輪到呢個'))}</p>` : ''}
+        ${pickMsg ? `<p class="muted small">${esc(pickMsg)}</p>` : suggested && !draft.saved && !fullPlan.free ? `<p class="muted small">★ ${esc(suggested.on.includes(weekday) ? t('Set for today', '今日嘅計劃') : t('Next in your rotation', '輪到呢個'))}</p>` : ''}
       </section>` : ''}
+      <label class="free-toggle"><input type="checkbox" id="freeMode" ${fullPlan.free ? 'checked' : ''}> <span>${t('I don’t follow a plan: always start with a free workout', '我冇固定課表：一開就係自由訓練')}</span></label>
+      ${!draft.dayId ? (() => { const rec = recent().filter(id => !draft.items.some(it => it.id === id));
+        return `<section class="recent-ex" aria-label="${t('Done recently', '最近做過')}">
+          <p class="muted small">${draft.items.length ? t('Add more, done recently:', '再加，最近做過：') : t('Free workout: tap what you’re doing today, or add any exercise below.', '自由訓練：撳今日做緊嘅動作，或者喺下面加任何動作。')}</p>
+          ${rec.length ? `<div class="chips scroll">${rec.map(id => `<button data-recent="${id}">+ ${esc(exName(id))}</button>`).join('')}</div>` : ''}</section>`; })() : ''}
       <section class="card habits"><div class="card-head"><h3>${t('Today’s habits', '今日習慣')}</h3><span class="muted small">${habitsDone.size}/${habits.length} · +5 ${t('each', '分一個')}</span></div>
         <div class="habit-grid">${habits.map(h => `<button class="habit ${habitsDone.has(h.id) ? 'on' : ''}" data-habit="${h.id}" aria-pressed="${habitsDone.has(h.id)}"><span class="hcheck">✓</span>${esc(h.label)}</button>`).join('')}</div></section>
       ${draft.items.length ? `<p class="muted small save-line">${t(`${draft.items.length} exercise${draft.items.length === 1 ? '' : 's'} · ${nSets} set${nSets === 1 ? '' : 's'}`, `${draft.items.length} 個動作 · ${nSets} 組`)} · <span id="saveState" aria-live="polite">${saveStateText()}</span></p>` : ''}
@@ -267,12 +278,22 @@ export async function logScreen(user) {
       on ? habitsDone.add(id) : habitsDone.delete(id); draw(); popAfter(`[data-habit="${id}"] .hcheck`, 1.3);
       try { await api.setHabit(user.id, id, on); } catch (err) { on ? habitsDone.delete(id) : habitsDone.add(id); draw(); showError(err); }
     });
-    $app().querySelector('#addex').onclick = () => picker(id => {
+    const addEx = id => {
       const last = past(id).at(-1);
       if (isClimb(id)) draft.items.push({ id, sets: [{ kg: climbStart(id), reps: 0 }] });
       else draft.items.push({ id, sets: last ? last.sets.map(s => ({ kg: s.kg, reps: s.reps })) : [{ kg: null, reps: null }] });
       keep(); draw();
-    });
+    };
+    $app().querySelector('#addex').onclick = () => picker(addEx);
+    $app().querySelectorAll('[data-recent]').forEach(b => b.onclick = () => { addEx(b.dataset.recent); popAfter(`.ex:last-of-type`); });
+    $app().querySelector('#freeMode').onchange = async e => {
+      const on = e.target.checked;
+      fullPlan.free = on || undefined; if (!on) delete fullPlan.free;
+      try { await api.savePlan(user.id, cleanPlan({ ...fullPlan, free: on })); toast(on ? t('Free workout from now on', '以後一開就係自由訓練') : t('Back to your plan', '轉返用課表')); }
+      catch (err) { e.target.checked = !on; showError(err); }
+      if (on && !draft.saved && !draft.items.some(it => it.sets.some(x => x.done))) { draft = { ...draft, dayId: null, items: [] }; keep(); }
+      draw();
+    };
   }
 
   // ---- saving: automatic. A few seconds after you tick (or change) sets, today's ticked sets are

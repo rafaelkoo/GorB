@@ -18,12 +18,15 @@ export const CARDIO = [
   { id: 'hiit', en: 'HIIT', zh: '高強度間歇' },
   { id: 'battle_ropes', en: 'Battle ropes', zh: '戰繩' },
   { id: 'sled_push', en: 'Sled push', zh: '推雪橇' },
-  { id: 'box_jump', en: 'Box jump', zh: '跳箱' }
+  { id: 'box_jump', en: 'Box jump', zh: '跳箱' },
+  // counts as climbing, not cardio (migration 036): no Speed, goes to Technique and climbing moves
+  { id: 'boulder', en: 'Bouldering', zh: '抱石', climb: true }
 ];
 // built-in kinds plus the minute-based exercises you and your groupmates added
 export const cardioList = () => [...CARDIO, ...CUSTOM_CARDIO];
 export const cardioName = id => { const c = cardioList().find(x => x.id === id); return c ? t(c.en, c.zh) : t('Removed exercise', '已刪除嘅動作'); };
-export const weekMinutes = (logs, from, to) => logs.filter(c => c.performed_on >= from && c.performed_on <= to).reduce((n, c) => n + c.minutes, 0);
+// bouldering minutes aren't cardio, so they don't count towards the weekly cardio target
+export const weekMinutes = (logs, from, to) => logs.filter(c => c.performed_on >= from && c.performed_on <= to && c.kind !== 'boulder').reduce((n, c) => n + c.minutes, 0);
 
 // st = { logs (this week, from the API), pick, mins, target (min/week or null), today, weekStart }
 export function cardioHtml(st) {
@@ -38,6 +41,7 @@ export function cardioHtml(st) {
     <div class="cardio-add"><div class="stepper" aria-label="${t('Minutes', '分鐘')}"><button class="ghost" data-cmin="-5" aria-label="${t('Minus 5 minutes', '減 5 分鐘')}">−</button>
       <span><b>${st.mins}</b><small>${t('min', '分鐘')}</small></span><button class="ghost" data-cmin="5" aria-label="${t('Plus 5 minutes', '加 5 分鐘')}">+</button></div>
       <button id="cadd" ${st.pick ? '' : 'disabled'}>${todays.some(c => c.kind === st.pick) ? t('Update', '更新') : t('Add cardio', '加有氧')}</button></div>
+    ${st.pick === 'boulder' ? `<p class="muted small boulder-note">${t('Bouldering minutes count as climbing: Technique and climbing moves, not Speed. To unlock grade moves (V1, V3…), log each climb with its V grade under Bouldering in exercises.', '抱石分鐘計做攀石：加技巧同攀石招式，唔加速度。想解鎖級數招式（V1、V3…），要喺動作「抱石」度記錄每條線嘅 V 級。')}</p>` : ''}
   </section>`;
 }
 

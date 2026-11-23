@@ -45,7 +45,8 @@ export function cleanPlan(p) {
   // a weekday belongs to one day at most
   const taken = new Set();
   for (const d of days) d.on = d.on.filter(w => !taken.has(w) && taken.add(w));
-  return { v: 2, days };
+  // free: no fixed plan, the Log page always opens on a free workout
+  return p?.free ? { v: 2, days, free: true } : { v: 2, days };
 }
 
 // most common body part in a list of exercises, as in FitTrack

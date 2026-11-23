@@ -877,3 +877,7 @@ a.icon-btn { display: inline-flex; align-items: center; justify-content: center;
 .set-row input { width: 22px; height: 22px; min-height: 0; flex: none; accent-color: var(--green); }
 .danger { color: #ff7a72 !important; border-color: #5a3a3a !important; }
 .grp-of { display: block; }
+.free-toggle { display: flex; gap: 10px; align-items: center; font-size: .9rem; color: var(--dust); padding: 2px 2px; }
+.free-toggle input { width: 20px; height: 20px; min-height: 0; flex: none; accent-color: var(--green); }
+.recent-ex { display: grid; gap: 6px; }
+.boulder-note { color: #9fd9a8; }
