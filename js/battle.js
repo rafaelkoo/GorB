@@ -76,6 +76,7 @@ export async function mountMoves(el, user) {
   let all, mine;
   try { [all, mine] = await Promise.all([api.allMoves(), api.characterMoves(user.id)]); } catch { card.hidden = true; return; }
   if (!mine || !all?.length) { card.hidden = true; return; }
+  let slot = null;   // the equipped slot you picked to replace
   const draw = () => {
     const learned = new Set(mine.learned || []), eq = mine.equipped || [];
     const byId = Object.fromEntries(all.map(m => [m.id, m]));
@@ -84,9 +85,10 @@ export async function mountMoves(el, user) {
     card.querySelector('#mvBody').innerHTML = `
       <p class="muted small">${t('Moves come from your real training (last 60 days). Lift heavier, do more cardio or climb harder to learn new ones. Stop going and you forget them.',
         '招式嚟自你真實嘅訓練（最近 60 日）。舉重啲、多啲 cardio、爬難啲，就學到新招。唔去就會唔記得。')}</p>
-      <h4 class="q-h">${t('Equipped (tap another move below to swap it in)', '帶住出戰（撳下面其他招式就會換入去）')}</h4>
+      <h4 class="q-h">${t('Equipped: tap one, then the move to swap in', '帶住出戰：撳一格，再揀要換入去嘅招')}</h4>
       <div class="mv-slots">${[0, 1, 2, 3].map(i => { const m = byId[eq[i]];
-        return m ? `<div class="mv-slot ${m.req_kind === 'fusion' ? 'fusion' : ''}" style="--c:${moveCol(m)}"><b>${m.req_kind === 'fusion' ? '✦ ' : ''}${esc(moveName(m))}</b><span class="mv-top">${moveTag(m)}</span></div>` : `<div class="mv-slot empty">—</div>`; }).join('')}</div>
+        return m ? `<button type="button" data-slot="${i}" aria-pressed="${slot === i}" class="mv-slot ${m.req_kind === 'fusion' ? 'fusion' : ''} ${slot === i ? 'picked' : ''}" style="--c:${moveCol(m)}"><b>${m.req_kind === 'fusion' ? '✦ ' : ''}${esc(moveName(m))}</b><span class="mv-top">${moveTag(m)}</span></button>` : `<div class="mv-slot empty">—</div>`; }).join('')}</div>
+      ${slot != null ? `<p class="small mv-hint">${t('Now tap a move below to put in this slot', '而家撳下面一招，就會換入呢格')}</p>` : ''}
       ${mine.grit ? `<p class="small grit">💪 <b>${t('Grit', '毅力')}</b> · ${t('12+ gym days in 60: once per fight you survive a knockout on 1 HP.', '60 日內去咗 12 日以上：每場可以撐住一次唔被打低（剩 1 HP）。')}</p>`
         : `<p class="muted small">💪 ${t(`Grit: go 12 days in 60 (you: ${mine.basis?.days || 0}) to survive one knockout per fight.`, `毅力：60 日內去夠 12 日（你而家 ${mine.basis?.days || 0} 日），每場可以撐住一次唔被打低。`)}</p>`}
       <h4 class="q-h">${t(`Learned (${learned.size})`, `學咗（${learned.size}）`)}</h4>
@@ -99,13 +101,24 @@ export async function mountMoves(el, user) {
       ${locked.length ? `<h4 class="q-h">${t('Still to learn', '未學到')}</h4>
       <ul class="mv-list">${locked.map(({ m, need }) => `<li class="mv-locked"><span class="mv-top"><b>🔒 ${esc(moveName(m))}</b>${moveTag(m)}</span>
         <span class="small">${esc(need[0])}</span><span class="q-bar" aria-hidden="true"><i style="width:${Math.round(Math.min(1, need[1]) * 100)}%"></i></span></li>`).join('')}</ul>` : ''}`;
-    card.querySelectorAll('[data-mv]').forEach(b => b.onclick = async () => {
-      const id = b.dataset.mv; let next = [...eq];
-      if (next.includes(id)) return;   // you always carry 4 (the server tops up with your strongest)
-      if (next.length >= 4) next.shift();
-      next.push(id);
-      b.disabled = true;
-      try { mine = await api.setMoves(next); draw(); } catch (err) { b.disabled = false; showError(err); }
+    const save = async next => { try { mine = await api.setMoves(next); slot = null; draw(); toast(t('Moves updated', '招式已經換好')); } catch (err) { showError(err); } };
+    // tap a slot first to choose which one to replace
+    card.querySelectorAll('[data-slot]').forEach(b => b.onclick = () => { const i = +b.dataset.slot; slot = slot === i ? null : i; draw(); });
+    card.querySelectorAll('[data-mv]').forEach(b => b.onclick = () => {
+      const id = b.dataset.mv;
+      if (eq.includes(id)) return;
+      if (eq.length < 4) return save([...eq, id]);
+      if (slot != null) { const next = [...eq]; next[slot] = id; return save(next); }
+      // otherwise ask which one it replaces
+      const box = document.createElement('div'); box.className = 'sheet';
+      box.innerHTML = `<div class="sheet-in" role="dialog" aria-label="${t('Swap out which move?', '換走邊一招？')}">
+        <h3>${t(`Swap ${esc(moveName(byId[id]))} in for…`, `${esc(moveName(byId[id]))} 換走邊一招？`)}</h3>
+        <div class="mv-slots">${eq.map((x, i) => { const m = byId[x]; return `<button type="button" class="mv-slot mv-swap" data-swap="${i}" style="--c:${moveCol(m)}"><b>${esc(moveName(m))}</b><span class="mv-top">${moveTag(m)}</span></button>`; }).join('')}</div>
+        <button type="button" class="ghost" data-close>${t('Cancel', '取消')}</button></div>`;
+      const close = () => box.remove();
+      box.addEventListener('click', e => { if (e.target === box || e.target.closest('[data-close]')) close(); });
+      box.querySelectorAll('[data-swap]').forEach(s => s.onclick = () => { const next = [...eq]; next[+s.dataset.swap] = id; close(); save(next); });
+      document.body.append(box);
     });
   };
   draw();

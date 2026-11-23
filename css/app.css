@@ -912,3 +912,7 @@ details.week summary { cursor: pointer; padding: 4px 0; }
 .matches-card.slim .mt-note, .matches-card.slim #mtBody { display: none; }
 .matches-card.slim h3 { font-size: 1.05rem; }
 .grp-switch .grp-add { display: inline-flex; align-items: center; gap: 6px; justify-content: center; min-width: 38px; padding: 6px 12px; border-style: dashed; color: var(--chalk); }
+button.mv-slot { font: inherit; color: var(--chalk); text-align: left; justify-content: stretch; justify-items: start; align-content: start; min-height: 72px; }
+.mv-slot.picked { outline: 2px solid var(--yellow); outline-offset: 1px; }
+.mv-hint { color: var(--yellow); }
+.mv-swap { min-height: 72px; }
