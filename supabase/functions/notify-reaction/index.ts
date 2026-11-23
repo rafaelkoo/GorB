@@ -16,13 +16,14 @@ webpush.setVapidDetails('https://rafaelkoo.github.io/GorB/', Deno.env.get('VAPID
 const json = (o: unknown, status = 200) => new Response(JSON.stringify(o), { status, headers: { 'content-type': 'application/json' } });
 
 Deno.serve(async req => {
-  let id = '', chat = false, summon = false;
-  try { const b = await req.json(); id = String(b?.id ?? ''); chat = b?.chat === true; summon = b?.summon === true; } catch { /* no body */ }
+  let id = '', chat = false, summon = false, battle = false;
+  try { const b = await req.json(); id = String(b?.id ?? ''); chat = b?.chat === true; summon = b?.summon === true; battle = b?.battle === true; } catch { /* no body */ }
   if (!/^[0-9a-f-]{36}$/i.test(id)) return json({ skipped: 'no reaction id' }, 400);
 
   const tenMin = new Date(Date.now() - 10 * 60 * 1000).toISOString();
   if (chat) return chatReaction(id, tenMin);
   if (summon) return summonPush(id, tenMin);
+  if (battle) return battlePush(id);
   const { data: rx } = await db.from('checkin_reactions').update({ notified_at: new Date().toISOString() })
     .eq('id', id).is('notified_at', null).gte('created_at', tenMin)
     .select('checkin_id, user_id, emoji').maybeSingle();
@@ -129,4 +130,41 @@ async function summonPush(id: string, since: string) {
   }));
   if (gone.length) await db.from('push_subscriptions').delete().in('endpoint', gone);
   return json({ sent, removed: gone.length });
+}
+
+// friendly matches (monster fights need no push): a new challenge → the person challenged; their turn → them; the end → both.
+// notified_key stops the same news being pushed twice if this gets called again.
+async function battlePush(id: string) {
+  const { data: bt } = await db.from('battles').select('id, kind, group_id, a, b, status, turn, winner, notified_key, log').eq('id', id).maybeSingle();
+  if (!bt || bt.kind !== 'pvp' || !bt.b) return json({ skipped: 'not a friendly match' });
+  const key = `${bt.status}:${bt.turn ?? ''}:${(bt.log ?? []).length}`;
+  if (bt.notified_key === key) return json({ skipped: 'already sent' });
+  const { data: claimed } = await db.from('battles').update({ notified_key: key }).eq('id', id).or(`notified_key.is.null,notified_key.neq.${key}`).select('id');
+  if (!claimed?.length) return json({ skipped: 'already sent' });
+
+  const { data: people } = await db.from('profiles').select('id, display_name, lang').in('id', [bt.a, bt.b]);
+  const P = Object.fromEntries((people ?? []).map(p => [p.id, p]));
+  const other = (u: string) => (u === bt.a ? bt.b : bt.a);
+  const msgs: { to: string; zh: [string, string]; en: [string, string] }[] = [];
+  const nm = (u: string) => P[u]?.display_name || 'Someone';
+  if (bt.status === 'pending') msgs.push({ to: bt.b, zh: [`⚔️ ${nm(bt.a)} 約你打友誼賽！`, '撳入嚟接受或者拒絕'], en: [`⚔️ ${nm(bt.a)} wants a friendly match!`, 'Tap to accept or decline'] });
+  else if (bt.status === 'active' && bt.turn) {
+    const first = (bt.log ?? []).length <= 1;
+    msgs.push({ to: bt.turn, zh: [first ? `⚔️ 友誼賽開始！你先出招` : `⚔️ 輪到你出招`, `對手：${nm(other(bt.turn))}`], en: [first ? '⚔️ Battle on! You go first' : '⚔️ Your move', `vs ${nm(other(bt.turn))}`] });
+  } else if (bt.status === 'done' && bt.winner) {
+    const loser = other(bt.winner);
+    msgs.push({ to: bt.winner, zh: ['🏆 你贏咗！', `打低咗 ${nm(loser)}`], en: ['🏆 You won!', `You beat ${nm(loser)}`] });
+    msgs.push({ to: loser, zh: ['💥 你輸咗', `${nm(bt.winner)} 贏咗友誼賽。去 gym 練勁啲再嚟！`], en: ['💥 You lost', `${nm(bt.winner)} won the friendly. Train up and try again!`] });
+  } else if (bt.status === 'declined') msgs.push({ to: bt.a, zh: ['⚔️ 挑戰被拒絕', `${nm(bt.b)} 唔接受`], en: ['⚔️ Challenge declined', `${nm(bt.b)} said no`] });
+  let sent = 0;
+  for (const m of msgs) {
+    const { data: subs } = await db.from('push_subscriptions').select('endpoint, p256dh, auth').eq('user_id', m.to);
+    const [title, body] = P[m.to]?.lang === 'zh' ? m.zh : m.en;
+    const payload = JSON.stringify({ title, body, url: `./#/battle/${bt.id}`, tag: `battle-${bt.id}` });
+    for (const s of subs ?? []) {
+      try { await webpush.sendNotification({ endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } }, payload, { TTL: 86400, urgency: 'high' }); sent++; }
+      catch (e) { const code = (e as { statusCode?: number }).statusCode; if (code === 404 || code === 410) await db.from('push_subscriptions').delete().eq('endpoint', s.endpoint); }
+    }
+  }
+  return json({ sent });
 }

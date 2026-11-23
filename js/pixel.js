@@ -166,6 +166,7 @@ export function drawChar(c, x, y, av, pose = 'stand', frame = 0) {
       case 'climb': arm(-1, L - 1, frame ? -2 : 5); arm(1, R + 1, frame ? 5 : -2); break;
       case 'stretch': if (frame) { arm(-1, L - 3, 1); arm(1, R + 3, 1); } else { arm(-1, L - 4, 9); arm(1, R + 4, 9); } break;
       case 'sit': arm(-1, L + 1, 14); arm(1, R - 1, 14); break;
+      case 'back': arm(-1, L, 13); arm(1, R, 13); break;
       default: arm(-1, L, 14); arm(1, R, 14);
     }
   };
@@ -187,7 +188,7 @@ export function drawChar(c, x, y, av, pose = 'stand', frame = 0) {
   };
   const head = () => {
     const hx = -4;
-    if (pose === 'climb') {   // seen from behind, facing the wall: all hair
+    if (pose === 'climb' || pose === 'back') {   // seen from behind: all hair
       const capOnly = hs === 'bald' || hs === 'buzz' || hs === 'mohawk' || hs === 'undercut';
       r(hx, H, 8, 7, hs === 'bald' ? skin : hs === 'mohawk' ? skin : hair);
       r(hx - 1, H + 3, 1, 2, skinD); r(hx + 8, H + 3, 1, 2, skinD); r(hx + 1, H + 6, 6, 1, capOnly ? skinD : hairD);
@@ -546,4 +547,58 @@ export function drawBoss(canvas, idx, frame = 0, state = 'idle') {
   const ctx = canvas.getContext('2d'); ctx.imageSmoothingEnabled = false; ctx.clearRect(0, 0, canvas.width, canvas.height);
   const s = Math.floor(Math.min(canvas.width / 48, canvas.height / 40));
   ctx.drawImage(lo, (canvas.width - 48 * s) / 2, (canvas.height - 40 * s) / 2, 48 * s, 40 * s);
+}
+
+
+// ---------- battle scene (Pokémon style): them up on the right facing you, you bottom-left from behind ----------
+export const BW = 160, BH = 112;
+const MOVE_POSE = { squat_slam: 'squat', deadlift_uproot: 'squat', max_out: 'squat', bench_blast: 'press', chest_cannon: 'press', row_combo: 'row',
+  press_uppercut: 'ohp', bicep_hammer: 'curl', sprint: 'run', interval_rush: 'run', marathon_grind: 'run', grip: 'climb', dyno: 'climb', crimp_lock: 'climb',
+  warmup: 'stretch', the_pump: 'curl', iron_wall: 'stretch', second_wind: 'sit', shove: 'stand' };
+function charInto(c, x, y, av, pose, frame, scale) {
+  const t = document.createElement('canvas'); t.width = 32; t.height = 34;
+  drawChar(t.getContext('2d'), 16, 31, av, pose, frame);
+  c.drawImage(t, Math.round(x - 16 * scale), Math.round(y - 31 * scale), 32 * scale, 34 * scale);
+}
+// fx: { attacker: 'me'|'them', move, t: 0..1, hit: 'me'|'them' } for the animation of a move
+export function drawBattle(canvas, me, them, frame = 0, fx = null) {
+  const lo = canvas._blo || (canvas._blo = document.createElement('canvas')); lo.width = BW; lo.height = BH;
+  const c = lo.getContext('2d'); c.imageSmoothingEnabled = false;
+  const r = (x, y, w, h, col) => { c.fillStyle = col; c.fillRect(x, y, w, h); };
+  // backdrop: gym wall and floor
+  r(0, 0, BW, 46, '#e9d9b8'); for (let x = 0; x < BW; x += 16) r(x, 0, 1, 46, '#dcc9a3'); r(0, 40, BW, 6, '#b98d5c');
+  r(18, 8, 22, 14, '#7a5634'); r(20, 10, 18, 10, '#9fd3f0'); r(120, 6, 16, 20, '#d8483b'); r(122, 8, 12, 16, '#f6e7c8');
+  for (let y = 46; y < BH; y += 10) for (let x = 0; x < BW; x += 16) r(x, y, 16, 10, ((x / 16 + (y - 46) / 10) % 2) ? '#4b4f57' : '#454950');
+  // platforms
+  const plat = (cx, cy, w) => { c.fillStyle = '#2e6fa8'; c.beginPath(); c.ellipse(cx, cy, w, w / 4, 0, 0, Math.PI * 2); c.fill(); c.fillStyle = '#4a8fcc'; c.beginPath(); c.ellipse(cx, cy - 1, w - 3, w / 4 - 2, 0, 0, Math.PI * 2); c.fill(); };
+  plat(118, 66, 26); plat(44, 106, 34);
+  // positions, with a lunge / shake for the move being played
+  let tx = 118, ty = 64, mx = 44, my = 104;
+  if (fx) {
+    const k = Math.sin(Math.min(1, fx.t) * Math.PI);
+    if (fx.attacker === 'me') { mx += 14 * k; my -= 8 * k; } else if (fx.attacker === 'them') { tx -= 12 * k; ty += 6 * k; }
+    if (fx.hit === 'them' && fx.t > 0.45) tx += (Math.floor(fx.t * 20) % 2 ? 2 : -2);
+    if (fx.hit === 'me' && fx.t > 0.45) mx += (Math.floor(fx.t * 20) % 2 ? 2 : -2);
+  }
+  const themPose = fx?.attacker === 'them' ? (MOVE_POSE[fx.move] || 'stand') : (them.fainted ? 'sit' : 'stand');
+  const blinkThem = fx?.hit === 'them' && fx.t > 0.45 && Math.floor(fx.t * 16) % 2;
+  const blinkMe = fx?.hit === 'me' && fx.t > 0.45 && Math.floor(fx.t * 16) % 2;
+  if (!blinkThem && !them.gone) {
+    if (them.monster != null) {   // one of the boss sprites, bigger when it's an elite or a raid boss
+      const t2 = canvas._bmon || (canvas._bmon = document.createElement('canvas')); t2.width = 48; t2.height = 40;
+      drawBoss(t2, them.monster, frame, them.fainted ? 'ko' : 'idle');
+      const k = them.big ? 1.25 : 1;
+      c.drawImage(t2, Math.round(tx - 24 * k), Math.round(ty - 38 * k), Math.round(48 * k), Math.round(40 * k));
+    } else charInto(c, tx, ty, them.avatar, themPose, frame, 1);
+  }
+  if (!blinkMe && !me.gone) charInto(c, mx, my, me.avatar, me.fainted ? 'sit' : 'back', frame, 2);
+  // impact sparks
+  if (fx && fx.hit && fx.t > 0.4 && fx.t < 0.8) {
+    const [hx, hy] = fx.hit === 'them' ? [tx, ty - 14] : [mx, my - 30];
+    c.fillStyle = '#fff3b0'; for (const [dx, dy] of [[-6, -4], [5, -6], [-3, 5], [6, 3], [0, -8]]) c.fillRect(hx + dx, hy + dy, 2, 2);
+  }
+  if (fx && fx.heal && fx.t > 0.3) { c.fillStyle = 'rgba(111,211,160,.9)'; const [hx, hy] = fx.attacker === 'me' ? [mx, my - 40] : [tx, ty - 26]; for (let i = 0; i < 5; i++) c.fillRect(hx - 8 + i * 4, hy - (fx.t * 12 + i * 2) % 12, 2, 2); }
+  const ctx = canvas.getContext('2d'); ctx.imageSmoothingEnabled = false;
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.drawImage(lo, 0, 0, canvas.width, canvas.height);
 }

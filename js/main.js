@@ -11,6 +11,7 @@ import { reviewScreen } from './review.js';
 import { stopGym } from './gym.js';
 import { historyScreen } from './history.js';
 import { chatScreen, closeChat } from './chat.js';
+import { towerScreen, battleScreen, closeBattle } from './battle.js';
 import { t, getLang, setLang, hasChosenLang } from './i18n.js';
 import { ICON } from './icons.js';
 import { initMotion, markRoute } from './motion.js';
@@ -36,7 +37,7 @@ const store = { get: k => { try { return localStorage.getItem(k); } catch { retu
 // bottom tabs: Group (last group opened) · Log · Ranks · Me
 function drawTabs(page) {
   const g = store.get('gob_last_group');
-  const on = { g: 'group', c: 'group', all: 'group', log: 'log', plan: 'log', lib: 'log', review: 'log', r: 'ranks', me: 'me', p: 'me' }[page] || 'group';
+  const on = { g: 'group', c: 'group', all: 'group', log: 'log', plan: 'log', lib: 'log', review: 'log', r: 'ranks', me: 'me', p: 'me', tower: 'me', battle: 'me' }[page] || 'group';
   const tab = (id, href, label) => `<a href="${href}" class="${on === id ? 'on' : ''}" ${on === id ? 'aria-current="page"' : ''}>${ICON[id](22)}<span>${label}</span></a>`;
   document.getElementById('tabs').innerHTML =
     tab('group', g ? `#/g/${g}` : '#/all', t('Group', 'Group')) +
@@ -62,6 +63,7 @@ async function route() {
   closeExercise();
   closeChat();
   stopGym();
+  closeBattle();
   if (!configured) return ui.notConfigured();
 
   const [, page, arg, arg2] = (location.hash || '#/').split('/');
@@ -95,6 +97,8 @@ async function route() {
   if (page === 'r' && arg) return ranksScreen(user, arg, arg2);
   if (page === 'h' && arg) return historyScreen(user, arg);
   if (page === 'me') return meScreen(user);
+  if (page === 'tower') return towerScreen(user);
+  if (page === 'battle' && arg) return battleScreen(user, arg);
   if (page === 'plan') return planScreen(user, arg);
   if (page === 'lib') return libraryScreen(user);
   if (page === 'review') return reviewScreen(user);

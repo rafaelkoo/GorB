@@ -105,6 +105,28 @@ export const myQuests = () => sb.rpc('my_quests').then(must).then(x => x || []);
 export const claimQuest = id => sb.rpc('claim_quest', { p_id: id }).then(must);
 export const groupDogs = groupId => sb.rpc('group_dogs', { p_group: groupId }).then(must);
 export const groupBoss = groupId => sb.rpc('group_boss', { p_group: groupId }).then(must);
+// ---------- battles: moves, the Gym Tower, boss raids and friendly matches ----------
+export const allMoves = () => sb.from('moves').select('id, en, zh, type, stat, power, effect, effect_val, req_kind, req_cat, req_val, desc_en, desc_zh, sort').neq('req_kind', 'monster').order('sort').then(must);
+export const characterMoves = userId => sb.rpc('character_moves', { p_user: userId }).then(must);
+export const setMoves = ids => sb.rpc('set_moves', { p_moves: ids }).then(must);
+export const myTower = () => sb.rpc('my_tower').then(must);
+export const towerFight = () => sb.rpc('tower_fight').then(must);
+export const raidFight = groupId => sb.rpc('raid_fight', { p_group: groupId }).then(must);
+export const getBattle = id => sb.from('battles').select('*').eq('id', id).maybeSingle().then(must);
+export const battleMove = (id, move) => sb.rpc('battle_move', { p_id: id, p_move: move }).then(must);
+export const battleFlee = id => sb.rpc('battle_flee', { p_id: id }).then(must);
+export const challenge = (opp, groupId) => sb.rpc('challenge', { p_opp: opp, p_group: groupId }).then(must);
+export const respondBattle = (id, accept) => sb.rpc('respond_battle', { p_id: id, p_accept: accept }).then(must);
+export const claimTimeout = id => sb.rpc('claim_timeout', { p_id: id }).then(must);
+export const groupMatches = groupId => sb.from('battles').select('id, a, b, status, turn, winner, updated_at, snap').eq('group_id', groupId).eq('kind', 'pvp')
+  .order('updated_at', { ascending: false }).limit(20).then(must);
+// live changes to one battle (friendly matches); returns a function that stops listening
+export function battleLive(id, onRow) {
+  if (!sb.channel) return () => {};
+  const ch = sb.channel(`battle-${id}`)
+    .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'battles', filter: `id=eq.${id}` }, p => onRow(p.new)).subscribe();
+  return () => { try { sb.removeChannel(ch); } catch { /* already gone */ } };
+}
 export const claimBoss = (groupId, week = null) => sb.rpc('claim_boss', { p_group: groupId, ...(week ? { p_week: week } : {}) }).then(must);
 export const summon = (toUser, groupId) => sb.rpc('summon', { p_to: toUser, p_group: groupId }).then(must);
 export const characterCard = userId => sb.rpc('character_card', { p_user: userId }).then(must);

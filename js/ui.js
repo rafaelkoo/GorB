@@ -7,6 +7,7 @@ import { pickEmoji } from './emoji.js';
 import { gymCardHtml, mountGym } from './gym.js';
 import { openTodayChest } from './rewards.js';
 import { bossCardHtml, mountBoss } from './boss.js';
+import { matchesCardHtml, mountMatches } from './battle.js';
 import { FEED_PAGE } from './config.js';
 import { pushSupported, pushState, enablePush } from './push.js';
 import { t, setLang, langSwitchHtml, fmtDateTime, monthName, getLang } from './i18n.js';
@@ -256,6 +257,7 @@ export async function group(user, groupId, limit = FEED_PAGE) {
     ${pushSupported() && asked ? '<section class="card notif ask" id="notif" hidden></section>' : ''}
     ${bossCardHtml(boss)}
     ${gymCardHtml()}
+    ${matchesCardHtml()}
     <section class="card"><div class="card-head"><h3>${esc(monthName())} · ${t('days at the gym', '去 gym 日數')}</h3>
       <span class="links"><a class="link" href="#/h/${g.id}">${t('History', '歷史')} ›</a><a class="link" href="#/r/${g.id}">${t('All rankings', '全部排名')} ›</a></span></div>${boardHtml(board, user)}
       <p class="muted small reset-note">${t('Restarts on the 1st of every month', '每個月 1 號重新計')}</p></section>
@@ -276,6 +278,7 @@ export async function group(user, groupId, limit = FEED_PAGE) {
 
   mountGym(el, gymRows, user, groupId, dogs);
   mountBoss(el, boss, groupId);
+  mountMatches(el, user, groupId, board);
   // right after a check-in, offer notifications once
   if (pushSupported() && asked) {
     pushState().then(st => {

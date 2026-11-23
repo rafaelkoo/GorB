@@ -5,6 +5,7 @@ import { avatarCardHtml, mountAvatarEditor, characterCardHtml, mountCharacterCar
 import { cleanAvatar } from './pixel.js';
 import { questsCardHtml, mountQuests } from './quests.js';
 import { seasonCardHtml, mountSeason } from './season.js';
+import { movesCardHtml, mountMoves } from './battle.js';
 import { BIG_FOUR } from './exercises.js';
 import { t, getLang, setLang, langSwitchHtml, fmtDay } from './i18n.js';
 import { exName, kg, picker, spark, bySession, prOf } from './tracker.js';
@@ -86,6 +87,7 @@ export async function meScreen(user) {
     </header>
 
     ${characterCardHtml(card, profile.display_name, cleanAvatar(profile.avatar, user.id))}
+    ${movesCardHtml()}
     ${seasonCardHtml()}
     ${questsCardHtml()}
     ${avatarCardHtml()}
@@ -181,6 +183,7 @@ export async function meScreen(user) {
   mountAvatarEditor(el, user, profile);
   mountCharacterCard(el, cleanAvatar(profile.avatar, user.id));
   mountQuests(el);
+  mountMoves(el, user);
   mountSeason(el, () => mountAvatarEditor(el, user, profile));
   el.querySelector('#days').onchange = async e => {
     try { await api.updateProfile(user.id, { days_per_week: e.target.value ? +e.target.value : null }); again(); } catch (err) { showError(err); }
