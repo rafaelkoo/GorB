@@ -84,10 +84,10 @@ export const EXERCISES = [["bench_press","Bench press","槓鈴臥推","chest","B
   ["cable_woodchop","Cable woodchop","滑輪伐木","core","Cable"],
   ["landmine_rotation","Landmine rotation","地雷管旋轉","core","Barbell"]];
 export const EX = Object.fromEntries(EXERCISES.map(([id, en, zh, cat, equip]) => [id, { id, en, zh, cat, equip }]));
-// Wall climbing (bouldering): each "set" is one climb. weight_kg holds the V grade (V0 = 0 … V17 = 17)
+// Bouldering: each "set" is one climb. weight_kg holds the V grade (V0 = 0 … V17 = 17)
 // and reps is 1 if you topped it, 0 if it was an attempt. No 3D demo.
-EXERCISES.push(['wall_climb', 'Wall climbing', '攀石', 'other', 'Bodyweight']);
-EX.wall_climb = { id: 'wall_climb', en: 'Wall climbing', zh: '攀石', cat: 'other', equip: 'Bodyweight', climb: true };
+EXERCISES.push(['wall_climb', 'Bouldering', '抱石', 'other', 'Bodyweight']);
+EX.wall_climb = { id: 'wall_climb', en: 'Bouldering', zh: '抱石', cat: 'other', equip: 'Bodyweight', climb: true };
 export const isClimb = id => !!EX[id]?.climb;
 export const GRADES = Array.from({ length: 18 }, (_, i) => i);
 export const vGrade = n => `V${Math.max(0, Math.round(+n || 0))}`;

@@ -47,6 +47,22 @@ const moveTag = m => {
   const n = usesOf(m);
   return `${typesOf(m).map(x => { const ty = MOVE_TYPES[x] || MOVE_TYPES.normal; return `<span class="mv-type" style="--c:${ty.col}">${t(ty.en, ty.zh)}</span>`; }).join('')}${pw ? `<span class="muted small">${pw}</span>` : ''}${m.uses ? `<span class="muted small">${t(`${n}× per fight`, `每場 ${n} 次`)}</span>` : ''}`;
 };
+// one short line on what a move does, for the battle buttons
+const STAT = { atk: ['attack', '攻擊'], spd: ['speed', '速度'], tec: ['technique', '技巧'] };
+const pct = v => Math.round(v * 100);
+export function shortDesc(m) {
+  const v = +m.val || +m.effect_val || 0;
+  const fx = {
+    multi: t('hits 2–3 times', '連打 2–3 下'), crit: t('often critical', '好易會心'), recoil: t(`you take ${pct(v)}% back`, `自己反傷 ${pct(v)}%`),
+    flinch: t(`${pct(v)}% they lose a turn`, `${pct(v)}% 令對手出唔到招`), lock: t(`weakens + locks them ${v} turn${v === 1 ? '' : 's'}`, `降對手攻擊、鎖 ${v} 回合`),
+    ramp: t('stronger each use', '越用越痛'), heal: t(`heal ${pct(v)}%`, `回血 ${pct(v)}%`), heal_buff: t(`heal ${pct(v)}%, attack & defence up`, `回血 ${pct(v)}%，攻防都 ↑`),
+    buff_atk: t('attack up', '攻擊 ↑'), buff_def: t('defence up', '防禦 ↑'), buff_both: t('attack & defence up', '攻擊同防禦 ↑'), nocounter: t('never resisted', '永遠唔會被剋')
+  }[m.effect];
+  if (!(m.power > 0)) return fx || '';
+  const st = (m.stats?.length ? m.stats : [m.stat]).filter(s => STAT[s]).map(s => t(...STAT[s]));
+  const uses = st.length > 1 ? t(`uses ${st.join('/')}`, `靠${st.join('/')}`) : st.length ? t(`uses ${st[0]}`, `靠${st[0]}`) : '';
+  return [uses, fx].filter(Boolean).join(' · ');
+}
 const typeLine = m => typesOf(m).map(x => { const ty = MOVE_TYPES[x] || MOVE_TYPES.normal; return t(ty.en, ty.zh); }).join(' + ');
 
 // ---------------- Me page: moves card ----------------
@@ -242,7 +258,8 @@ export async function battleScreen(user, id) {
       const cap = usesOf(m), left = cap == null ? null : cap - (used[m.id] || 0);
       const fu = (m.types?.length || 0) > 1;
       return `<button type="button" class="bt-mv ${fu ? 'fusion' : ''}" data-mv="${m.id}" style="--c:${moveCol(m)}" ${!myTurn || busyAnim || left === 0 ? 'disabled' : ''}>
-        <b>${fu ? '✦ ' : ''}${esc(moveName(m))}</b><span>${typeLine(m)}${m.power > 0 ? ` · ${m.power}` : ''}${left != null ? ` · ${left}/${cap}` : ''}</span></button>`;
+        <b>${fu ? '✦ ' : ''}${esc(moveName(m))}</b><span>${typeLine(m)}${m.power > 0 ? ` · ${t('Power', '威力')} ${m.power}` : ''}${left != null ? ` · ${left}/${cap}` : ''}</span>
+        <small class="bt-desc">${esc(shortDesc(m))}</small></button>`;
     }).join('');
     box.querySelectorAll('[data-mv]').forEach(b => b.onclick = async () => {
       box.querySelectorAll('button').forEach(x => x.disabled = true);

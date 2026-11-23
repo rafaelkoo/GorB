@@ -1,4 +1,4 @@
-// Add, rename or delete your own exercises (wall climbing, a machine only your gym has…).
+// Add, rename or delete your own exercises (a class, a machine only your gym has…).
 // 'weight' = logged as sets (kg × reps), shows in progress and rankings.
 // 'minutes' = logged in the cardio card on the Log page.
 // Everyone in your groups can see and use what you add; there's no 3D demo for these.
@@ -27,14 +27,14 @@ export function addCustomSheet(user, { kind = 'weight', name = '' } = {}) {
       const nm = box.querySelector('#cname')?.value ?? name;
       box.innerHTML = `<form class="sheet-in custom-add">
         <div class="ex-head"><h3>${t('Add your own exercise', '加自己嘅動作')}</h3><button type="button" class="ghost x" id="cclose" aria-label="${t('Close', '關閉')}">✕</button></div>
-        <label class="field">${t('Name', '名')}<input id="cname" maxlength="40" required value="${esc(nm)}" placeholder="${t('e.g. Wall climbing', '例如：攀石')}" autocomplete="off"></label>
+        <label class="field">${t('Name', '名')}<input id="cname" maxlength="40" required value="${esc(nm)}" placeholder="${t('e.g. Swimming', '例如：游水')}" autocomplete="off"></label>
         <fieldset class="kind"><legend>${t('How do you log it?', '點樣記錄？')}</legend>
           <label class="${kind === 'weight' ? 'on' : ''}"><input type="radio" name="kind" value="weight" ${kind === 'weight' ? 'checked' : ''}>
             <b>${t('Sets of weight × reps', '組數：重量 × 次數')}</b><small>${t('Like a lift. Shows in progress and rankings.', '同舉重一樣，會計入進度同排名。')}</small></label>
           <label class="${kind === 'timed' ? 'on' : ''}"><input type="radio" name="kind" value="timed" ${kind === 'timed' ? 'checked' : ''}>
             <b>${t('Sets of weight × seconds', '組數：重量 × 秒數')}</b><small>${t('Holds, like holding a weight for 30 s. Has a stopwatch on the Log page.', '撐住嘅動作，例如揸住重量 30 秒。記錄頁有計時器。')}</small></label>
           <label class="${kind === 'minutes' ? 'on' : ''}"><input type="radio" name="kind" value="minutes" ${kind === 'minutes' ? 'checked' : ''}>
-            <b>${t('Minutes', '分鐘')}</b><small>${t('Like climbing or swimming. Logged with cardio, only you see it.', '例如攀石、游水。同有氧一齊記，得你自己睇到。')}</small></label>
+            <b>${t('Minutes', '分鐘')}</b><small>${t('Like swimming or a class. Logged with cardio, only you see it.', '例如游水、上堂。同有氧一齊記，得你自己睇到。')}</small></label>
         </fieldset>
         ${kind !== 'minutes' ? `<div><p class="muted small">${t('Body part', '部位')}</p><div class="chips">${Object.keys(CATS).map(k => `<button type="button" data-cat="${k}" aria-pressed="${cat === k}" class="${cat === k ? 'on' : ''}">${esc(t(CATS[k], CAT_ZH[k]))}</button>`).join('')}</div></div>` : ''}
         <p class="muted small">${t('Everyone in your groups can use it too. No 3D demo for your own exercises.', 'Group 入面嘅人都用得到。自己加嘅動作冇 3D 示範。')}</p>

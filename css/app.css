@@ -839,3 +839,4 @@ textarea { resize: vertical; line-height: 1.4; }
 .mv-locked.fusion { border-color: #6b4f8f; }
 .mv-type + .mv-type { margin-left: -4px; }
 .mv-slot { align-content: start; }
+.bt-desc { font-size: .76rem; color: #f2d58a; line-height: 1.25; }

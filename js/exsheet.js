@@ -194,7 +194,7 @@ export async function libraryScreen(user) {
                 <button class="ghost small-btn unit-btn" data-unit="${x.id}" data-to="${x.kind === 'timed' ? 'weight' : 'timed'}" aria-label="${x.kind === 'timed' ? t('Switch to reps', '轉做次數') : t('Switch to seconds', '轉做秒數')}">${x.kind === 'timed' ? t('kg × sec', 'kg × 秒') : t('kg × reps', 'kg × 次')} ⇄</button>`}
             <button class="ghost x" data-del="${x.id}" aria-label="${t('Delete', '刪除')} ${esc(x.en)}">✕</button></li>`).join('')}</ul>
           <p class="muted small">${t('Renaming changes it for your whole group. Deleting hides its past records too.', '改名會連 group 入面嘅人一齊改。刪除之後，以前嘅記錄都會睇唔到。')}</p>`
-          : `<p class="muted">${t('Add things the library doesn’t have, like wall climbing or a machine only your gym has.', '加動作庫冇嘅嘢，例如攀石，或者你 gym 獨有嘅機。')}</p>`}
+          : `<p class="muted">${t('Add things the library doesn’t have, like a machine only your gym has.', '加動作庫冇嘅嘢，例如你 gym 獨有嘅機。')}</p>`}
         ${groupList().length ? `<div class="grp-ex"><p class="muted small">${t('Added by your group', 'Group 加嘅')}</p><ul class="own-list">${groupList().map(x => `<li><b>${esc(x.en)}</b><span class="muted small">${x.kind === 'minutes' ? t('minutes · in Cardio on the Log page', '分鐘 · 喺記錄頁有氧卡') : x.kind === 'timed' ? t('weight × seconds', '重量 × 秒數') : t('weight × reps', '重量 × 次數')}</span></li>`).join('')}</ul></div>` : ''}
         <button id="addown">+ ${t('Add your own exercise', '加自己嘅動作')}</button>
         <div class="req"><div class="card-head"><h4>${t('Requests', '請求')}</h4><button class="link-btn" id="askex">${t('Request an exercise', '請求加動作')}</button></div>
