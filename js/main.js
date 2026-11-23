@@ -1,5 +1,5 @@
 // Boot + hash router.
-// Routes: #/all  #/g/<group>  #/checkin/<group>  #/join/<code>  #/log  #/p/<user|me>  #/r/<group>[/<measure>]  #/me
+// Routes: #/all  #/g/<group>  #/h/<group> (history)  #/gym/<group>  #/checkin/<group>  #/join/<code>  #/log  #/p/<user|me>  #/r/<group>[/<measure>]  #/me
 import { configured, sb, currentUser, getProfile, updateProfile } from './supa.js';
 import * as ui from './ui.js';
 import { logScreen, progressScreen } from './tracker.js';
@@ -8,6 +8,8 @@ import { ranksScreen } from './ranks.js';
 import { planScreen } from './plan.js';
 import { libraryScreen, closeExercise } from './exsheet.js';
 import { reviewScreen } from './review.js';
+import { stopGym } from './gym.js';
+import { historyScreen } from './history.js';
 import { chatScreen, closeChat } from './chat.js';
 import { t, getLang, setLang, hasChosenLang } from './i18n.js';
 import { ICON } from './icons.js';
@@ -59,6 +61,7 @@ async function route() {
   ui.releaseCamera();
   closeExercise();
   closeChat();
+  stopGym();
   if (!configured) return ui.notConfigured();
 
   const [, page, arg, arg2] = (location.hash || '#/').split('/');
@@ -90,6 +93,7 @@ async function route() {
   if (page === 'log') return logScreen(user);
   if (page === 'p' && arg) return progressScreen(user, arg);
   if (page === 'r' && arg) return ranksScreen(user, arg, arg2);
+  if (page === 'h' && arg) return historyScreen(user, arg);
   if (page === 'me') return meScreen(user);
   if (page === 'plan') return planScreen(user, arg);
   if (page === 'lib') return libraryScreen(user);

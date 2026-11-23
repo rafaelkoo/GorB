@@ -1,6 +1,7 @@
 // "Me" page: weekly target, lift targets, body details + goal, daily numbers, settings.
 // Body details are private unless "Show to my groups" is on (the database enforces this).
 import * as api from './supa.js';
+import { avatarCardHtml, mountAvatarEditor } from './gym.js';
 import { BIG_FOUR } from './exercises.js';
 import { t, getLang, setLang, langSwitchHtml, fmtDay } from './i18n.js';
 import { exName, kg, picker, spark, bySession, prOf } from './tracker.js';
@@ -80,6 +81,7 @@ export async function meScreen(user) {
       <a class="link" href="#/p/me">${t('My progress', '我嘅進度')} ›</a>
     </header>
 
+    ${avatarCardHtml()}
     <section class="card">
       <div class="card-head"><h3>${t('Gym days this week', '今個星期去 gym')}</h3></div>
       <div class="week">
@@ -169,6 +171,7 @@ export async function meScreen(user) {
 
   const again = () => meScreen(user).catch(showError);
 
+  mountAvatarEditor(el, user, profile);
   el.querySelector('#days').onchange = async e => {
     try { await api.updateProfile(user.id, { days_per_week: e.target.value ? +e.target.value : null }); again(); } catch (err) { showError(err); }
   };

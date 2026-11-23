@@ -4,6 +4,7 @@ import * as api from './supa.js';
 import { openCamera, stopCamera, grabFrame, encodeCanvas, cameraCount } from './camera.js';
 import { storyEditor } from './story.js';
 import { pickEmoji } from './emoji.js';
+import { gymCardHtml, mountGym } from './gym.js';
 import { FEED_PAGE } from './config.js';
 import { pushSupported, pushState, enablePush } from './push.js';
 import { t, setLang, langSwitchHtml, fmtDateTime, monthName, getLang } from './i18n.js';
@@ -223,9 +224,9 @@ export async function group(user, groupId, limit = FEED_PAGE) {
   const groups = await api.myGroups();
   const g = groups.find(x => x.id === groupId);
   if (!g) { location.hash = '#/all'; return; }
-  const [board, feed, doneToday, unread, week] = await Promise.all([
+  const [board, feed, doneToday, unread, week, gymRows] = await Promise.all([
     api.leaderboard(groupId), api.groupFeed(groupId, limit + 1), api.checkedInToday(user.id), api.chatUnread().catch(() => ({})),
-    api.weekReview(groupId).catch(() => null)
+    api.weekReview(groupId).catch(() => null), api.gymToday(groupId).catch(() => null)
   ]);
   const nUnread = unread[groupId] || 0;
   const more = feed.length > limit; if (more) feed.pop();
@@ -247,8 +248,10 @@ export async function group(user, groupId, limit = FEED_PAGE) {
       <a class="cta" href="#/checkin/${g.id}">${ICON.camera(22)}<span>${doneToday ? t('Check in again', '再打卡') : t('I’m at the gym', '我喺 gym')}</span></a>
     </section>
     ${pushSupported() && asked ? '<section class="card notif ask" id="notif" hidden></section>' : ''}
+    ${gymCardHtml()}
     <section class="card"><div class="card-head"><h3>${esc(monthName())} · ${t('days at the gym', '去 gym 日數')}</h3>
-      <a class="link" href="#/r/${g.id}">${t('All rankings', '全部排名')} ›</a></div>${boardHtml(board, user)}</section>
+      <span class="links"><a class="link" href="#/h/${g.id}">${t('History', '歷史')} ›</a><a class="link" href="#/r/${g.id}">${t('All rankings', '全部排名')} ›</a></span></div>${boardHtml(board, user)}
+      <p class="muted small reset-note">${t('Restarts on the 1st of every month', '每個月 1 號重新計')}</p></section>
     ${weekHtml(week, user)}
     <section class="card"><div class="card-head"><h3>${t('Latest', '最新')}</h3><span class="muted small">${t('Photos stay for 7 days', '相片保留 7 日')}</span></div>
       ${feed.length ? feed.map(r => postHtml(r, user)).join('') : `<p class="muted">${t('Nobody has checked in yet. Be first.', '仲未有人打卡，做第一個啦。')}</p>`}
@@ -264,6 +267,7 @@ export async function group(user, groupId, limit = FEED_PAGE) {
         <button id="leave" class="ghost">${t('Leave group', '退出 group')}</button></div>
     </section>`);
 
+  mountGym(el, gymRows, user);
   // right after a check-in, offer notifications once
   if (pushSupported() && asked) {
     pushState().then(st => {
