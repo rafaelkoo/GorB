@@ -849,3 +849,31 @@ textarea { resize: vertical; line-height: 1.4; }
 .grp-switch a.on { background: var(--chalk); color: var(--floor); border-color: var(--chalk); }
 .grp-switch .dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--red); vertical-align: middle; margin-left: 2px; }
 .post-acts .cap-edit { margin-left: auto; }
+a.icon-btn { display: inline-flex; align-items: center; justify-content: center; height: 44px; text-decoration: none; }
+.cap-warn { margin: 0; font-size: .8rem; color: #ffd98a; }
+.grp-card { text-decoration: none; color: var(--chalk); gap: 10px; }
+.grp-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
+.grp-top > div { display: grid; gap: 2px; }
+.grp-name { font: 700 1.3rem/1.1 var(--display); }
+.grp-name .pin { color: var(--yellow); font-size: .8rem; vertical-align: middle; }
+.badge-pill { background: var(--red); color: #fff; font-weight: 700; font-size: .75rem; border-radius: 999px; padding: 2px 8px; white-space: nowrap; }
+.grp-tags { display: flex; flex-wrap: wrap; gap: 6px; }
+.pill.gold { border-color: var(--yellow); color: var(--yellow); }
+.pill.ok { border-color: var(--green); color: #7fd39f; }
+.grp-faces { display: flex; flex-wrap: wrap; gap: 4px; }
+.face { width: 28px; height: 28px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-weight: 700; font-size: .8rem; background: var(--mat-2); color: var(--dust); border: 1px dashed #5a636c; }
+.face.in { background: var(--green); color: #0d1f14; border: 0; }
+.join-card h2 { font-size: 2rem; }
+.join-list { margin: 0; padding-left: 20px; display: grid; gap: 6px; }
+.join-hist { border: 1px solid var(--line); border-radius: var(--r-ctl); padding: 10px 12px; display: grid; gap: 8px; margin: 4px 0 0; }
+.join-hist legend { font-weight: 600; padding: 0 4px; }
+.join-hist label { display: flex; gap: 10px; align-items: flex-start; }
+.join-hist label input { width: 20px; height: 20px; min-height: 0; margin-top: 2px; accent-color: var(--green); }
+.join-hist label span { display: grid; }
+.set-card { gap: 0; padding: 4px 16px; }
+.set-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; min-height: 60px; border-top: 1px solid var(--line); }
+.set-row:first-child { border-top: 0; }
+.set-row span { display: grid; }
+.set-row input { width: 22px; height: 22px; min-height: 0; flex: none; accent-color: var(--green); }
+.danger { color: #ff7a72 !important; border-color: #5a3a3a !important; }
+.grp-of { display: block; }

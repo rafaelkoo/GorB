@@ -42,7 +42,8 @@ Deno.serve(async req => {
   const { data: mine } = await db.from('group_members').select('group_id').eq('user_id', record.user_id);
   const groupIds = (mine ?? []).map(m => m.group_id);
   if (!groupIds.length) return json({ skipped: 'poster is in no group' });
-  const { data: mates } = await db.from('group_members').select('user_id, group_id').in('group_id', groupIds).neq('user_id', record.user_id);
+  // people who muted check-ins in a group don't hear about it from that group
+  const { data: mates } = await db.from('group_members').select('user_id, group_id').in('group_id', groupIds).neq('user_id', record.user_id).eq('mute_checkins', false);
   const openGroup = new Map<string, string>();
   for (const m of mates ?? []) if (!openGroup.has(m.user_id)) openGroup.set(m.user_id, m.group_id);
   if (!openGroup.size) return json({ sent: 0 });

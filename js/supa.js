@@ -34,7 +34,10 @@ export const setName = (id, display_name) => sb.from('profiles').update({ displa
 // ---------- groups ----------
 export const myGroups = () => sb.from('groups').select('id, name, invite_code, owner_id').order('created_at').then(must);
 export const createGroup = name => sb.rpc('create_group', { p_name: name }).then(must);
-export const joinGroup = code => sb.rpc('join_group', { p_code: code }).then(must);
+export const joinGroup = (code, showHistory = true) => sb.rpc('join_group', { p_code: code, p_show_history: showHistory }).then(must);
+export const groupPreview = code => sb.rpc('group_preview', { p_code: code }).then(must);
+export const myGroupCards = () => sb.rpc('my_group_cards').then(must);
+export const setGroupPrefs = (groupId, prefs) => sb.rpc('set_group_prefs', { p_group: groupId, p_prefs: prefs }).then(must);
 // anyone in the group can rename it; the database logs each rename as a line in the chat
 export const renameGroup = (groupId, name) => sb.rpc('rename_group', { p_group: groupId, p_name: name }).then(must);
 
@@ -136,7 +139,7 @@ export const setGymLive = (userId, day, sets, lastEx) =>
   sb.from('gym_live').upsert({ user_id: userId, day, sets, last_ex: lastEx, updated_at: new Date().toISOString() }, { onConflict: 'user_id' }).then(must);
 export const gymToday = groupId => sb.rpc('group_gym_today', { p_group: groupId }).then(must);
 export const leaderboard = groupId => sb.rpc('group_leaderboard', { p_group: groupId }).then(must);
-export const members = groupId => sb.from('group_members').select('user_id').eq('group_id', groupId).then(must);
+export const members = groupId => sb.from('group_members').select('user_id, joined_at, show_history, in_everyone').eq('group_id', groupId).then(must);
 export const profilesOf = ids => (ids.length ? sb.from('profiles').select('id, display_name').in('id', ids).then(must) : Promise.resolve([]));
 
 // ---------- check-ins ----------
@@ -178,11 +181,14 @@ export async function photoLinks(paths) {
 // Photos are kept for a week (cleanup-photos deletes them); older check-ins come back with gone: true.
 export const PHOTO_DAYS = 7;
 export async function groupFeed(groupId, limit) {
-  const ids = (await members(groupId)).map(m => m.user_id);
+  const mem = await members(groupId), ids = mem.map(m => m.user_id);
   if (!ids.length) return [];
   const rows = must(await sb.from('checkins')
     .select('id, user_id, photo_path, photo_expired, note, created_at, profiles!checkins_user_id_fkey(display_name)')
     .in('user_id', ids).order('created_at', { ascending: false }).limit(limit));
+  // someone who joined without showing their history: only their check-ins from after they joined
+  const from = Object.fromEntries(mem.filter(m => m.show_history === false && m.joined_at).map(m => [m.user_id, m.joined_at]));
+  for (let i = rows.length - 1; i >= 0; i--) if (from[rows[i].user_id] && rows[i].created_at < from[rows[i].user_id]) rows.splice(i, 1);
   if (!rows.length) return rows;
   // this group's own captions replace the default one
   const caps = must(await sb.from('checkin_captions').select('checkin_id, note').eq('group_id', groupId).in('checkin_id', rows.map(r => r.id)));

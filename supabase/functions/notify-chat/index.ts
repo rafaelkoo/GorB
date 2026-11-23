@@ -30,7 +30,7 @@ Deno.serve(async req => {
   const [{ data: group }, { data: sender }, { data: mates }] = await Promise.all([
     db.from('groups').select('name').eq('id', msg.group_id).single(),
     db.from('profiles').select('display_name').eq('id', msg.user_id).single(),
-    db.from('group_members').select('user_id').eq('group_id', msg.group_id).neq('user_id', msg.user_id)
+    db.from('group_members').select('user_id').eq('group_id', msg.group_id).neq('user_id', msg.user_id).eq('mute_chat', false)
   ]);
   const ids = (mates ?? []).map(m => m.user_id);
   if (!ids.length) return json({ sent: 0 });

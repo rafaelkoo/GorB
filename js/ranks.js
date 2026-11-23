@@ -32,8 +32,14 @@ export async function ranksScreen(user, groupId, measureId = 'days') {
   const all = groupId === 'all' && groups.length > 1;
   const g = all ? { id: 'all', name: t('Everyone in your groups', '你所有 group 嘅人') } : groups.find(x => x.id === groupId) || groups[0];
   let rows, exRows;
+  let inGroups = {};
   if (all) {
-    const got = await Promise.all(groups.map(x => Promise.all([api.groupRankings(x.id), api.groupExerciseRanks(x.id)])));
+    // groups you've switched off for "Everyone" (group settings) are left out
+    const prefs = await api.myGroupCards().catch(() => []);
+    const off = new Set((prefs || []).filter(x => x.in_everyone === false).map(x => x.id));
+    const use = groups.filter(x => !off.has(x.id));
+    const got = await Promise.all(use.map(x => Promise.all([api.groupRankings(x.id), api.groupExerciseRanks(x.id)])));
+    use.forEach((x, i) => got[i][0].forEach(r => (inGroups[r.user_id] ||= []).push(x.name)));
     const seen = new Set(), seenEx = new Set();
     rows = got.flatMap(x => x[0]).filter(r => !seen.has(r.user_id) && seen.add(r.user_id));
     exRows = got.flatMap(x => x[1]).filter(r => { const k = r.user_id + '|' + r.exercise_id; return !seenEx.has(k) && seenEx.add(k); });
@@ -97,6 +103,11 @@ export async function ranksScreen(user, groupId, measureId = 'days') {
       <div class="chips scroll" role="tablist" aria-label="${t('Exercises', '動作')}">${exIds.map(id => chip(id, exName(id), id === measureId)).join('')}</div></div>`
       : `<p class="muted small">${t('Exercise rankings show up once someone logs a workout.', '有人記錄訓練之後，就會有每個動作嘅排名。')}</p>`}
     <section class="card">${body}</section>`);
+  // under each name: which of your groups they're in
+  if (all) el.querySelectorAll('.rank .who > a[href^="#/p/"]').forEach(a => {
+    const gs = inGroups[a.getAttribute('href').slice(4)]; if (!gs) return;
+    const s = document.createElement('span'); s.className = 'muted small grp-of'; s.textContent = gs.join(' · '); a.after(s);
+  });
   el.querySelectorAll('[data-m]').forEach(b => b.onclick = () => { location.hash = `#/r/${g.id}/${b.dataset.m}`; });
   el.querySelectorAll('.chips .on').forEach(c => c.scrollIntoView({ inline: 'center', block: 'nearest' }));
 }

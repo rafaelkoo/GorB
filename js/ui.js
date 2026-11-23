@@ -244,7 +244,8 @@ export async function group(user, groupId, limit = FEED_PAGE) {
     <header class="page-head">
       <div><h2>${esc(g.name)}</h2><p class="muted">${t(`${board.length} member${board.length === 1 ? '' : 's'}`, `${board.length} 個人`)}${groups.length > 1 ? ` · <a href="#/all">${t('switch group', '轉 group')}</a>` : ''}</p></div>
       <div class="head-btns"><a class="icon-btn chat-btn" href="#/c/${g.id}" aria-label="${nUnread ? t(`Chat, ${nUnread} unread`, `傾偈，${nUnread} 個未讀`) : t('Chat', '傾偈')}">${ICON.chat(20)}${nUnread ? `<span class="badge">${nUnread > 99 ? '99+' : nUnread}</span>` : ''}</a>
-      <button id="share" class="icon-btn" aria-label="${t('Invite mates', '邀請朋友')}">${ICON.share(20)}</button></div>
+      <button id="share" class="icon-btn" aria-label="${t('Invite mates', '邀請朋友')}">${ICON.share(20)}</button>
+      <a class="icon-btn" href="#/gs/${g.id}" aria-label="${t('Group settings', 'Group 設定')}"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="3"></circle><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"></path></svg></a></div>
     </header>
     ${groups.length > 1 ? `<nav class="grp-switch" aria-label="${t('Your groups', '你嘅 group')}">${groups.map(x => `<a href="#/g/${x.id}" class="${x.id === g.id ? 'on' : ''}" ${x.id === g.id ? 'aria-current="page"' : ''}>${esc(x.name)}${unread[x.id] && x.id !== g.id ? ' <i class="dot" aria-label="' + t('new messages', '有新訊息') + '"></i>' : ''}</a>`).join('')}</nav>` : ''}
     <section class="hero-card ${doneToday ? 'done' : ''}">
@@ -406,7 +407,16 @@ export async function checkin(user, groupId) {
     gs.sort((a, b) => (a.id === groupId ? -1 : b.id === groupId ? 1 : 0));
     const tg = el.querySelector('#capToggle'), each = el.querySelector('#capEach'), main = el.querySelector('#note');
     tg.hidden = false;
-    each.innerHTML = gs.map(g => `<label class="cap-row"><span>${esc(g.name)}</span><input data-cap="${g.id}" maxlength="140" placeholder="${t('Caption (optional)', 'Caption（可以唔填）')}"></label>`).join('');
+    each.innerHTML = gs.map(g => `<label class="cap-row"><span>${esc(g.name)}</span><input data-cap="${g.id}" maxlength="140" placeholder="${t('Caption (optional)', 'Caption（可以唔填）')}"></label>`).join('')
+      + '<p class="cap-warn" id="capWarn" hidden></p>';
+    // people in more than one of these groups see every caption meant for those groups
+    Promise.all(gs.map(g => api.leaderboard(g.id).catch(() => []))).then(lists => {
+      const seen = {};
+      lists.forEach(l => l.forEach(r => { if (r.user_id !== user.id) (seen[r.user_id] ||= { n: r.display_name, c: 0 }).c++; }));
+      const both = Object.values(seen).filter(x => x.c > 1).map(x => x.n);
+      const w = each.querySelector('#capWarn');
+      if (w && both.length) { w.hidden = false; w.textContent = t(`${both.join(', ')} ${both.length === 1 ? 'is' : 'are'} in more than one of these groups and will see each caption.`, `${both.join('、')} 喺多過一個 group，會見到每句 caption。`); }
+    });
     tg.onclick = () => {
       perGroup = !perGroup;
       if (perGroup) each.querySelectorAll('[data-cap]').forEach(i => { if (!i.value) i.value = main.value; });

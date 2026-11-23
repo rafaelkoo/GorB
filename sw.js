@@ -1,9 +1,9 @@
 // Service worker: offline app shell + push notifications.
 // Bump VERSION whenever app files change so phones pick up the new copy.
-const VERSION = 'gob-v0.50.0';
+const VERSION = 'gob-v0.51.0';
 const SHELL = [
   './', 'index.html', 'manifest.json', 'css/app.css',
-  'js/main.js', 'js/config.js', 'js/supa.js', 'js/camera.js', 'js/ui.js', 'js/push.js', 'js/tracker.js', 'js/exercises.js', 'js/i18n.js', 'js/icons.js', 'js/me.js', 'js/ranks.js', 'js/plan.js', 'js/importer.js', 'js/exsheet.js', 'js/coach.js', 'js/timer.js', 'js/score.js', 'js/scheme.js', 'js/cardio.js', 'js/review.js', 'js/motion.js', 'js/custom.js', 'js/chat.js', 'js/story.js', 'js/emoji.js', 'js/history.js', 'js/pixel.js', 'js/gym.js', 'js/rewards.js', 'js/boss.js', 'js/battle.js', 'js/quests.js', 'js/season.js',
+  'js/main.js', 'js/config.js', 'js/supa.js', 'js/camera.js', 'js/ui.js', 'js/push.js', 'js/tracker.js', 'js/exercises.js', 'js/i18n.js', 'js/icons.js', 'js/me.js', 'js/ranks.js', 'js/plan.js', 'js/importer.js', 'js/exsheet.js', 'js/coach.js', 'js/timer.js', 'js/score.js', 'js/scheme.js', 'js/cardio.js', 'js/review.js', 'js/motion.js', 'js/custom.js', 'js/chat.js', 'js/story.js', 'js/emoji.js', 'js/history.js', 'js/pixel.js', 'js/gym.js', 'js/rewards.js', 'js/boss.js', 'js/battle.js', 'js/groups.js', 'js/quests.js', 'js/season.js',
   'icons/icon-192.png', 'icons/icon-512.png', 'icons/icon-maskable-512.png', 'icons/apple-touch-icon.png', 'icons/favicon-32.png'
 ];
 
