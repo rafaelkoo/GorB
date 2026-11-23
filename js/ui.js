@@ -4,7 +4,7 @@ import * as api from './supa.js';
 import { openCamera, stopCamera, grabFrame, encodeCanvas, cameraCount } from './camera.js';
 import { storyEditor } from './story.js';
 import { pickEmoji } from './emoji.js';
-import { gymCardHtml, mountGym } from './gym.js';
+import { gymCardHtml, todayStripHtml, wireTodayStrip, mountGym } from './gym.js';
 import { openTodayChest } from './rewards.js';
 import { bossCardHtml, mountBoss } from './boss.js';
 import { matchesCardHtml, mountMatches } from './battle.js';
@@ -126,7 +126,7 @@ function weekHtml(rv, user) {
   const day = s => new Date(`${s}T12:00:00`).toLocaleDateString(getLang() === 'zh' ? 'zh-HK' : 'en-GB', { day: 'numeric', month: 'short' });
   const top = Math.max(0, ...ms.map(m => m.days));
   const hit = ms.filter(m => m.target && m.days >= m.target).length, withTarget = ms.filter(m => m.target).length;
-  return `<section class="card week"><div class="card-head"><h3>${t('Last week', '上星期')}</h3><span class="muted small">${esc(day(rv.week_start))} – ${esc(day(rv.week_end))}</span></div>
+  return `<details class="week"><summary><b>${t('Last week', '上星期回顧')}</b> <span class="muted small">${esc(day(rv.week_start))} – ${esc(day(rv.week_end))}</span></summary>
     ${withTarget ? `<p class="muted small">${t(`${hit} of ${withTarget} hit their days target`, `${withTarget} 個人入面 ${hit} 個達標`)}</p>` : ''}
     <ol class="week-list">${ms.map(m => {
       const goal = m.target || 0, met = goal && m.days >= goal;
@@ -136,7 +136,7 @@ function weekHtml(rv, user) {
           <span class="wk-days"><span class="dots" aria-hidden="true">${dots}</span>${goal ? t(`${m.days}/${goal} days`, `${m.days}/${goal} 日`) : t(`${m.days} day${m.days === 1 ? '' : 's'}`, `${m.days} 日`)}</span></div>
         ${m.prs.length ? `<p class="wk-pb">💪 ${m.prs.slice(0, 3).map(p => `${esc(nm(p.exercise_id))} ${esc(amt(p.exercise_id, p.kg))} <span class="muted">(${isClimb(p.exercise_id) ? t(`was ${vGrade(p.was)}`, `之前 ${vGrade(p.was)}`) : `+${+(p.kg - p.was).toFixed(2)}`})</span>`).join(', ')}${m.prs.length > 3 ? t(` +${m.prs.length - 3} more`, ` 仲有 ${m.prs.length - 3} 個`) : ''}</p>` : ''}
       </li>`;
-    }).join('')}</ol></section>`;
+    }).join('')}</ol></details>`;
 }
 
 function boardHtml(board, user) {
@@ -238,47 +238,42 @@ export async function group(user, groupId, limit = FEED_PAGE) {
   const nUnread = unread[groupId] || 0;
   const more = feed.length > limit; if (more) feed.pop();
   const mine = board.find(r => r.user_id === user.id);
+  const myRank = mine ? 1 + board.filter(r => r.days > mine.days).length : null;
   let asked = false; try { asked = sessionStorage.getItem(ASK_KEY) === '1'; } catch {}
   const inviteLink = `${location.origin}${location.pathname}#/join/${g.invite_code}`;
   const el = render(`
     <header class="page-head">
       <div><h2>${esc(g.name)}</h2><p class="muted">${t(`${board.length} member${board.length === 1 ? '' : 's'}`, `${board.length} 個人`)} · <a href="#/all">${groups.length > 1 ? t('all groups / add one', '全部 group／加 group') : t('add another group', '加多個 group')}</a></p></div>
       <div class="head-btns"><a class="icon-btn chat-btn" href="#/c/${g.id}" aria-label="${nUnread ? t(`Chat, ${nUnread} unread`, `傾偈，${nUnread} 個未讀`) : t('Chat', '傾偈')}">${ICON.chat(20)}${nUnread ? `<span class="badge">${nUnread > 99 ? '99+' : nUnread}</span>` : ''}</a>
-      <button id="share" class="icon-btn" aria-label="${t('Invite mates', '邀請朋友')}">${ICON.share(20)}</button>
       <a class="icon-btn" href="#/gs/${g.id}" aria-label="${t('Group settings', 'Group 設定')}"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="3"></circle><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"></path></svg></a></div>
     </header>
     ${groups.length > 1 ? `<nav class="grp-switch" aria-label="${t('Your groups', '你嘅 group')}">${groups.map(x => `<a href="#/g/${x.id}" class="${x.id === g.id ? 'on' : ''}" ${x.id === g.id ? 'aria-current="page"' : ''}>${esc(x.name)}${unread[x.id] && x.id !== g.id ? ' <i class="dot" aria-label="' + t('new messages', '有新訊息') + '"></i>' : ''}</a>`).join('')}</nav>` : ''}
     <section class="hero-card ${doneToday ? 'done' : ''}">
-      <div class="hero-text">
-        <p class="status">${doneToday ? `${ICON.check(16)} ${t('Checked in today', '今日打咗卡')}` : t('Not checked in today', '今日仲未打卡')}</p>
-        <p class="big-num"><span data-count="${mine?.days ?? 0}">${mine?.days ?? 0}</span><small>${t(`day${(mine?.days ?? 0) === 1 ? '' : 's'} in ${monthName()}`, `日 · ${monthName()}`)}</small></p>
-        ${tally(mine?.days ?? 0, t(`${mine?.days ?? 0} days this month`, `今個月 ${mine?.days ?? 0} 日`))}
+      <div class="hero-top">
+        <div class="hero-text">
+          <p class="status">${doneToday ? `${ICON.check(16)} ${t('You checked in today', '你今日打咗卡')}` : t('Not checked in today', '今日仲未打卡')}</p>
+          <p class="big-num"><span data-count="${mine?.days ?? 0}">${mine?.days ?? 0}</span><small>${t(`day${(mine?.days ?? 0) === 1 ? '' : 's'} in ${monthName()}`, `日 · ${monthName()}`)}${myRank ? t(` · #${myRank}`, ` · 排第 ${myRank}`) : ''}</small></p>
+        </div>
+        <a class="cta" href="#/checkin/${g.id}">${ICON.camera(22)}<span>${doneToday ? t('Again', '再打卡') : t('I’m at the gym', '我喺 gym')}</span></a>
       </div>
-      <a class="cta" href="#/checkin/${g.id}">${ICON.camera(22)}<span>${doneToday ? t('Check in again', '再打卡') : t('I’m at the gym', '我喺 gym')}</span></a>
+      ${todayStripHtml(gymRows, user)}
     </section>
     ${pushSupported() && asked ? '<section class="card notif ask" id="notif" hidden></section>' : ''}
-    ${bossCardHtml(boss)}
     ${gymCardHtml()}
+    ${bossCardHtml(boss)}
     ${matchesCardHtml()}
     <section class="card"><div class="card-head"><h3>${esc(monthName())} · ${t('days at the gym', '去 gym 日數')}</h3>
       <span class="links"><a class="link" href="#/h/${g.id}">${t('History', '歷史')} ›</a><a class="link" href="#/r/${g.id}">${t('All rankings', '全部排名')} ›</a></span></div>${boardHtml(board, user)}
-      <p class="muted small reset-note">${t('Restarts on the 1st of every month', '每個月 1 號重新計')}</p></section>
-    ${weekHtml(week, user)}
-    <section class="card"><div class="card-head"><h3>${t('Latest', '最新')}</h3><span class="muted small">${t('Photos stay for 7 days', '相片保留 7 日')}</span></div>
+      <p class="muted small reset-note">${t('Restarts on the 1st of every month', '每個月 1 號重新計')}</p>
+      ${weekHtml(week, user)}</section>
+    <section class="feed-sec"><div class="card-head"><h3>${t('Latest', '最新')}</h3><span class="muted small">${t('Photos stay for 7 days', '相片保留 7 日')}</span></div>
       ${feed.length ? feed.map(r => postHtml(r, user)).join('') : `<p class="muted">${t('Nobody has checked in yet. Be first.', '仲未有人打卡，做第一個啦。')}</p>`}
       ${more ? `<button id="more" class="ghost">${t('Show more', '睇多啲')}</button>` : ''}
     </section>
-    <section class="card"><h3>${t('Group name', 'Group 名')}</h3>
-      <form id="rename" class="row"><input id="gnewname" maxlength="60" required value="${esc(g.name)}" aria-label="${t('Group name', 'Group 名')}">
-        <button type="submit">${t('Rename', '改名')}</button></form>
-      <p class="muted small">${t('Anyone in the group can rename it. Each change shows up in the chat.', 'Group 入面每個人都可以改名，每次改名都會喺傾偈度顯示。')}</p></section>
-    <section class="card"><h3>${t('Invite mates', '邀請朋友')}</h3>
-      <p>${t('Code', '邀請碼')}: <b class="code">${esc(g.invite_code)}</b></p>
-      <div class="row"><button id="share2">${t('Share invite link', '分享邀請 link')}</button>
-        <button id="leave" class="ghost">${t('Leave group', '退出 group')}</button></div>
-    </section>`);
+`);
 
   mountGym(el, gymRows, user, groupId, dogs);
+  wireTodayStrip(el, groupId);
   mountBoss(el, boss, groupId);
   mountMatches(el, user, groupId, board);
   // right after a check-in, offer notifications once
@@ -299,12 +294,12 @@ export async function group(user, groupId, limit = FEED_PAGE) {
     try { if (navigator.share) await navigator.share({ title: 'Gym or Bitch', text }); else { await navigator.clipboard.writeText(text); toast(t('Invite link copied', '已複製邀請 link')); } }
     catch { /* share sheet closed */ }
   };
-  el.querySelector('#share').onclick = share;
-  el.querySelector('#share2').onclick = share;
-  el.querySelector('#leave').onclick = async () => {
+  el.querySelector('#share')?.addEventListener('click', share);
+  el.querySelector('#share2')?.addEventListener('click', share);
+  el.querySelector('#leave')?.addEventListener('click', async () => {
     if (!confirm(t(`Leave ${g.name}?`, `確定退出「${g.name}」？`))) return;
     try { await api.leaveGroup(g.id, user.id); location.hash = '#/all'; } catch (err) { showError(err); }
-  };
+  });
   el.querySelector('#rename')?.addEventListener('submit', async e => {
     e.preventDefault();
     const name = el.querySelector('#gnewname').value.trim(), btn = e.currentTarget.querySelector('button');

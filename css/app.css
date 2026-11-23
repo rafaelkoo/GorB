@@ -884,3 +884,30 @@ a.icon-btn { display: inline-flex; align-items: center; justify-content: center;
 .st-next { margin-left: 6px; font-size: .78rem; font-weight: 700; }
 .st-next.up { color: #7fd39f; }
 .st-next.down { color: #ff8a80; }
+/* group page, layout A: today first */
+.hero-top { display: grid; gap: 14px; position: relative; z-index: 1; }
+.hero-card.done .hero-top { grid-template-columns: 1fr auto; align-items: center; }
+.hero-card.done .cta { width: auto; padding: 10px 14px; font-size: .95rem; min-height: 44px; }
+.today-strip { display: grid; gap: 8px; border-top: 1px solid var(--line); padding-top: 10px; position: relative; z-index: 1; }
+.today-row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.today-chip { display: inline-flex; align-items: center; gap: 6px; background: #22362a; border-radius: 999px; padding: 3px 10px 3px 3px; font-size: .85rem; font-weight: 600; }
+.today-chip .face { width: 24px; height: 24px; font-size: .75rem; }
+.summon-chip { margin-left: auto; min-height: 32px; padding: 0 12px; font-size: .82rem; background: transparent; color: var(--yellow); border: 1px solid #6b5a22; border-radius: 999px; }
+.boss-row { display: grid; grid-template-columns: 72px minmax(0, 1fr); gap: 12px; align-items: center; }
+.boss-row canvas { width: 72px; height: 60px; image-rendering: pixelated; }
+.boss-main { display: grid; gap: 6px; }
+.boss-title { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.boss-title b { font: 700 1.1rem/1.1 var(--display); }
+.boss-act { display: flex; justify-content: flex-end; min-height: 34px; align-items: center; }
+.boss-act .small-btn { min-height: 34px; }
+.boss-more summary { cursor: pointer; color: var(--dust); font-size: .85rem; }
+.boss-more[open] { display: grid; gap: 8px; }
+.boss-how { margin: 0; padding-left: 18px; font-size: .85rem; color: var(--dust); display: grid; gap: 4px; }
+.boss-card { gap: 8px; }
+details.week { border-top: 1px solid var(--line); padding-top: 8px; }
+details.week summary { cursor: pointer; padding: 4px 0; }
+.feed-sec { display: grid; gap: 0; }
+.feed-sec > .card-head { margin-bottom: 4px; }
+.matches-card.slim { padding: 10px 16px; }
+.matches-card.slim .mt-note, .matches-card.slim #mtBody { display: none; }
+.matches-card.slim h3 { font-size: 1.05rem; }

@@ -50,6 +50,28 @@ const caption = p => dogLine(p) ? `${p.name} ·${dogLine(p)}` : !p.inGym
   : p.what ? t(`${p.name} · ${p.what}${p.sets ? ` · ${p.sets} sets today` : ''}`, `${p.name} · ${p.what}${p.sets ? ` · 今日 ${p.sets} 組` : ''}`)
   : t(`${p.name} checked in today 💪`, `${p.name} 今日打咗卡 💪`);
 
+// the hero card's "today" line: who's been (and what they're on), and a summon for who hasn't
+export function todayStripHtml(rows, user) {
+  const ps = people(rows || [], user);
+  if (ps.length < 2) return '';
+  const inn = ps.filter(p => p.inGym), out = ps.filter(p => !p.inGym && !p.me);
+  return `<div class="today-strip">
+    <span class="muted small">${t(`Today · ${inn.length} of ${ps.length} been`, `今日 · ${ps.length} 個人入面 ${inn.length} 個去咗`)}</span>
+    <div class="today-row">${inn.map(p => `<span class="today-chip" title="${esc(p.name)}"><span class="face in">${esc(p.name.slice(0, 1).toUpperCase())}</span>${esc(p.me ? t('You', '你') : p.what ? p.what.split(' · ')[0] : p.name)}</span>`).join('')}
+      ${out.length ? `<button type="button" class="summon-chip" data-summon="${out[0].id}" data-name="${esc(out[0].name)}">${t(`Summon ${esc(out[0].name)}`, `召喚 ${esc(out[0].name)}`)}</button>` : ''}</div></div>`;
+}
+export function wireTodayStrip(el, groupId) {
+  const b = el.querySelector('[data-summon]'); if (!b) return;
+  b.onclick = async () => {
+    b.disabled = true; const name = b.dataset.name;
+    try {
+      const r = await api.summon(b.dataset.summon, groupId);
+      b.textContent = r === 'sent' ? t(`Summoned! Both get 15 💧 if ${name} comes in 24 h`, `召喚咗！${name} 24 個鐘內嚟，你哋都有 15 💧`)
+        : r === 'already_sent' ? t('Already summoned today', '今日已經召喚過') : r === 'already_in' ? t(`${name} is already here`, `${name} 已經嚟咗`) : t('Couldn’t summon', '召喚唔到');
+    } catch (err) { b.disabled = false; showError(err); }
+  };
+}
+
 export function gymCardHtml() {
   return `<section class="card gym-card" id="gymCard">
     <div class="card-head"><h3>${t('In the gym today', '今日喺 gym')}</h3><a class="link" href="#/me">${t('My character', '我嘅角色')} ›</a></div>

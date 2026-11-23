@@ -97,6 +97,12 @@ export async function groupSettings(user, groupId) {
       ${many ? row('in_everyone', c.in_everyone !== false, t('Include in my “Everyone” ranking', '計入我嘅「全部人」排名'), t('Only changes what you see', '只影響你自己睇到嘅'))
         + row('pinned', !!c.pinned, t('Pin', '置頂'), t('Open the app on this group', '開 app 先去呢個 group')) : ''}
     </section>
+    <section class="card"><h3>${t('Invite mates', '邀請朋友')}</h3>
+      <p>${t('Code', '邀請碼')}: <b class="code">${esc(g.invite_code)}</b></p>
+      <button id="share2">${t('Share invite link', '分享邀請 link')}</button></section>
+    <section class="card"><h3>${t('Group name', 'Group 名')}</h3>
+      <form id="rename" class="row"><input id="gnewname" maxlength="60" required value="${esc(g.name)}" aria-label="${t('Group name', 'Group 名')}"><button type="submit">${t('Rename', '改名')}</button></form>
+      <p class="muted small">${t('Anyone in the group can rename it. Each change shows up in the chat.', 'Group 入面每個人都可以改名，每次改名都會喺傾偈度顯示。')}</p></section>
     <button id="leave" class="ghost danger">${t(`Leave ${esc(g.name)}`, `退出 ${esc(g.name)}`)}</button>`);
   el.querySelectorAll('[data-k]').forEach(box => box.onchange = async () => {
     const k = box.dataset.k, v = box.checked;
@@ -105,6 +111,16 @@ export async function groupSettings(user, groupId) {
     try { await api.setGroupPrefs(g.id, prefs); toast(t('Saved', '儲存咗')); } catch (err) { box.checked = !v; showError(err); }
     box.disabled = false;
   });
+  el.querySelector('#share2').onclick = async () => {
+    const link = `${location.origin}${location.pathname}#/join/${g.invite_code}`;
+    const text = t(`Join "${g.name}" on Gym or Bitch: ${link}`, `嚟 Gym or Bitch 加入「${g.name}」：${link}`);
+    try { if (navigator.share) await navigator.share({ title: 'Gym or Bitch', text }); else { await navigator.clipboard.writeText(text); toast(t('Invite link copied', '已複製邀請 link')); } } catch { /* closed */ }
+  };
+  el.querySelector('#rename').onsubmit = async e => {
+    e.preventDefault();
+    const name = el.querySelector('#gnewname').value.trim(); if (!name || name === g.name) return;
+    try { await api.renameGroup(g.id, name); toast(t('Group renamed.', 'Group 已改名。')); groupSettings(user, groupId); } catch (err) { showError(err); }
+  };
   el.querySelector('#leave').onclick = async () => {
     if (!confirm(t(`Leave ${g.name}?`, `確定退出 ${g.name}？`))) return;
     try { await api.leaveGroup(g.id, user.id); window.dispatchEvent(new Event('customchange')); location.hash = '#/all'; } catch (err) { showError(err); }

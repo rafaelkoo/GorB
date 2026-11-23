@@ -16,18 +16,23 @@ export function bossCardHtml(b) {
   const daysLeft = Math.max(0, Math.round((new Date(`${b.week_end}T12:00:00Z`) - new Date(`${londonToday()}T12:00:00Z`)) / 864e5) + 1);
   const name = bossName(b.boss);
   return `<section class="card boss-card ${b.defeated ? 'beaten' : ''}" id="bossCard">
-    <div class="card-head"><h3>${b.defeated ? t(`${name} is down! 🎉`, `${name} 打低咗！🎉`) : t(`This week’s boss: ${name}`, `本週魔王：${name}`)}</h3>
-      <span class="muted small">${b.defeated ? '' : t(`${daysLeft} day${daysLeft === 1 ? '' : 's'} left`, `仲有 ${daysLeft} 日`)}</span></div>
-    <div class="boss-stage"><canvas id="bossCanvas" width="192" height="160" role="img" aria-label="${esc(name)}"></canvas></div>
-    <div class="boss-hp" role="progressbar" aria-valuemin="0" aria-valuemax="${b.hp}" aria-valuenow="${left}" aria-label="${t('Boss HP', '魔王血量')}"><i style="width:${pct}%"></i><span>HP ${left} / ${b.hp}</span></div>
+    <div class="boss-row">
+      <canvas id="bossCanvas" width="96" height="80" role="img" aria-label="${esc(name)}"></canvas>
+      <div class="boss-main">
+        <div class="boss-title"><b>${b.defeated ? t(`${name} is down!`, `${name} 打低咗！`) : t(`Boss: ${name}`, `魔王：${name}`)}</b>
+          <span class="muted small">${b.defeated ? '🎉' : t(`${daysLeft} day${daysLeft === 1 ? '' : 's'} left`, `仲有 ${daysLeft} 日`)}</span></div>
+        <div class="boss-hp" role="progressbar" aria-valuemin="0" aria-valuemax="${b.hp}" aria-valuenow="${left}" aria-label="${t('Boss HP', '魔王血量')}"><i style="width:${pct}%"></i><span>HP ${left} / ${b.hp}</span></div>
+        <div class="boss-act">${b.defeated ? '' : b.open ? `<a class="button small-btn" href="#/battle/${b.open}">${t('Continue', '繼續攻擊')}</a>`
+          : b.can_attack ? `<button type="button" class="small-btn" id="raidGo">${t('Attack', '攻擊')}</button>`
+          : `<span class="muted small">${t('Check in to attack (once per gym day)', '打卡之後可以攻擊（每個 gym 日一次）')}</span>`}</div>
+      </div>
+    </div>
+    <details class="boss-more"><summary>${t('Who hit it, and how it works', '邊個打咗、點樣玩')}</summary>
     <ol class="boss-dmg">${b.members.map(m => `<li><span class="nm">${esc(m.name)}</span>
       ${m.mult > 1 ? `<span class="ud" title="${t('Underdog bonus: lower level than the group average', '以弱勝強：等級低過 group 平均')}">⚡ ×${m.mult}</span>` : ''}
       <span class="muted small">${t(`${m.hits ?? 0} attack${m.hits === 1 ? '' : 's'}`, `攻擊 ${m.hits ?? 0} 次`)}</span><b>${m.dmg}</b></li>`).join('')}</ol>
     ${b.defeated && b.loot_elsewhere ? `<p class="muted small raid-wait">${t('You already got this week’s boss loot in another group (one per week).', '你今個星期已經喺另一個 group 攞咗戰利品（每星期一份）。')}</p>` : ''}
-    ${b.defeated ? '' : b.open ? `<a class="button" href="#/battle/${b.open}">${t('Back to your attack', '返去繼續攻擊')}</a>`
-      : b.can_attack ? `<button type="button" id="raidGo">⚔️ ${t('Attack the boss', '攻擊魔王')}</button>`
-      : `<p class="muted small raid-wait">${t('One attack per gym day. Check in to attack.', '每個 gym 日攻擊一次。打卡之後就可以攻擊。')}</p>`}
-    <details class="cc-how"><summary>${t('How it works', '點樣玩')}</summary><ul>
+    <ul class="boss-how">
       <li>${t('A new boss every Monday. Its HP is 100 for every day of everyone’s weekly target.', '每個星期一有新魔王。血量 = 大家每星期目標日數加埋 × 100。')}</li>
       <li>${t('Each gym day you get one attack: up to 8 moves against the boss. Showing up is worth 70, fighting well up to 60 more.', '每個 gym 日有一次攻擊機會，同魔王打最多 8 招。出席已經值 70，打得好再加最多 60。')}</li>
       <li>${t('The boss is matched to you, so newcomers count as much as big lifters.', '魔王會跟你嘅實力調整，新手同大隻佬一樣有份。')}</li>

@@ -328,7 +328,7 @@ export async function battleScreen(user, id) {
 export function matchesCardHtml() {
   return `<section class="card matches-card" id="matchesCard" hidden><div class="card-head"><h3>⚔️ ${t('Friendly matches', '友誼賽')}</h3>
     <button type="button" class="small-btn" id="mtNew">${t('Challenge', '約人打')}</button></div><div id="mtBody"></div>
-    <p class="muted small">${t('Just for fun: no XP, no coins. Take turns whenever you’re free.', '純粹玩：冇經驗、冇金幣。得閒先出招就得。')}</p></section>`;
+    <p class="muted small mt-note">${t('Just for fun: no XP, no coins. Take turns whenever you’re free.', '純粹玩：冇經驗、冇金幣。得閒先出招就得。')}</p></section>`;
 }
 
 export async function mountMatches(el, user, groupId, members) {
@@ -343,6 +343,8 @@ export async function mountMatches(el, user, groupId, members) {
   const open = mine.filter(r => r.status === 'pending' || r.status === 'active');
   const recent = mine.filter(r => r.status === 'done').slice(0, 3);
   const body = card.querySelector('#mtBody');
+  // nothing going on: just a slim row with the challenge button
+  card.classList.toggle('slim', !open.length && !recent.length);
   body.innerHTML = `${open.length || recent.length ? `<ul class="mt-list">
     ${open.map(r => {
       const opp = r.a === user.id ? r.b : r.a;
