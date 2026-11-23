@@ -742,3 +742,16 @@ textarea { resize: vertical; line-height: 1.4; }
 .boss-dmg .nm { font-weight: 700; }
 .boss-dmg b { margin-left: auto; font-variant-numeric: tabular-nums; color: #f2a03b; }
 .boss-dmg .ud { font-size: .75rem; font-weight: 800; color: #231a17; background: #f2d245; border-radius: 6px; padding: 1px 6px; }
+
+/* ---------- quests ---------- */
+.q-h { margin: 10px 0 4px; font-size: .82rem; color: var(--dust); font-weight: 600; }
+.q-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.quest { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 12px; background: var(--floor); }
+.quest.ready { box-shadow: inset 0 0 0 2px #f2c430; }
+.quest.claimed { opacity: .6; }
+.q-main { flex: 1; min-width: 0; display: grid; gap: 4px; }
+.q-bar { height: 6px; border-radius: 999px; background: #1a1b1f; overflow: hidden; }
+.q-bar i { display: block; height: 100%; background: #f2c430; }
+.quest.claimed .q-bar i { background: var(--green); }
+.q-done { color: var(--green); font-weight: 800; font-size: 1.2rem; }
+.quest .small-btn { background: #f2c430; color: #231a17; border-color: #f2c430; font-weight: 800; }
