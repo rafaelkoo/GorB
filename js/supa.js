@@ -97,6 +97,10 @@ export const weekReview = groupId => sb.rpc('group_week_review', { p_group: grou
 export const groupHistory = groupId => sb.rpc('group_history', { p_group: groupId }).then(must);
 // today's rewards (London day): the chest, the welcome-back bonus and any summon you answered
 export const todayRewards = since => sb.from('rewards').select('kind, ref, xp, coins, meta, created_at').in('kind', ['chest', 'comeback', 'summon']).gte('created_at', since).then(must);
+export const seasonPass = () => sb.rpc('season_pass').then(must);
+export const claimSeason = need => sb.rpc('claim_season', { p_need: need }).then(must);
+// character items you've unlocked (from season rewards)
+export const myItems = () => sb.from('rewards').select('meta').eq('kind', 'season').then(must).then(rows => rows.map(r => r.meta?.item).filter(Boolean));
 export const myQuests = () => sb.rpc('my_quests').then(must).then(x => x || []);
 export const claimQuest = id => sb.rpc('claim_quest', { p_id: id }).then(must);
 export const groupDogs = groupId => sb.rpc('group_dogs', { p_group: groupId }).then(must);

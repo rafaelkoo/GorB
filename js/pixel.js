@@ -16,16 +16,20 @@ export const SKIN_ORDER = [6, 0, 1, 7, 2, 8, 3, 4, 9, 5, 10, 11, 12, 13, 14, 15]
 export const HAIR_COLORS = ['#2a1f18', '#5b3a22', '#9b6a3a', '#dcb56c', '#ece3d3', '#b7392a', '#3d63b8', '#c95aa0',
   '#8a8a8f', '#f0812a', '#3fbf9f', '#8a4fd8', '#f7f7f7', '#e04a6e'];
 export const TOPS = ['#e23b3b', '#f19a33', '#f2d245', '#45b45a', '#2e9fd6', '#3c5bd9', '#8c5bd6', '#e66fab', '#eeeeee', '#2b2b30',
-  '#7a2c3a', '#2e6b5a', '#f2b8c6', '#c3dc5e', '#6f7f3e', '#14b8b0'];
+  '#7a2c3a', '#2e6b5a', '#f2b8c6', '#c3dc5e', '#6f7f3e', '#14b8b0',
+  '#e8b923'];                                                              // 16: gold (season reward)
 export const SHORTS = ['#2b2b30', '#35466a', '#6a6a72', '#3c5bd9', '#46663a', '#7c2c2c', '#d6d6d6', '#8a6948',
   '#e23b3b', '#8c5bd6', '#14b8b0', '#f19a33'];
-export const SHOES = ['#3a2e2a', '#f2f2f2', '#e23b3b', '#3c5bd9', '#9be33b', '#e66fab', '#f2d245', '#2b2b30'];
+export const SHOES = ['#3a2e2a', '#f2f2f2', '#e23b3b', '#3c5bd9', '#9be33b', '#e66fab', '#f2d245', '#2b2b30', '#e8b923'];   // 8: gold (season reward)
 export const GEAR = ['#e23b3b', '#f2f2f2', '#2b2b30', '#3c5bd9', '#f2d245', '#45b45a', '#e66fab', '#f19a33'];
 export const HAIRS = ['short', 'spiky', 'long', 'bun', 'buzz', 'curly', 'mohawk', 'bald', 'afro', 'ponytail', 'sidepart', 'braids', 'undercut', 'pigtails'];
 export const BUILDS = ['slim', 'normal', 'big'];
 export const TOP_STYLES = ['tee', 'tank', 'stringer', 'longsleeve', 'hoodie', 'jersey', 'shirtless'];
 export const BOTTOMS = ['shorts', 'joggers', 'leggings'];
-export const HATS = ['none', 'headband', 'cap', 'capback', 'beanie', 'bandana'];
+export const HATS = ['none', 'headband', 'cap', 'capback', 'beanie', 'bandana', 'crown'];
+// season-pass items: which choice needs which unlocked item (see season_pass, migration 029)
+export const LOCKED = { top: { 16: 'gold_top' }, shoes: { 8: 'gold_shoes' }, hat: { crown: 'crown' } };
+export const ITEM_DAYS = { gold_top: 10, crown: 15, gold_shoes: 20 };
 export const FACES = ['none', 'stubble', 'beard', 'moustache', 'glasses', 'shades'];
 
 // everyone gets a look from their id until they make their own
@@ -174,6 +178,11 @@ export function drawChar(c, x, y, av, pose = 'stand', frame = 0) {
     if (hat === 'cap') { r(hx - 1, H - 2, 10, 4, gear); r(hx + 1, H - 2, 4, 1, shade(gear, 0.25)); r(hx - 2, H + 2, 12, 1, gearD); r(hx + 3, H - 1, 2, 1, gearD); }
     if (hat === 'capback') { r(hx - 1, H - 2, 10, 4, gear); r(hx + 1, H - 2, 4, 1, shade(gear, 0.25)); r(hx + 2, H + 1, 4, 1, gearD); r(hx + 3, H, 2, 1, skin); }
     if (hat === 'beanie') { r(hx - 1, H - 3, 10, 5, gear); r(hx - 1, H + 1, 10, 1, gearD); r(hx + 3, H - 4, 2, 1, '#f2f2f2'); for (let i = 0; i < 10; i += 2) r(hx - 1 + i, H - 1, 1, 2, shade(gear, -0.12)); }
+    if (hat === 'crown') {
+      const g = '#f2c430', gD = '#b8881a';
+      r(hx, H - 3, 8, 3, g); r(hx, H - 5, 1, 2, g); r(hx + 3, H - 6, 2, 3, g); r(hx + 7, H - 5, 1, 2, g); r(hx, H - 1, 8, 1, gD);
+      r(hx + 3, H - 2, 2, 1, '#e23b3b'); r(hx + 1, H - 2, 1, 1, '#3c5bd9'); r(hx + 6, H - 2, 1, 1, '#45b45a'); r(hx + 3, H - 6, 1, 1, '#fff0a0');
+    }
     if (hat === 'bandana') { r(hx - 1, H - 2, 10, 4, gear); r(hx + 1, H - 1, 1, 1, '#f2f2f2'); r(hx + 5, H, 1, 1, '#f2f2f2'); r(hx + 8, H + 1, 2, 3, gearD); }
   };
   const head = () => {

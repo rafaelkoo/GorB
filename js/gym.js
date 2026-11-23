@@ -6,7 +6,7 @@ import { t, getLang } from './i18n.js';
 import { esc, showError } from './ui.js';
 import { EX, CATS } from './exercises.js';
 import { cardioName } from './cardio.js';
-import { drawGym, drawPortrait, stationFor, cleanAvatar, W, H, SKINS, SKIN_ORDER, HAIR_COLORS, TOPS, SHORTS, SHOES, GEAR, HAIRS, BUILDS, TOP_STYLES, BOTTOMS, HATS, FACES } from './pixel.js';
+import { drawGym, drawPortrait, stationFor, cleanAvatar, W, H, SKINS, SKIN_ORDER, HAIR_COLORS, TOPS, SHORTS, SHOES, GEAR, HAIRS, BUILDS, TOP_STYLES, BOTTOMS, HATS, FACES, LOCKED, ITEM_DAYS } from './pixel.js';
 import { btnLoading, btnDone, btnReset } from './motion.js';
 
 const exLabel = id => (getLang() === 'zh' ? EX[id]?.zh : EX[id]?.en) || '';
@@ -176,23 +176,30 @@ export function avatarCardHtml() {
     <button id="avSave" class="big" disabled>${t('Save character', '儲存角色')}</button></section>`;
 }
 
-export function mountAvatarEditor(el, user, profile) {
+export async function mountAvatarEditor(el, user, profile) {
   const card = el.querySelector('#avatarCard'); if (!card) return;
+  const owned = new Set(await api.myItems().catch(() => []));
+  const lockOf = (key, v) => { const item = LOCKED[key]?.[v]; return item && !owned.has(item) ? item : null; };
   let av = cleanAvatar(profile.avatar, user.id), saved = JSON.stringify(av), pose = 'stand', f = 0, tab = 'body';
   const cv = card.querySelector('#avPreview'), opts = card.querySelector('#avOpts'), save = card.querySelector('#avSave');
-  const swatches = (key, list, label, order = list.map((_, i) => i)) => `<fieldset class="av-row"><legend>${label}</legend><div class="sw">${order.map(i =>
-    `<button type="button" data-k="${key}" data-v="${i}" class="swatch ${av[key] === i ? 'on' : ''}" style="--c:${list[i]}" aria-pressed="${av[key] === i}" aria-label="${label} ${order.indexOf(i) + 1}"></button>`).join('')}</div></fieldset>`;
+  const lockTip = item => t(`Season pass reward: go ${ITEM_DAYS[item]} days in a month`, `賽季獎勵：一個月去夠 ${ITEM_DAYS[item]} 日`);
+  const swatches = (key, list, label, order = list.map((_, i) => i)) => `<fieldset class="av-row"><legend>${label}</legend><div class="sw">${order.map(i => {
+    const lk = lockOf(key, i);
+    return `<button type="button" data-k="${key}" data-v="${i}" class="swatch ${av[key] === i ? 'on' : ''} ${lk ? 'locked' : ''}" style="--c:${list[i]}" aria-pressed="${av[key] === i}" ${lk ? `disabled title="${esc(lockTip(lk))}"` : ''} aria-label="${label} ${order.indexOf(i) + 1}${lk ? ` · ${esc(lockTip(lk))}` : ''}">${lk ? '🔒' : ''}</button>`;
+  }).join('')}</div></fieldset>`;
   const N = {
     hair: { short: ['Short', '短髮'], spiky: ['Spiky', '刺蝟頭'], long: ['Long', '長髮'], bun: ['Bun', '丸子頭'], buzz: ['Buzz', '陸軍裝'], curly: ['Curly', '曲髮'], mohawk: ['Mohawk', '莫希干'], bald: ['Bald', '光頭'],
       afro: ['Afro', '爆炸頭'], ponytail: ['Ponytail', '馬尾'], sidepart: ['Side part', '側分'], braids: ['Braids', '辮'], undercut: ['Undercut', '鏟青'], pigtails: ['Pigtails', '孖辮'] },
     build: { slim: ['Slim', '瘦'], normal: ['Normal', '標準'], big: ['Big', '大隻'] },
     topStyle: { tee: ['T-shirt', 'T 恤'], tank: ['Tank', '背心'], stringer: ['Stringer', '健身背心'], longsleeve: ['Long sleeve', '長袖'], hoodie: ['Hoodie', '連帽衛衣'], jersey: ['Jersey', '球衣'], shirtless: ['No top', '赤膊'] },
     bottom: { shorts: ['Shorts', '短褲'], joggers: ['Joggers', '運動長褲'], leggings: ['Leggings', '緊身褲'] },
-    hat: { none: ['None', '冇'], headband: ['Headband', '頭帶'], cap: ['Cap', '帽'], capback: ['Cap (backwards)', '倒戴帽'], beanie: ['Beanie', '冷帽'], bandana: ['Bandana', '頭巾'] },
+    hat: { none: ['None', '冇'], headband: ['Headband', '頭帶'], cap: ['Cap', '帽'], capback: ['Cap (backwards)', '倒戴帽'], beanie: ['Beanie', '冷帽'], bandana: ['Bandana', '頭巾'], crown: ['Crown', '皇冠'] },
     face: { none: ['None', '冇'], stubble: ['Stubble', '鬚根'], beard: ['Beard', '鬍鬚'], moustache: ['Moustache', '八字鬚'], glasses: ['Glasses', '眼鏡'], shades: ['Shades', '太陽眼鏡'] }
   };
-  const chips = (key, list, label) => `<fieldset class="av-row"><legend>${label}</legend><div class="chips">${list.map(v =>
-    `<button type="button" data-k="${key}" data-s="${v}" class="chip ${av[key] === v ? 'on' : ''}" aria-pressed="${av[key] === v}">${esc(t(...N[key][v]))}</button>`).join('')}</div></fieldset>`;
+  const chips = (key, list, label) => `<fieldset class="av-row"><legend>${label}</legend><div class="chips">${list.map(v => {
+    const lk = lockOf(key, v);
+    return `<button type="button" data-k="${key}" data-s="${v}" class="chip ${av[key] === v ? 'on' : ''} ${lk ? 'locked' : ''}" aria-pressed="${av[key] === v}" ${lk ? `disabled title="${esc(lockTip(lk))}"` : ''}>${lk ? '🔒 ' : ''}${esc(t(...N[key][v]))}</button>`;
+  }).join('')}</div>${list.some(v => lockOf(key, v)) ? `<p class="muted small">${t('🔒 = season pass reward', '🔒 = 賽季獎勵')}</p>` : ''}</fieldset>`;
   const TABS = [['body', t('Body', '身體')], ['hair', t('Hair', '頭髮')], ['clothes', t('Clothes', '衫褲')], ['gear', t('Hats', '帽')]];
   const panel = () => ({
     body: swatches('skin', SKINS, t('Skin', '膚色'), SKIN_ORDER) + chips('build', BUILDS, t('Build', '身形')),
