@@ -229,9 +229,10 @@ export async function group(user, groupId, limit = FEED_PAGE) {
   const groups = await api.myGroups();
   const g = groups.find(x => x.id === groupId);
   if (!g) { location.hash = '#/all'; return; }
-  const [board, feed, doneToday, unread, week, gymRows, boss] = await Promise.all([
+  const [board, feed, doneToday, unread, week, gymRows, boss, dogs] = await Promise.all([
     api.leaderboard(groupId), api.groupFeed(groupId, limit + 1), api.checkedInToday(user.id), api.chatUnread().catch(() => ({})),
-    api.weekReview(groupId).catch(() => null), api.gymToday(groupId).catch(() => null), api.groupBoss(groupId).catch(() => null)
+    api.weekReview(groupId).catch(() => null), api.gymToday(groupId).catch(() => null), api.groupBoss(groupId).catch(() => null),
+    api.groupDogs(groupId).catch(() => [])
   ]);
   const nUnread = unread[groupId] || 0;
   const more = feed.length > limit; if (more) feed.pop();
@@ -273,7 +274,7 @@ export async function group(user, groupId, limit = FEED_PAGE) {
         <button id="leave" class="ghost">${t('Leave group', '退出 group')}</button></div>
     </section>`);
 
-  mountGym(el, gymRows, user, groupId);
+  mountGym(el, gymRows, user, groupId, dogs);
   mountBoss(el, boss, groupId);
   // right after a check-in, offer notifications once
   if (pushSupported() && asked) {

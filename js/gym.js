@@ -30,19 +30,22 @@ export function mainFocus(setsByEx = {}, lastEx = null) {
   return { cat, ex, sets: Object.values(setsByEx).reduce((a, n) => a + n, 0) };
 }
 // rows from group_gym_today → people for the scene
-function people(rows, user) {
+function people(rows, user, dogs = []) {
   return rows.map(r => {
+    const dog = dogs.find(d => d.user_id === r.user_id && !d.redeemed);
     const f = mainFocus(r.sets_by_ex || (r.exercise_id ? { [r.exercise_id]: r.sets || 1 } : {}), r.last_ex);
     return {
       id: r.user_id, name: r.display_name || '?', me: r.user_id === user.id,
       avatar: cleanAvatar(r.avatar, r.user_id),
       // ticking sets counts as being at the gym, even before the photo check-in
       inGym: !!r.checked_in || !!f, station: stationFor(f?.ex, r.cardio),
-      what: f ? `${catLabel(f.cat)} · ${exLabel(f.ex)}` : r.cardio ? cardioName(r.cardio) : '', sets: f?.sets || 0
+      what: f ? `${catLabel(f.cat)} · ${exLabel(f.ex)}` : r.cardio ? cardioName(r.cardio) : '', sets: f?.sets || 0,
+      dog: !!dog, dogWeek: dog?.best_week || 0
     };
   });
 }
-const caption = p => !p.inGym
+const dogLine = p => (p.dog ? ` 🐶 ${t(`Last month’s bitch, so they’re a dog. 3 gym days in one week turns them back (best week so far: ${p.dogWeek}/3).`, `上個月包尾，所以變咗狗。一個星期去夠 3 日就變返人（今個月最好嘅一個星期：${p.dogWeek}/3）。`)}` : '');
+const caption = p => dogLine(p) ? `${p.name} ·${dogLine(p)}` : !p.inGym
   ? t(`${p.name} hasn’t been today. Resting on the bench 💤`, `${p.name} 今日未去，喺長櫈度休息緊 💤`)
   : p.what ? t(`${p.name} · ${p.what}${p.sets ? ` · ${p.sets} sets today` : ''}`, `${p.name} · ${p.what}${p.sets ? ` · 今日 ${p.sets} 組` : ''}`)
   : t(`${p.name} checked in today 💪`, `${p.name} 今日打咗卡 💪`);
@@ -55,11 +58,11 @@ export function gymCardHtml() {
     <button type="button" class="ghost summon-btn" id="summonBtn" hidden></button></section>`;
 }
 
-export function mountGym(el, rows, user, groupId) {
+export function mountGym(el, rows, user, groupId, dogs = []) {
   stopGym();
   const card = el.querySelector('#gymCard'); if (!card) return;
   if (!rows) { card.hidden = true; return; }
-  const ps = people(rows, user);
+  const ps = people(rows, user, dogs || []);
   const cv = card.querySelector('#gymCanvas'), cap = card.querySelector('#gymCap'), wrap = card.querySelector('.gym-wrap');
   const inGym = ps.filter(p => p.inGym), resting = ps.filter(p => !p.inGym);
   cv.setAttribute('aria-label', t(

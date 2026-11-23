@@ -235,6 +235,25 @@ export function drawChar(c, x, y, av, pose = 'stand', frame = 0) {
   legs(); body(); arms(); head();
 }
 
+// ---------- last month's bitch: a dog ----------
+// Fur takes the person's hair colour and the collar their top colour, so you can tell who it is.
+export function drawDog(c, x, y, av, frame = 0, busy = false) {
+  const r = (px, py, w, h, col) => { c.fillStyle = col; c.fillRect(Math.round(x + px), Math.round(y + py), w, h); };
+  const fur = av.hair === 'bald' ? SKINS[av.skin] : HAIR_COLORS[av.hairColor], furD = shade(fur, -0.3), furL = shade(fur, 0.22);
+  const collar = TOPS[av.top], hop = busy && frame ? -1 : 0;
+  c.fillStyle = 'rgba(0,0,0,.22)'; c.fillRect(Math.round(x - 8), Math.round(y - 1), 16, 2);
+  // body (sitting), legs, tail wag
+  r(-5, -9 + hop, 10, 8, fur); r(-5, -9 + hop, 10, 1, furL); r(-4, -2, 3, 2, furD); r(1, -2, 3, 2, furD);
+  if (frame) { r(5, -8 + hop, 3, 2, fur); r(7, -10 + hop, 2, 2, fur); } else { r(5, -6 + hop, 3, 2, fur); r(7, -5 + hop, 2, 2, fur); }
+  // head
+  r(-5, -17 + hop, 10, 8, fur); r(-4, -17 + hop, 8, 1, furL);
+  r(-7, -17 + hop, 3, 6, furD); r(4, -17 + hop, 3, 6, furD);                 // floppy ears
+  r(-3, -12 + hop, 6, 3, shade(fur, 0.4)); r(-1, -12 + hop, 2, 1, OUT);       // snout + nose
+  r(-3, -15 + hop, 1, 2, OUT); r(2, -15 + hop, 1, 2, OUT);                    // eyes
+  if (frame) r(-1, -10 + hop, 2, 2, '#e66fab');                               // tongue
+  r(-5, -10 + hop, 10, 1, collar); r(-1, -9 + hop, 2, 2, '#f2d245');          // collar + tag
+}
+
 // ---------- the gym ----------
 export const W = 256, H = 176;
 // where each station is (feet spots for up to 3 people) and what pose its users do
@@ -354,7 +373,10 @@ export function drawGym(canvas, people, t, scale, restLabel = 'REST') {
     placed.push({ p, x: sx + off, y: sy + (off ? 3 : 0), pose: st.pose, phase: hash(p.id) % 2 });
   }
   placed.sort((a, b) => a.y - b.y);   // nearer people drawn last
-  for (const q of placed) drawChar(c, q.x, q.y, q.p.avatar, q.pose, (frame + q.phase) % 2);
+  for (const q of placed) {
+    if (q.p.dog) drawDog(c, q.x, q.y, q.p.avatar, (frame + q.phase) % 2, q.p.inGym);
+    else drawChar(c, q.x, q.y, q.p.avatar, q.pose, (frame + q.phase) % 2);
+  }
 
   // up to the screen, crisp
   const ctx = canvas.getContext('2d');
@@ -376,7 +398,7 @@ export function drawGym(canvas, people, t, scale, restLabel = 'REST') {
     ctx.fillRect(cx - w / 2, fy, w, fs * 1.25);
     ctx.fillStyle = q.p.me ? '#231a17' : '#fff';
     ctx.fillText(name, cx, fy + fs * 0.12);
-    if (!q.p.inGym) {   // dozing on the bench
+    if (!q.p.inGym && !q.p.dog) {   // dozing on the bench
       const zf = Math.round(fs * 1.1), drift = (t / 90) % 14;
       ctx.font = `800 ${zf}px system-ui, sans-serif`; ctx.fillStyle = 'rgba(255,255,255,.85)';
       ctx.fillText('z', cx + 6 * scale, (q.y - 30) * scale - drift);

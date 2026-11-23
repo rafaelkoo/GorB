@@ -97,6 +97,7 @@ export const weekReview = groupId => sb.rpc('group_week_review', { p_group: grou
 export const groupHistory = groupId => sb.rpc('group_history', { p_group: groupId }).then(must);
 // today's rewards (London day): the chest, the welcome-back bonus and any summon you answered
 export const todayRewards = since => sb.from('rewards').select('kind, ref, xp, coins, meta, created_at').in('kind', ['chest', 'comeback', 'summon']).gte('created_at', since).then(must);
+export const groupDogs = groupId => sb.rpc('group_dogs', { p_group: groupId }).then(must);
 export const groupBoss = groupId => sb.rpc('group_boss', { p_group: groupId }).then(must);
 export const claimBoss = (groupId, week = null) => sb.rpc('claim_boss', { p_group: groupId, ...(week ? { p_week: week } : {}) }).then(must);
 export const summon = (toUser, groupId) => sb.rpc('summon', { p_to: toUser, p_group: groupId }).then(must);
