@@ -343,8 +343,20 @@ export async function logScreen(user) {
       const prs = [...new Set(rows.map(r => r.exercise_id))]
         .map(id => ({ id, now: Math.max(...rows.filter(r => r.exercise_id === id && r.reps >= 1).map(r => r.weight_kg), 0), before: prOf(past(id)).kg }))
         .filter(p => p.before > 0 && p.now > p.before && !announced.has(`${p.id}:${p.now}`));
-      prs.forEach(p => announced.add(`${p.id}:${p.now}`)); draft.announced = [...announced];
+      prs.forEach(p => announced.add(`${p.id}:${p.now}`));
+      // rep PRs: no heavier weight, but your best estimated one-rep max (more reps at a weight) — counts on a plateau too
+      const e1 = (w, r) => (r <= 1 ? w : w * (1 + r / 30));
+      const repPrs = [...new Set(rows.map(r => r.exercise_id))].filter(id => !isClimb(id) && !isTimed(id) && !prs.some(p => p.id === id)).map(id => {
+        const mine = rows.filter(r => r.exercise_id === id && r.reps >= 1 && r.reps <= 30 && r.weight_kg > 0);
+        if (!mine.length) return null;
+        const best = mine.reduce((a, r) => (e1(r.weight_kg, r.reps) > e1(a.weight_kg, a.reps) ? r : a));
+        const before = Math.max(0, ...past(id).flatMap(s => s.sets).filter(x => x.reps >= 1 && x.reps <= 30 && x.kg > 0).map(x => e1(x.kg, x.reps)));
+        return before > 0 && e1(best.weight_kg, best.reps) > before + 0.01 ? { id, kg: best.weight_kg, reps: best.reps } : null;
+      }).filter(p => p && !announced.has(`rep:${p.id}:${p.kg}x${p.reps}`));
+      repPrs.forEach(p => announced.add(`rep:${p.id}:${p.kg}x${p.reps}`));
+      draft.announced = [...announced];
       saveDraft(user.id, draft);
+      if (repPrs.length && !prs.length) toast(t(`Rep PR: ${repPrs.map(p => `${exName(p.id)} ${kg(p.kg)} × ${p.reps}`).join(', ')} 💪`, `次數 PR：${repPrs.map(p => `${exName(p.id)} ${kg(p.kg)} × ${p.reps}`).join('、')} 💪`));
       if (prs.length) toast(t(`New PR: ${prs.map(p => `${exName(p.id)} ${amt(p.id, p.now)}`).join(', ')} 🏆`, `破咗 PR：${prs.map(p => `${exName(p.id)} ${amt(p.id, p.now)}`).join('、')} 🏆`));
       showState('idle');
     } catch { showState('offline'); clearTimeout(saveTimer); saveTimer = setTimeout(doSave, 20000); }

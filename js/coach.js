@@ -60,6 +60,23 @@ export function nextLoad(id, list, today, lo = null, hi = lo, { twice = false } 
     return { kg, reps: lo, kind: 'down', zh: `隔咗 ${wks} 星期冇練，由 ${kg} kg（約上次嘅 9 成）重新起步，做得順再加`, en: `${wks} weeks off; restart at ${kg} kg (about 90%) and build back up` };
   }
   if (off >= 21) return { kg: last.top, reps: lo, kind: 'same', zh: `隔咗 ${wks} 星期冇練，先維持上次嘅 ${last.top} kg，唔好即刻加`, en: `${wks} weeks off; repeat ${last.top} kg before adding weight` };
+  // plateau. After a lighter "step back" session that went well, go straight back to the old weight.
+  const recent = ses.slice(-6, -1), peak = recent.length ? Math.max(...recent.map(s => s.top)) : 0;
+  if (peak > last.top && last.top <= peak * 0.92 && r0 >= hi && recent.slice(-1)[0]?.top === peak) {
+    return { kg: peak, reps: lo, kind: 'up', plateau: true, zh: `退一步做得好！今次返去 ${peak} kg，目標每組 ${lo} 次以上，通常會突破平台期`, en: `Good step back. Now return to ${peak} kg and aim for ${lo}+ reps: this usually breaks the plateau` };
+  }
+  // the same weight 3 sessions running with no more reps, and not at the top of the range yet
+  const last3 = ses.slice(-3);
+  if (last3.length === 3 && last3.every(s => s.top === last.top) && minR(last3[2]) <= minR(last3[0]) && r0 < hi && r0 >= Math.max(1, lo - 2)) {
+    const stepBack = recent.some(s => s.top < last.top * 0.95);   // already tried a step back recently
+    if (stepBack) return { kg: last.top, reps: lo, kind: 'same', plateau: true,
+      zh: `${last.top} kg 停咗一段時間（平台期），退一步都未過到。試吓換個相近動作 2–3 星期（例如槓鈴轉啞鈴），或者改用另一個次數範圍，再返嚟`,
+      en: `Stuck at ${last.top} kg for a while (plateau), even after a step back. Swap to a similar exercise for 2–3 weeks (e.g. barbell → dumbbell) or another rep range, then come back` };
+    const kg = Math.min(roundTo(last.top - inc, inc), roundTo(last.top * 0.9, inc));
+    if (kg > 0) return { kg, reps: hi, kind: 'down', plateau: true,
+      zh: `${last.top} kg 連續 3 次都停喺 ${r0} 次左右，係平台期。今次退一步：${kg} kg 做足 ${hi} 次，下次返去 ${last.top} kg`,
+      en: `Stuck at about ${r0} reps on ${last.top} kg three times: a plateau. Step back this time: ${kg} kg for ${hi}, then return to ${last.top} kg` };
+  }
   // moved to a lower rep range: convert through est. 1RM, leaving ~2 reps in the tank
   if (r0 > hi + 1 && lo < r0) {
     const e1 = e1rm(last.top, r0), cap = Math.max(roundTo(last.top + inc, inc), Math.floor(last.top * 1.1 / inc) * inc);
