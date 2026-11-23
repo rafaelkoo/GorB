@@ -32,7 +32,8 @@ export function coachSessions(list, skipDate) {
 }
 
 // what to lift next time. lo–hi = the plan's reps (one number in this app's plan, so lo = hi)
-export function nextLoad(id, list, today, lo = null, hi = lo) {
+// twice: add weight only after hitting the top of the range two sessions running (fat loss / endurance)
+export function nextLoad(id, list, today, lo = null, hi = lo, { twice = false } = {}) {
   const ses = coachSessions(list, today), inc = increment(id);
   if (!ses.length) return null;
   // no rep range given (not in your plan): work one out from your own recent sets. Your usual reps at
@@ -65,6 +66,9 @@ export function nextLoad(id, list, today, lo = null, hi = lo) {
     // never more than about 10% (or one step) in one go, however many reps you did
     const kg = Math.min(cap, Math.max(roundTo(last.top + inc, inc), Math.floor(e1 / (1 + (lo + 2) / 30) / inc) * inc));
     return { kg, reps: lo, kind: 'up', zh: `你上次 ${last.top} kg 做到 ${r0} 次，高過而家嘅範圍（${rng}）。按估算 1RM 換算，${lo} 次應該做 ${kg} kg`, en: `Last time ${last.top} kg for ${r0} reps is above your ${rng} range. Converted via est. 1RM: ${kg} kg for ${lo}` };
+  }
+  if (r0 >= hi && twice && !(prev && prev.top === last.top && minR(prev) >= hi)) {
+    return { kg: last.top, reps: hi, kind: 'same', zh: `做到 ${hi} 次喇！減脂／耐力期間要連續兩次做到先加重，下次再喺 ${last.top} kg 做 ${hi} 次`, en: `You hit ${hi}! While cutting (or for endurance), add weight after hitting it twice in a row: ${last.top} kg for ${hi} again` };
   }
   if (r0 >= hi) {
     const up = roundTo(last.top + inc, inc), jump = (up - last.top) / last.top;

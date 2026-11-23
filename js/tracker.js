@@ -9,7 +9,7 @@ import { nextLoad, holdNext } from './coach.js';
 import { startRest } from './timer.js';
 import { points, coverage, levelCardHtml, coverageHtml, habitList } from './score.js';
 import { cardioHtml, wireCardio } from './cardio.js';
-import { schemeOf } from './scheme.js';
+import { schemeOf, schemeFor, schemeKey } from './scheme.js';
 import { reviewDue } from './review.js';
 import { addCustomSheet, requestSheet } from './custom.js';
 import { btnLoading, btnDone, btnReset, popAfter } from './motion.js';
@@ -92,9 +92,12 @@ export async function logScreen(user) {
   const suggested = suggestDay(fullPlan, weekday, lastIds);
   // the plan's rep range [lo, hi] for an exercise (the chosen day first, then any day)
   // the plan's reps for an exercise; not in the plan → null, and the coach uses your own usual reps
-  const planRange = id => { const e = (pickedDay()?.items || []).find(x => x.id === id) || findItem(fullPlan, id); return e ? [e.lo || e.reps, e.reps] : [null, null]; };
+  // not in the plan but you've picked a goal (Me page): that goal's rep range for this kind of exercise
+  const sc = schemeOf(body?.goal_id), scKey = schemeKey(body?.goal_id);
+  const planRange = id => { const e = (pickedDay()?.items || []).find(x => x.id === id) || findItem(fullPlan, id); if (e) return [e.lo || e.reps, e.reps]; if (sc) { const [, lo, hi] = schemeFor(sc, id); return [lo, hi]; } return [null, null]; };
+  const twice = scKey === 'fat' || scKey === 'endurance';
   const inPlan = id => !!((pickedDay()?.items || []).find(x => x.id === id) || findItem(fullPlan, id));
-  const coach = id => (isClimb(id) ? null : isTimed(id) ? holdNext(id, history[id], today, ...planRange(id), inPlan(id)) : nextLoad(id, history[id], today, ...planRange(id)));
+  const coach = id => (isClimb(id) ? null : isTimed(id) ? holdNext(id, history[id], today, ...planRange(id), inPlan(id)) : nextLoad(id, history[id], today, ...planRange(id), { twice }));
   // plan gives sets; the coach's next load gives kg × reps; otherwise last time's weights
   const itemsFor = day => (day?.items || []).map(e => {
     const c = coach(e.id), last = past(e.id).at(-1)?.sets || [];

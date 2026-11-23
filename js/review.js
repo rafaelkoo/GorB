@@ -9,7 +9,7 @@ import { bySession, exName, kg } from './tracker.js';
 import { cleanPlan, allItems, plannedPerWeek } from './plan.js';
 import { coachSessions, nextLoad, holdNext, targetStatus } from './coach.js';
 import { coverage } from './score.js';
-import { schemeOf, schemeName } from './scheme.js';
+import { schemeOf, schemeName, schemeKey } from './scheme.js';
 import { weekMinutes } from './cardio.js';
 import { tally } from './icons.js';
 
@@ -64,7 +64,7 @@ export function weeklyReview(d, today) {
 
   // next week: what to lift on each planned exercise (rep range from the plan)
   const next = plan ? [...new Map(allItems(plan).filter(e => !EX[e.id]?.climb).map(e => [e.id, e])).values()]
-    .map(e => ({ id: e.id, timed: !!EX[e.id]?.timed, s: (EX[e.id]?.timed ? holdNext : nextLoad)(e.id, hist[e.id], today, e.lo || e.reps, e.reps) })).filter(x => x.s && x.s.kg).slice(0, 8) : [];
+    .map(e => ({ id: e.id, timed: !!EX[e.id]?.timed, s: (EX[e.id]?.timed ? holdNext(e.id, hist[e.id], today, e.lo || e.reps, e.reps) : nextLoad(e.id, hist[e.id], today, e.lo || e.reps, e.reps, { twice: ['fat', 'endurance'].includes(schemeKey(d.body?.goal_id)) })) })).filter(x => x.s && x.s.kg).slice(0, 8) : [];
 
   const judged = lifts.filter(l => !l.base);
   const score = Math.round((planned ? Math.min(1, done / planned) : 1) * 60 + (judged.length ? judged.filter(l => l.ok).length / judged.length * 25 : 12) + (weighed ? 15 : 0));
