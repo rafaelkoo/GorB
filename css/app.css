@@ -881,3 +881,6 @@ a.icon-btn { display: inline-flex; align-items: center; justify-content: center;
 .free-toggle input { width: 20px; height: 20px; min-height: 0; flex: none; accent-color: var(--green); }
 .recent-ex { display: grid; gap: 6px; }
 .boulder-note { color: #9fd9a8; }
+.st-next { margin-left: 6px; font-size: .78rem; font-weight: 700; }
+.st-next.up { color: #7fd39f; }
+.st-next.down { color: #ff8a80; }

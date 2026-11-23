@@ -107,6 +107,7 @@ export const myItems = () => sb.from('rewards').select('meta').eq('kind', 'seaso
 export const myQuests = () => sb.rpc('my_quests').then(must).then(x => x || []);
 export const claimQuest = id => sb.rpc('claim_quest', { p_id: id }).then(must);
 export const groupDogs = groupId => sb.rpc('group_dogs', { p_group: groupId }).then(must);
+export const characterNext = userId => sb.rpc('character_next', { p_user: userId }).then(must);
 export const setCaption = (checkinId, groupId, note) => sb.rpc('set_caption', { p_checkin: checkinId, p_group: groupId, p_note: note }).then(must);
 export const groupBoss = groupId => sb.rpc('group_boss', { p_group: groupId }).then(must);
 // ---------- battles: moves, the Gym Tower, boss raids and friendly matches ----------

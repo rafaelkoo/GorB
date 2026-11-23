@@ -91,7 +91,8 @@ export async function logScreen(user) {
   const lastIds = [...new Set(rows.filter(r => r.performed_on === lastDate).map(r => r.exercise_id))];
   const suggested = suggestDay(fullPlan, weekday, lastIds);
   // the plan's rep range [lo, hi] for an exercise (the chosen day first, then any day)
-  const planRange = id => { const e = (pickedDay()?.items || []).find(x => x.id === id) || findItem(fullPlan, id); return e ? [e.lo || e.reps, e.reps] : [10, 10]; };
+  // the plan's reps for an exercise; not in the plan → null, and the coach uses your own usual reps
+  const planRange = id => { const e = (pickedDay()?.items || []).find(x => x.id === id) || findItem(fullPlan, id); return e ? [e.lo || e.reps, e.reps] : [null, null]; };
   const inPlan = id => !!((pickedDay()?.items || []).find(x => x.id === id) || findItem(fullPlan, id));
   const coach = id => (isClimb(id) ? null : isTimed(id) ? holdNext(id, history[id], today, ...planRange(id), inPlan(id)) : nextLoad(id, history[id], today, ...planRange(id)));
   // plan gives sets; the coach's next load gives kg × reps; otherwise last time's weights

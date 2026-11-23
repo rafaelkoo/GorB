@@ -32,9 +32,18 @@ export function coachSessions(list, skipDate) {
 }
 
 // what to lift next time. lo–hi = the plan's reps (one number in this app's plan, so lo = hi)
-export function nextLoad(id, list, today, lo = 10, hi = lo) {
+export function nextLoad(id, list, today, lo = null, hi = lo) {
   const ses = coachSessions(list, today), inc = increment(id);
   if (!ses.length) return null;
+  // no rep range given (not in your plan): work one out from your own recent sets. Your usual reps at
+  // your working weight; beat them by 2 before the weight goes up, then start again 1 below usual.
+  if (lo == null) {
+    const rs = ses.slice(-3).map(s => Math.min(...s.atTop.map(x => x.reps))).sort((a, b) => a - b);
+    const usual = rs[Math.floor(rs.length / 2)] || 10;
+    lo = Math.max(1, usual - 1); hi = usual + 2;
+  }
+  // a single rep number (e.g. 10): use 8–10, so adding weight always comes with fewer reps
+  else if (hi == null || lo >= hi) { hi = hi ?? lo; lo = Math.max(1, hi - 2); }
   const last = ses[ses.length - 1], prev = ses[ses.length - 2];
   const off = days(last.date, today), wks = Math.floor(off / 7);
   const minR = s => Math.min(...s.atTop.map(x => x.reps));
@@ -52,7 +61,9 @@ export function nextLoad(id, list, today, lo = 10, hi = lo) {
   if (off >= 21) return { kg: last.top, reps: lo, kind: 'same', zh: `隔咗 ${wks} 星期冇練，先維持上次嘅 ${last.top} kg，唔好即刻加`, en: `${wks} weeks off; repeat ${last.top} kg before adding weight` };
   // moved to a lower rep range: convert through est. 1RM, leaving ~2 reps in the tank
   if (r0 > hi + 1 && lo < r0) {
-    const e1 = e1rm(last.top, r0), kg = Math.max(roundTo(last.top + inc, inc), Math.floor(e1 / (1 + (lo + 2) / 30) / inc) * inc);
+    const e1 = e1rm(last.top, r0), cap = Math.max(roundTo(last.top + inc, inc), Math.floor(last.top * 1.1 / inc) * inc);
+    // never more than about 10% (or one step) in one go, however many reps you did
+    const kg = Math.min(cap, Math.max(roundTo(last.top + inc, inc), Math.floor(e1 / (1 + (lo + 2) / 30) / inc) * inc));
     return { kg, reps: lo, kind: 'up', zh: `你上次 ${last.top} kg 做到 ${r0} 次，高過而家嘅範圍（${rng}）。按估算 1RM 換算，${lo} 次應該做 ${kg} kg`, en: `Last time ${last.top} kg for ${r0} reps is above your ${rng} range. Converted via est. 1RM: ${kg} kg for ${lo}` };
   }
   if (r0 >= hi) {

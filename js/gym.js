@@ -131,11 +131,11 @@ export const TYPES = {
 };
 export const typeLabel = ty => { const x = TYPES[ty] || TYPES.rookie; return `${x.icon} ${t(x.en, x.zh)}`; };
 const STATS = [
-  ['hp', 'HP', '體力', 290, 'Gym days in the last 60 days', '最近 60 日去 gym 嘅日數'],
-  ['atk', 'Attack', '攻擊', 250, 'Your 3 best lifts as a one-rep max, last 60 days', '最近 60 日最重嘅 3 個動作（換算一下最大重量）'],
-  ['def', 'Defence', '防禦', 250, 'Sets done in the last 60 days', '最近 60 日做咗幾多組'],
-  ['spd', 'Speed', '速度', 200, 'Cardio minutes in the last 60 days', '最近 60 日 cardio 分鐘'],
-  ['tec', 'Technique', '技巧', 150, 'Different exercises, and your hardest climb', '做過幾多種動作，同攀石最難嘅級數']
+  ['hp', 'HP', '體力', 290, 'Gym days', '去 gym 嘅日數'],
+  ['atk', 'Attack', '攻擊', 250, 'Your 3 best lifts as a one-rep max', '最重嘅 3 個動作（換算一下最大重量）'],
+  ['def', 'Defence', '防禦', 250, 'Sets done', '做咗幾多組'],
+  ['spd', 'Speed', '速度', 200, 'Cardio minutes', 'cardio 分鐘'],
+  ['tec', 'Technique', '技巧', 150, 'Different exercises, your hardest climb and bouldering minutes', '做過幾多種動作、抱石最難嘅級數同抱石分鐘']
 ];
 export function characterCardHtml(card, name, av) {
   if (!card) return '';
@@ -150,17 +150,30 @@ export function characterCardHtml(card, name, av) {
         <p class="muted small">${t(`${card.xp_in_level} / ${card.xp_for_next} XP to Lv ${card.level + 1}`, `${card.xp_in_level} / ${card.xp_for_next} 經驗升 Lv ${card.level + 1}`)}</p>
         <p class="coins">💧 <b>${card.coins}</b> ${t('sweat coins', '汗水幣')}</p></div></div>
     <dl class="cc-stats">${STATS.map(([k, en, zh, max, hen, hzh]) => `<div class="st"><dt title="${esc(t(hen, hzh))}">${t(en, zh)}</dt>
-      <dd><span class="bar"><i style="width:${Math.min(100, Math.round((s[k] || 0) / max * 100))}%"></i></span><b>${s[k] ?? 0}</b></dd></div>`).join('')}</dl>
+      <dd><span class="bar"><i style="width:${Math.min(100, Math.round((s[k] || 0) / max * 100))}%"></i></span><b>${s[k] ?? 0}</b><small class="st-next" data-next="${k}"></small></dd></div>`).join('')}</dl>
+    <p class="muted small cc-week" id="ccWeek">${t('This week’s stats. They update every Monday.', '今個星期嘅能力，每個星期一更新。')}</p>
     <details class="cc-how"><summary>${t('How it works', '點樣計')}</summary>
       <ul>${STATS.map(([, en, zh, , hen, hzh]) => `<li><b>${t(en, zh)}</b>: ${t(hen, hzh)}</li>`).join('')}
-        <li>${t('Stats only count the last 60 days, so they drop if you stop going.', '能力只計最近 60 日，停咗唔去就會跌。')}</li>
+        <li>${t('Stats update every Monday from your training up to Sunday, and stay the same all week (tower, raids, matches).', '能力每個星期一更新，用截至星期日嘅訓練計，成個星期都唔變（塔、魔王、友誼賽一樣）。')}</li>
+        <li>${t('The last 30 days count fully, then older training fades out by 90 days, so nothing drops off suddenly.', '最近 30 日全計，再舊嘅慢慢淡出，到 90 日就唔計，唔會突然跌一截。')}</li>
+        <li>${t('A stat drops at most 10% a week, so a bad week costs little. It rises by up to half the way to where your training says, so one big session doesn’t make you shoot up.', '每星期最多跌 10%，一個星期冇去都唔會跌好多。升就每星期最多升一半距離，一堂練得勁唔會即刻變好強。')}</li>
         <li>${t('Type: what you trained most (weights, cardio or climbing).', '屬性：你最近練得最多嗰類（重量、cardio 定攀石）。')}</li>
         <li>${t('Level never goes down. XP: gym days, sets, cardio, climbs and new PBs. In battles each level adds 2% to every stat.', '等級唔會跌。經驗嚟自去 gym 日數、組數、cardio、攀石同破 PB。對戰時每級所有能力加 2%。')}</li>
         <li>${t('Sweat coins: 10 per gym day. You’ll bet them in battles.', '汗水幣：每日去 gym 10 個，之後對戰可以用嚟落注。')}</li></ul></details>
   </section>`;
 }
-export function mountCharacterCard(el, av) {
+export function mountCharacterCard(el, av, userId) {
   const cv = el.querySelector('#ccPortrait'); if (!cv) return;
+  // next Monday's stats, from what you've done so far
+  if (userId) api.characterNext(userId).then(n => {
+    if (!n?.stats) return;
+    const card = el.querySelector('#charCard'); let any = false;
+    card.querySelectorAll('[data-next]').forEach(x => {
+      const k = x.dataset.next, now = +(card.querySelector(`[data-next="${k}"]`).previousElementSibling?.textContent || 0), d = Math.round((n.stats[k] ?? now) - now);
+      if (d) { any = true; x.textContent = d > 0 ? `+${d}` : `${d}`; x.className = `st-next ${d > 0 ? 'up' : 'down'}`; x.title = t('Next Monday', '下個星期一'); }
+    });
+    if (any) card.querySelector('#ccWeek').textContent = t('This week’s stats. The small numbers are what next Monday brings from your training so far.', '今個星期嘅能力。細字係按你到今日為止嘅訓練，下個星期一會點變。');
+  }).catch(() => {});
   let f = 0; drawPortrait(cv, av, 'stand', 0);
   const tick = setInterval(() => { if (!document.body.contains(cv)) return clearInterval(tick); if (!reduced()) { f ^= 1; drawPortrait(cv, av, 'stand', f); } }, 520);
 }

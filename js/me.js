@@ -181,7 +181,7 @@ export async function meScreen(user) {
   const again = () => meScreen(user).catch(showError);
 
   mountAvatarEditor(el, user, profile);
-  mountCharacterCard(el, cleanAvatar(profile.avatar, user.id));
+  mountCharacterCard(el, cleanAvatar(profile.avatar, user.id), user.id);
   mountQuests(el);
   mountMoves(el, user);
   mountSeason(el, () => mountAvatarEditor(el, user, profile));
