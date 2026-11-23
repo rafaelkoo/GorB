@@ -5,6 +5,7 @@ import { openCamera, stopCamera, grabFrame, encodeCanvas, cameraCount } from './
 import { storyEditor } from './story.js';
 import { pickEmoji } from './emoji.js';
 import { gymCardHtml, mountGym } from './gym.js';
+import { openTodayChest } from './rewards.js';
 import { FEED_PAGE } from './config.js';
 import { pushSupported, pushState, enablePush } from './push.js';
 import { t, setLang, langSwitchHtml, fmtDateTime, monthName, getLang } from './i18n.js';
@@ -423,6 +424,7 @@ export async function checkin(user, groupId) {
       const photo = await encodeCanvas(story ? await story.bake() : frame);
       await api.postCheckin(user.id, photo, el.querySelector('#note').value.trim());
       await btnDone(b, t('Posted', '打咗卡')); story?.destroy(); releaseCamera(); try { sessionStorage.setItem(ASK_KEY, '1'); } catch {} location.hash = `#/g/${groupId}`;
+      setTimeout(openTodayChest, 600);
     }
     catch (err) { showError(err); btnReset(b); }
   };

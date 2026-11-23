@@ -95,6 +95,7 @@ export function chatLive(groupId, onRow, onStatus, onReaction) {
 export const leaveGroup = (groupId, userId) => sb.from('group_members').delete().match({ group_id: groupId, user_id: userId }).then(must);
 export const weekReview = groupId => sb.rpc('group_week_review', { p_group: groupId }).then(must);
 export const groupHistory = groupId => sb.rpc('group_history', { p_group: groupId }).then(must);
+export const todayRewards = day => sb.from('rewards').select('kind, ref, xp, coins, meta').in('ref', [`chest:${day}`, `comeback:${day}`]).then(must);
 export const characterCard = userId => sb.rpc('character_card', { p_user: userId }).then(must);
 // what you're ticking in the Log today, for the pixel gym (see migration 023)
 export const setGymLive = (userId, day, sets, lastEx) =>

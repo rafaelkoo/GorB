@@ -119,3 +119,8 @@ Phones mute it themselves (Do Not Disturb); the app has no mute.
 2. The function deploys itself (GitHub Actions). Add GitHub repo secrets `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `WEBHOOK_SECRET` (any long random string you make up); the next run copies them into Supabase.
 3. Database → **Webhooks** → Create: table `checkins`, event **Insert**, type **Supabase Edge Functions** → `notify-checkin`, POST, add header `x-webhook-secret` = the same `WEBHOOK_SECRET`.
 4. On each phone: Group page → Notifications → **Turn on**, then **Send test**.
+
+### Game layer (encouragement)
+- **Rewards ledger** (`rewards`, migration 024): every coin/XP bonus is a row with a unique ref per person, written only by database functions. `character_card` adds it to what training earns.
+- **Check-in chest**: first check-in of the day opens a pixel treasure chest: 5–20 coins, or 15% a big one (40–60 coins + 30 XP); never more than 5 small ones in a row.
+- **Welcome-back bonus**: after 3+ days away, 10–50 XP once (a gym day alone is 20), so it helps people catch up without overtaking regulars.

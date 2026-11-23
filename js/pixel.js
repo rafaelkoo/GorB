@@ -398,3 +398,34 @@ export function drawPortrait(canvas, av, pose = 'stand', frame = 0) {
   const s = Math.floor(Math.min(canvas.width / 32, canvas.height / 34));
   ctx.drawImage(lo, (canvas.width - 32 * s) / 2, (canvas.height - 34 * s) / 2, 32 * s, 34 * s);
 }
+
+// ---------- treasure chest (check-in reward) ----------
+// state: 'shut' | 'shake' | 'open'; big chests are gold
+export function drawChest(canvas, state = 'shut', frame = 0, big = false) {
+  const lo = document.createElement('canvas'); lo.width = 40; lo.height = 36;
+  const c = lo.getContext('2d');
+  const r = (x, y, w, h, col) => { c.fillStyle = col; c.fillRect(x, y, w, h); };
+  const wood = big ? '#d9a12b' : '#a0602e', woodD = shade(wood, -0.3), woodL = shade(wood, 0.25), band = big ? '#fff3b0' : '#5d6470', bandD = shade(band, -0.3);
+  const dx = state === 'shake' ? (frame ? 1 : -1) : 0;
+  r(8, 33, 24, 2, 'rgba(0,0,0,.25)');                                   // shadow
+  // body
+  r(7 + dx, 18, 26, 15, wood); r(7 + dx, 18, 26, 2, woodL); r(7 + dx, 31, 26, 2, woodD);
+  r(7 + dx, 18, 2, 15, band); r(31 + dx, 18, 2, 15, band); r(7 + dx, 24, 26, 2, bandD);
+  if (state === 'open') {
+    // lid flipped back, glow and coins
+    r(7, 8, 26, 6, woodD); r(7, 8, 26, 1, wood); r(7, 8, 2, 6, band); r(31, 8, 2, 6, band);
+    c.fillStyle = big ? 'rgba(255,236,140,.9)' : 'rgba(255,236,140,.6)';
+    c.beginPath(); c.moveTo(9, 18); c.lineTo(2, 0); c.lineTo(38, 0); c.lineTo(31, 18); c.fill();
+    const coin = (x, y) => { r(x, y, 4, 4, '#f2c430'); r(x + 1, y, 2, 1, '#fff0a0'); r(x, y + 3, 4, 1, '#b8881a'); };
+    coin(12, 14 - frame); coin(18, 12 + frame); coin(24, 14 - frame); if (big) { coin(15, 9 + frame); coin(21, 8 - frame); }
+    r(9, 17, 22, 2, '#3a2412');
+  } else {
+    r(9 + dx, 9, 22, 2, wood); r(9 + dx, 9, 22, 1, woodL);             // rounded lid top
+    r(7 + dx, 11, 26, 8, wood); r(7 + dx, 11, 26, 1, woodL); r(7 + dx, 11, 2, 8, band); r(31 + dx, 11, 2, 8, band); r(9 + dx, 9, 2, 2, band); r(29 + dx, 9, 2, 2, band);
+    r(7 + dx, 18, 26, 1, '#231a17');                                    // gap between lid and body
+    r(18 + dx, 17, 4, 5, band); r(19 + dx, 19, 2, 2, '#231a17');        // lock
+  }
+  const ctx = canvas.getContext('2d'); ctx.imageSmoothingEnabled = false; ctx.clearRect(0, 0, canvas.width, canvas.height);
+  const s = Math.floor(Math.min(canvas.width / 40, canvas.height / 36));
+  ctx.drawImage(lo, (canvas.width - 40 * s) / 2, (canvas.height - 36 * s) / 2, 40 * s, 36 * s);
+}

@@ -716,3 +716,12 @@ textarea { resize: vertical; line-height: 1.4; }
 .av-tabs { display: grid; grid-template-columns: repeat(4, 1fr); margin-bottom: 4px; }
 .av-tabs button { padding: 7px 2px; font-size: .78rem; min-height: 36px; }
 .av-panel { display: grid; gap: 10px; }
+
+/* ---------- check-in treasure chest ---------- */
+.chest-wrap { position: fixed; inset: 0; z-index: 90; display: grid; place-items: center; background: rgba(8,9,11,.72); padding: 20px; }
+.chest-card { width: min(340px, 100%); text-align: center; background: var(--mat); border-radius: 20px; padding: 20px 18px 18px; box-shadow: 0 20px 50px rgba(0,0,0,.5); animation: menuin .2s ease-out; }
+.chest-card h3 { margin: 0 0 6px; }
+.chest-card canvas { width: 200px; height: auto; aspect-ratio: 240 / 216; image-rendering: pixelated; cursor: pointer; }
+.chest-msg { min-height: 3.2em; margin: 6px 0 14px; line-height: 1.5; }
+.chest-coins { font: 800 1.8rem/1.1 var(--display); color: #f2c430; }
+.chest-big { display: inline-block; font: 800 1.1rem/1 var(--display); color: #231a17; background: #f2c430; padding: 4px 10px; border-radius: 6px; margin-bottom: 4px; }
