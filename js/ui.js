@@ -177,7 +177,7 @@ function postHtml(r, user) {
       ${r.note ? `<p>${esc(r.note)}</p>` : ''}
       <div class="reacts" data-reacts="${r.id}">${reactsHtml(r, user)}</div>
       <div class="post-acts"><button class="ghost reply-btn" data-reply="${r.id}">${ICON.chat(16)} ${t('Reply', '回覆')}</button>
-      ${r.user_id === user.id ? `<button class="ghost del" data-id="${r.id}">${t('Delete', '刪除')}</button>` : ''}</div></div>
+      ${r.user_id === user.id ? `<button class="ghost cap-edit" data-cap="${r.id}">${t('Edit caption', '改 caption')}</button><button class="ghost del" data-id="${r.id}">${t('Delete', '刪除')}</button>` : ''}</div></div>
   </article>`;
 }
 
@@ -246,6 +246,7 @@ export async function group(user, groupId, limit = FEED_PAGE) {
       <div class="head-btns"><a class="icon-btn chat-btn" href="#/c/${g.id}" aria-label="${nUnread ? t(`Chat, ${nUnread} unread`, `傾偈，${nUnread} 個未讀`) : t('Chat', '傾偈')}">${ICON.chat(20)}${nUnread ? `<span class="badge">${nUnread > 99 ? '99+' : nUnread}</span>` : ''}</a>
       <button id="share" class="icon-btn" aria-label="${t('Invite mates', '邀請朋友')}">${ICON.share(20)}</button></div>
     </header>
+    ${groups.length > 1 ? `<nav class="grp-switch" aria-label="${t('Your groups', '你嘅 group')}">${groups.map(x => `<a href="#/g/${x.id}" class="${x.id === g.id ? 'on' : ''}" ${x.id === g.id ? 'aria-current="page"' : ''}>${esc(x.name)}${unread[x.id] && x.id !== g.id ? ' <i class="dot" aria-label="' + t('new messages', '有新訊息') + '"></i>' : ''}</a>`).join('')}</nav>` : ''}
     <section class="hero-card ${doneToday ? 'done' : ''}">
       <div class="hero-text">
         <p class="status">${doneToday ? `${ICON.check(16)} ${t('Checked in today', '今日打咗卡')}` : t('Not checked in today', '今日仲未打卡')}</p>
@@ -340,6 +341,22 @@ export async function group(user, groupId, limit = FEED_PAGE) {
     };
   };
   el.querySelectorAll('[data-reacts]').forEach(wireReacts);
+  el.querySelectorAll('.cap-edit').forEach(b => b.onclick = () => {
+    const r = feed.find(x => x.id === b.dataset.cap); if (!r) return;
+    const box = document.createElement('div'); box.className = 'sheet';
+    box.innerHTML = `<form class="sheet-in" role="dialog" aria-label="${t('Edit caption', '改 caption')}">
+      <h3>${t('Edit caption', '改 caption')}</h3>
+      <input id="capIn" maxlength="140" value="${esc(r.note || '')}" placeholder="${t('Caption (optional)', 'Caption（可以唔填）')}" aria-label="${t('Caption', 'Caption')}">
+      <p class="muted small">${groups.length > 1 ? t(`Only changes what ${g.name} sees. Your other groups keep theirs.`, `只會改 ${g.name} 睇到嘅 caption，其他 group 唔受影響。`) : ''}</p>
+      <div class="row"><button type="button" class="ghost" data-close>${t('Cancel', '取消')}</button><button>${t('Save', '儲存')}</button></div></form>`;
+    const close = () => box.remove();
+    box.addEventListener('click', e => { if (e.target === box || e.target.closest('[data-close]')) close(); });
+    box.querySelector('form').onsubmit = async e => {
+      e.preventDefault();
+      try { await api.setCaption(r.id, groupId, box.querySelector('#capIn').value.trim()); close(); group(user, groupId, limit); } catch (err) { showError(err); }
+    };
+    document.body.append(box); box.querySelector('#capIn').focus();
+  });
   el.querySelectorAll('.del').forEach(b => b.onclick = async () => {
     if (!confirm(t('Delete this check-in and its photo?', '刪除呢次打卡同張相？'))) return;
     try { await api.deleteCheckin(feed.find(r => r.id === b.dataset.id)); group(user, groupId, limit); } catch (err) { showError(err); }
@@ -372,6 +389,8 @@ export async function checkin(user, groupId) {
       </div>
       <form id="post" class="cam-bottom" hidden>
         <input id="note" maxlength="140" placeholder="${t('Message to your group (optional)', '同 group 講句嘢（可以唔填）')}" enterkeyhint="send" aria-label="${t('Message to your group', '同 group 講句嘢')}">
+        <div id="capEach" class="cap-each" hidden></div>
+        <button type="button" id="capToggle" class="cap-toggle" hidden>${t('Different caption for each group', '每個 group 寫唔同 caption')}</button>
         <div class="row">
           <button type="button" id="retake" class="ghost">${t('Retake', '重影')}</button>
           <button id="send">${t('Post check-in', '打卡')}</button>
@@ -380,6 +399,23 @@ export async function checkin(user, groupId) {
     </section>`);
   const v = el.querySelector('#v'), shot = el.querySelector('#shot');
   const live = el.querySelector('#live'), post = el.querySelector('#post');
+  // in more than one group: the same photo goes to all of them, but each can get its own caption
+  let perGroup = false;
+  api.myGroups().then(gs => {
+    if (gs.length < 2 || gone()) return;
+    gs.sort((a, b) => (a.id === groupId ? -1 : b.id === groupId ? 1 : 0));
+    const tg = el.querySelector('#capToggle'), each = el.querySelector('#capEach'), main = el.querySelector('#note');
+    tg.hidden = false;
+    each.innerHTML = gs.map(g => `<label class="cap-row"><span>${esc(g.name)}</span><input data-cap="${g.id}" maxlength="140" placeholder="${t('Caption (optional)', 'Caption（可以唔填）')}"></label>`).join('');
+    tg.onclick = () => {
+      perGroup = !perGroup;
+      if (perGroup) each.querySelectorAll('[data-cap]').forEach(i => { if (!i.value) i.value = main.value; });
+      else main.value = each.querySelector(`[data-cap="${groupId}"]`)?.value || main.value;
+      each.hidden = !perGroup; main.hidden = perGroup;
+      tg.textContent = perGroup ? t('Same caption for every group', '所有 group 用同一個 caption') : t('Different caption for each group', '每個 group 寫唔同 caption');
+      tg.setAttribute('aria-pressed', perGroup);
+    };
+  }).catch(() => {});
   let photo = null;
   // the camera can take a while (permission prompt); if you've left the screen by then, switch it off and stop
   const gone = () => !document.body.contains(v);
@@ -429,7 +465,8 @@ export async function checkin(user, groupId) {
     const b = el.querySelector('#send'); btnLoading(b);
     try {
       const photo = await encodeCanvas(story ? await story.bake() : frame);
-      await api.postCheckin(user.id, photo, el.querySelector('#note').value.trim());
+      const caps = perGroup ? Object.fromEntries([...el.querySelectorAll('[data-cap]')].map(i => [i.dataset.cap, i.value.trim()])) : {};
+      await api.postCheckin(user.id, photo, perGroup ? '' : el.querySelector('#note').value.trim(), caps);
       await btnDone(b, t('Posted', '打咗卡')); story?.destroy(); releaseCamera(); try { sessionStorage.setItem(ASK_KEY, '1'); } catch {} location.hash = `#/g/${groupId}`;
       setTimeout(openTodayChest, 600);
     }

@@ -104,6 +104,7 @@ export const myItems = () => sb.from('rewards').select('meta').eq('kind', 'seaso
 export const myQuests = () => sb.rpc('my_quests').then(must).then(x => x || []);
 export const claimQuest = id => sb.rpc('claim_quest', { p_id: id }).then(must);
 export const groupDogs = groupId => sb.rpc('group_dogs', { p_group: groupId }).then(must);
+export const setCaption = (checkinId, groupId, note) => sb.rpc('set_caption', { p_checkin: checkinId, p_group: groupId, p_note: note }).then(must);
 export const groupBoss = groupId => sb.rpc('group_boss', { p_group: groupId }).then(must);
 // ---------- battles: moves, the Gym Tower, boss raids and friendly matches ----------
 export const allMoves = () => sb.from('moves').select('id, en, zh, type, stat, power, effect, effect_val, req_kind, req_cat, req_val, desc_en, desc_zh, sort, types, stats, uses, req_moves').neq('req_kind', 'monster').order('sort').then(must);
@@ -142,12 +143,13 @@ export const profilesOf = ids => (ids.length ? sb.from('profiles').select('id, d
 // The small feed copy sits beside the full photo: abc.jpg → abc_t.jpg
 export const thumbPath = p => p.replace(/\.jpg$/, '_t.jpg');
 
-export async function postCheckin(userId, photo, note) {
+// captions: { groupId: text } for groups that get their own caption (same photo for every group)
+export async function postCheckin(userId, photo, note, captions = {}) {
   const path = `${userId}/${crypto.randomUUID()}.jpg`;
   const bucket = sb.storage.from(PHOTO_BUCKET), opts = { contentType: 'image/jpeg', upsert: false };
   must(await bucket.upload(path, photo.full, opts));
   const t = await bucket.upload(thumbPath(path), photo.thumb, opts);
-  const { error } = t.error ? t : await sb.from('checkins').insert({ photo_path: path, note: note || null });
+  const { error } = t.error ? t : await sb.rpc('post_checkin', { p_path: path, p_note: note || '', p_captions: captions });
   if (error) { await bucket.remove([path, thumbPath(path)]); throw error; }  // don't leave orphan photos
 }
 
@@ -182,6 +184,9 @@ export async function groupFeed(groupId, limit) {
     .select('id, user_id, photo_path, photo_expired, note, created_at, profiles!checkins_user_id_fkey(display_name)')
     .in('user_id', ids).order('created_at', { ascending: false }).limit(limit));
   if (!rows.length) return rows;
+  // this group's own captions replace the default one
+  const caps = must(await sb.from('checkin_captions').select('checkin_id, note').eq('group_id', groupId).in('checkin_id', rows.map(r => r.id)));
+  for (const c of caps) { const r = rows.find(x => x.id === c.checkin_id); if (r) { r.note = c.note || null; r.own_caption = true; } }
   const cutoff = Date.now() - PHOTO_DAYS * 864e5;
   const live = rows.filter(r => !r.photo_expired && new Date(r.created_at).getTime() > cutoff);
   const url = live.length ? await photoLinks(live.map(r => thumbPath(r.photo_path))) : {};

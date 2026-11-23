@@ -23,6 +23,7 @@ export function bossCardHtml(b) {
     <ol class="boss-dmg">${b.members.map(m => `<li><span class="nm">${esc(m.name)}</span>
       ${m.mult > 1 ? `<span class="ud" title="${t('Underdog bonus: lower level than the group average', '以弱勝強：等級低過 group 平均')}">⚡ ×${m.mult}</span>` : ''}
       <span class="muted small">${t(`${m.hits ?? 0} attack${m.hits === 1 ? '' : 's'}`, `攻擊 ${m.hits ?? 0} 次`)}</span><b>${m.dmg}</b></li>`).join('')}</ol>
+    ${b.defeated && b.loot_elsewhere ? `<p class="muted small raid-wait">${t('You already got this week’s boss loot in another group (one per week).', '你今個星期已經喺另一個 group 攞咗戰利品（每星期一份）。')}</p>` : ''}
     ${b.defeated ? '' : b.open ? `<a class="button" href="#/battle/${b.open}">${t('Back to your attack', '返去繼續攻擊')}</a>`
       : b.can_attack ? `<button type="button" id="raidGo">⚔️ ${t('Attack the boss', '攻擊魔王')}</button>`
       : `<p class="muted small raid-wait">${t('One attack per gym day. Check in to attack.', '每個 gym 日攻擊一次。打卡之後就可以攻擊。')}</p>`}
@@ -31,7 +32,8 @@ export function bossCardHtml(b) {
       <li>${t('Each gym day you get one attack: up to 8 moves against the boss. Showing up is worth 70, fighting well up to 60 more.', '每個 gym 日有一次攻擊機會，同魔王打最多 8 招。出席已經值 70，打得好再加最多 60。')}</li>
       <li>${t('The boss is matched to you, so newcomers count as much as big lifters.', '魔王會跟你嘅實力調整，新手同大隻佬一樣有份。')}</li>
       <li>${t('Lower level than the group average? Your attack counts up to 50% more (⚡).', '等級低過 group 平均？攻擊最多多計 50%（⚡）。')}</li>
-      <li>${t('Beat it by Sunday and everyone gets 60 💧 and 80 XP.', '星期日之前打低佢，全部人都有 60 💧 同 80 經驗。')}</li></ul></details>
+      <li>${t('Beat it by Sunday and everyone gets 60 💧 and 80 XP.', '星期日之前打低佢，全部人都有 60 💧 同 80 經驗。')}</li>
+      <li>${t('In more than one group? One attack a day counts for all of them, and you get loot once a week.', '喺多過一個 group？每日一次攻擊會計落全部 group，戰利品每星期攞一份。')}</li></ul></details>
   </section>`;
 }
 

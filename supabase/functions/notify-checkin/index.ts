@@ -54,15 +54,19 @@ Deno.serve(async req => {
   ]);
   const langOf = new Map((langs ?? []).map(p => [p.id, p.lang]));
   const name = me?.display_name || 'Someone';
+  // a group can have its own caption; each person sees the one for the group the push opens
+  const { data: caps } = await db.from('checkin_captions').select('group_id, note').eq('checkin_id', record.id);
+  const capOf = new Map((caps ?? []).map(c => [c.group_id, c.note as string]));
+  const noteFor = (uid: string) => { const g = openGroup.get(uid)!; return (capOf.has(g) ? capOf.get(g) : record.note)?.trim(); };
   // each person gets it in the language they picked; the poster's own words if they typed any
-  const text = (lang: string) => lang === 'zh'
-    ? { title: `${name} 去咗 gym 💪`, body: record.note?.trim() || '仲唔郁？Gym or Bitch？' }
-    : { title: `${name} is at the gym 💪`, body: record.note?.trim() || 'Get moving. Gym or Bitch?' };
+  const text = (lang: string, note?: string) => lang === 'zh'
+    ? { title: `${name} 去咗 gym 💪`, body: note || '仲唔郁？Gym or Bitch？' }
+    : { title: `${name} is at the gym 💪`, body: note || 'Get moving. Gym or Bitch?' };
 
   let sent = 0;
   const gone: string[] = [];
   await Promise.all((subs ?? []).map(async s => {
-    const payload = JSON.stringify({ ...text(langOf.get(s.user_id) ?? 'en'), url: `./#/g/${openGroup.get(s.user_id)}` });
+    const payload = JSON.stringify({ ...text(langOf.get(s.user_id) ?? 'en', noteFor(s.user_id)), url: `./#/g/${openGroup.get(s.user_id)}` });
     try {
       await webpush.sendNotification({ endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } }, payload, { TTL: 3600 });
       sent++;

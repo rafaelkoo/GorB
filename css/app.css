@@ -840,3 +840,12 @@ textarea { resize: vertical; line-height: 1.4; }
 .mv-type + .mv-type { margin-left: -4px; }
 .mv-slot { align-content: start; }
 .bt-desc { font-size: .76rem; color: #f2d58a; line-height: 1.25; }
+.cap-toggle { background: rgba(0,0,0,.45); color: #fff; border: 1px solid rgba(255,255,255,.35); min-height: 36px; font-size: .88rem; justify-self: start; }
+.cap-each { display: grid; gap: 6px; }
+.cap-row { display: grid; grid-template-columns: minmax(64px, 30%) 1fr; align-items: center; gap: 8px; color: #fff; font-size: .88rem; font-weight: 600; }
+.cap-row span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.grp-switch { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; margin: -4px 0 2px; }
+.grp-switch a { flex: none; padding: 6px 14px; border-radius: 999px; border: 1px solid var(--line); background: var(--mat); color: var(--dust); text-decoration: none; font-weight: 600; font-size: .9rem; }
+.grp-switch a.on { background: var(--chalk); color: var(--floor); border-color: var(--chalk); }
+.grp-switch .dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--red); vertical-align: middle; margin-left: 2px; }
+.post-acts .cap-edit { margin-left: auto; }
