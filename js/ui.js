@@ -6,6 +6,7 @@ import { storyEditor } from './story.js';
 import { pickEmoji } from './emoji.js';
 import { gymCardHtml, mountGym } from './gym.js';
 import { openTodayChest } from './rewards.js';
+import { bossCardHtml, mountBoss } from './boss.js';
 import { FEED_PAGE } from './config.js';
 import { pushSupported, pushState, enablePush } from './push.js';
 import { t, setLang, langSwitchHtml, fmtDateTime, monthName, getLang } from './i18n.js';
@@ -228,9 +229,9 @@ export async function group(user, groupId, limit = FEED_PAGE) {
   const groups = await api.myGroups();
   const g = groups.find(x => x.id === groupId);
   if (!g) { location.hash = '#/all'; return; }
-  const [board, feed, doneToday, unread, week, gymRows] = await Promise.all([
+  const [board, feed, doneToday, unread, week, gymRows, boss] = await Promise.all([
     api.leaderboard(groupId), api.groupFeed(groupId, limit + 1), api.checkedInToday(user.id), api.chatUnread().catch(() => ({})),
-    api.weekReview(groupId).catch(() => null), api.gymToday(groupId).catch(() => null)
+    api.weekReview(groupId).catch(() => null), api.gymToday(groupId).catch(() => null), api.groupBoss(groupId).catch(() => null)
   ]);
   const nUnread = unread[groupId] || 0;
   const more = feed.length > limit; if (more) feed.pop();
@@ -252,6 +253,7 @@ export async function group(user, groupId, limit = FEED_PAGE) {
       <a class="cta" href="#/checkin/${g.id}">${ICON.camera(22)}<span>${doneToday ? t('Check in again', '再打卡') : t('I’m at the gym', '我喺 gym')}</span></a>
     </section>
     ${pushSupported() && asked ? '<section class="card notif ask" id="notif" hidden></section>' : ''}
+    ${bossCardHtml(boss)}
     ${gymCardHtml()}
     <section class="card"><div class="card-head"><h3>${esc(monthName())} · ${t('days at the gym', '去 gym 日數')}</h3>
       <span class="links"><a class="link" href="#/h/${g.id}">${t('History', '歷史')} ›</a><a class="link" href="#/r/${g.id}">${t('All rankings', '全部排名')} ›</a></span></div>${boardHtml(board, user)}
@@ -272,6 +274,7 @@ export async function group(user, groupId, limit = FEED_PAGE) {
     </section>`);
 
   mountGym(el, gymRows, user, groupId);
+  mountBoss(el, boss, groupId);
   // right after a check-in, offer notifications once
   if (pushSupported() && asked) {
     pushState().then(st => {

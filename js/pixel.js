@@ -429,3 +429,90 @@ export function drawChest(canvas, state = 'shut', frame = 0, big = false) {
   const s = Math.floor(Math.min(canvas.width / 40, canvas.height / 36));
   ctx.drawImage(lo, (canvas.width - 40 * s) / 2, (canvas.height - 36 * s) / 2, 40 * s, 36 * s);
 }
+
+// ---------- weekly bosses: the things that keep you from the gym ----------
+export const BOSSES = [
+  { en: 'The Couch Monster', zh: '梳化怪' },
+  { en: 'Midnight Snack Dragon', zh: '宵夜龍' },
+  { en: 'Lazy Slime', zh: '懶惰史萊姆' },
+  { en: 'The Snooze Clock', zh: '貪睡鬧鐘' },
+  { en: 'Bubble Tea Beast', zh: '珍奶怪' },
+  { en: 'Doomscroll Demon', zh: '碌手機魔' }
+];
+// state: 'idle' | 'ko'. 48×40 scene pixels.
+export function drawBoss(canvas, idx, frame = 0, state = 'idle') {
+  const lo = document.createElement('canvas'); lo.width = 48; lo.height = 40;
+  const c = lo.getContext('2d');
+  const r = (x, y, w, h, col) => { c.fillStyle = col; c.fillRect(x, y, w, h); };
+  const ko = state === 'ko', b = ko ? 0 : frame;            // breathing bob
+  const eyes = (x1, x2, y, col = '#fff') => {
+    if (ko) { for (const x of [x1, x2]) { r(x, y, 1, 1, OUT); r(x + 2, y, 1, 1, OUT); r(x + 1, y + 1, 1, 1, OUT); r(x, y + 2, 1, 1, OUT); r(x + 2, y + 2, 1, 1, OUT); } return; }
+    for (const x of [x1, x2]) { r(x, y, 3, 3, col); r(x + 1 + frame, y + 1, 1, 2, OUT); }
+    r(x1 - 1, y - 2, 4, 1, OUT); r(x2, y - 2, 4, 1, OUT);   // angry brows
+  };
+  r(6, 37, 36, 2, 'rgba(0,0,0,.28)');
+  const base = ko ? 4 : 0;   // KO'd bosses slump down
+  switch (idx % 6) {
+    case 0: { // couch
+      const y = 14 + base + b;
+      r(6, y, 36, 10, '#8a5a3c'); r(6, y, 36, 2, '#a87450');           // back
+      r(4, y + 8, 6, 14, '#7a4c30'); r(38, y + 8, 6, 14, '#7a4c30');   // arms
+      r(9, y + 10, 30, 8, '#9c6644'); r(9, y + 10, 30, 1, '#b98058'); r(23, y + 10, 1, 8, '#7a4c30');   // cushions
+      r(8, y + 18, 32, 4, '#6b4128'); r(8, 36 - (ko ? 0 : 0), 3, 2, '#3a2416'); r(37, 36, 3, 2, '#3a2416');
+      eyes(15, 28, y + 3); if (!ko) { r(17, y + 7, 14, 2, OUT); for (let i = 0; i < 4; i++) r(18 + i * 3, y + 7, 2, 1, '#fff'); }
+      break;
+    }
+    case 1: { // snack dragon
+      const y = 8 + base + b;
+      r(10, y + 6, 28, 22, '#4fae5a'); r(10, y + 6, 28, 2, '#6fcf78'); r(14, y + 18, 20, 9, '#d8e89a');   // body + belly
+      r(8, y, 10, 10, '#4fae5a'); r(30, y, 10, 10, '#4fae5a'); r(9, y - 3, 2, 3, '#f2d245'); r(37, y - 3, 2, 3, '#f2d245');   // horns
+      r(4, y + 12, 6, 4, '#3d8a46'); r(38, y + 12, 6, 4, '#3d8a46');   // little wings
+      eyes(14, 29, y + 8);
+      if (!ko) { r(16, y + 14, 16, 3, '#2a1f18'); r(17, y + 14, 2, 1, '#fff'); r(29, y + 14, 2, 1, '#fff'); }
+      // holding a burger
+      r(34, y + 18, 9, 3, '#d9a14b'); r(34, y + 21, 9, 2, '#6b3a1f'); r(34, y + 23, 9, 2, '#d9a14b'); r(35, y + 20, 7, 1, '#45b45a');
+      break;
+    }
+    case 2: { // lazy slime
+      const y = 12 + base;
+      const w = 34 + (ko ? 6 : frame * 2), x = 24 - w / 2;
+      r(x + 3, y + 2 - b, w - 6, 4, '#9b6ad8'); r(x, y + 6 - b, w, 18 + b, '#8c5bd6'); r(x + 2, y + 24, w - 4, 2, '#6f45b0');
+      r(x + 5, y + 6 - b, 6, 3, '#c7a6f2');   // shine
+      if (ko) { r(16, y + 12, 16, 2, OUT); }
+      else { r(15, y + 11, 5, 2, '#fff'); r(28, y + 11, 5, 2, '#fff'); r(17, y + 12, 2, 1, OUT); r(30, y + 12, 2, 1, OUT); r(15, y + 10, 5, 1, '#6f45b0'); r(28, y + 10, 5, 1, '#6f45b0'); r(20, y + 17, 8, 1, OUT); }   // droopy eyes
+      r(36, y + 2 - b, 2, 2, '#fff'); r(39, y - 2 - b, 3, 1, '#fff'); r(40, y - 1 - b, 1, 1, '#fff');   // z
+      break;
+    }
+    case 3: { // snooze clock
+      const y = 6 + base + b;
+      r(10, y + 4, 28, 26, '#d8483b'); r(12, y + 2, 24, 2, '#d8483b'); r(12, y + 30, 24, 2, '#d8483b');
+      r(14, y + 6, 20, 22, '#fdf7ea'); r(23, y + 8, 2, 9, OUT); r(24, y + 16, 7, 2, OUT);   // face + hands
+      r(8, y - 2, 8, 5, '#f2d245'); r(32, y - 2, 8, 5, '#f2d245'); r(13, y + 32, 4, 3, '#7a2c2c'); r(31, y + 32, 4, 3, '#7a2c2c');   // bells + feet
+      if (!ko && frame) { r(4, y + 2, 3, 1, OUT); r(41, y + 2, 3, 1, OUT); r(4, y + 6, 2, 1, OUT); r(42, y + 6, 2, 1, OUT); }   // ringing
+      eyes(16, 28, y + 18, '#fff');
+      if (!ko) r(19, y + 24, 10, 2, OUT);
+      break;
+    }
+    case 4: { // bubble tea beast
+      const y = 6 + base + b;
+      r(29, y - 6, 3, 12, '#e66fab');                                   // straw
+      r(12, y + 2, 24, 3, '#eeeeee'); r(13, y + 5, 22, 26, '#d9b48c'); r(15, y + 31, 18, 2, '#c4a07a');   // lid + cup
+      for (const [bx, by] of [[16, 25], [21, 27], [26, 25], [30, 27], [18, 29], [24, 29], [28, 29]]) r(bx, y + by, 3, 3, '#3a2416');   // pearls
+      eyes(16, 27, y + 10);
+      if (!ko) { r(19, y + 17, 10, 3, '#3a2416'); r(20, y + 17, 2, 1, '#fff'); r(26, y + 17, 2, 1, '#fff'); }
+      break;
+    }
+    default: { // doomscroll phone
+      const y = 4 + base + b;
+      r(13, y, 22, 34, '#2b2b30'); r(15, y + 3, 18, 26, '#5fd3f3'); r(22, y + 31, 4, 2, '#5d6470');
+      for (let i = 0; i < 4; i++) r(17, y + 16 + i * 3 + (frame ? 1 : 0), 14, 1, '#9be8f8');   // endless feed
+      eyes(17, 26, y + 6, '#f23b3b');
+      if (!ko) r(19, y + 12, 10, 2, OUT);
+      r(8, y + 14, 5, 3, '#2b2b30'); r(35, y + 14, 5, 3, '#2b2b30');   // grabby arms
+    }
+  }
+  if (ko) { r(18, 2, 2, 2, '#f2d245'); r(26, 0, 2, 2, '#f2d245'); r(32, 3, 2, 2, '#f2d245'); }   // stars
+  const ctx = canvas.getContext('2d'); ctx.imageSmoothingEnabled = false; ctx.clearRect(0, 0, canvas.width, canvas.height);
+  const s = Math.floor(Math.min(canvas.width / 48, canvas.height / 40));
+  ctx.drawImage(lo, (canvas.width - 48 * s) / 2, (canvas.height - 40 * s) / 2, 48 * s, 40 * s);
+}
