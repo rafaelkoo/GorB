@@ -243,11 +243,11 @@ export async function group(user, groupId, limit = FEED_PAGE) {
   const inviteLink = `${location.origin}${location.pathname}#/join/${g.invite_code}`;
   const el = render(`
     <header class="page-head">
-      <div><h2>${esc(g.name)}</h2><p class="muted">${t(`${board.length} member${board.length === 1 ? '' : 's'}`, `${board.length} 個人`)} · <a href="#/all">${groups.length > 1 ? t('all groups / add one', '全部 group／加 group') : t('add another group', '加多個 group')}</a></p></div>
+      <div><h2>${esc(g.name)}</h2><p class="muted">${t(`${board.length} member${board.length === 1 ? '' : 's'}`, `${board.length} 個人`)}</p></div>
       <div class="head-btns"><a class="icon-btn chat-btn" href="#/c/${g.id}" aria-label="${nUnread ? t(`Chat, ${nUnread} unread`, `傾偈，${nUnread} 個未讀`) : t('Chat', '傾偈')}">${ICON.chat(20)}${nUnread ? `<span class="badge">${nUnread > 99 ? '99+' : nUnread}</span>` : ''}</a>
       <a class="icon-btn" href="#/gs/${g.id}" aria-label="${t('Group settings', 'Group 設定')}"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="3"></circle><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"></path></svg></a></div>
     </header>
-    ${groups.length > 1 ? `<nav class="grp-switch" aria-label="${t('Your groups', '你嘅 group')}">${groups.map(x => `<a href="#/g/${x.id}" class="${x.id === g.id ? 'on' : ''}" ${x.id === g.id ? 'aria-current="page"' : ''}>${esc(x.name)}${unread[x.id] && x.id !== g.id ? ' <i class="dot" aria-label="' + t('new messages', '有新訊息') + '"></i>' : ''}</a>`).join('')}</nav>` : ''}
+    <nav class="grp-switch" aria-label="${t('Your groups', '你嘅 group')}">${groups.length > 1 ? groups.map(x => `<a href="#/g/${x.id}" class="${x.id === g.id ? 'on' : ''}" ${x.id === g.id ? 'aria-current="page"' : ''}>${esc(x.name)}${unread[x.id] && x.id !== g.id ? ' <i class="dot" aria-label="' + t('new messages', '有新訊息') + '"></i>' : ''}</a>`).join('') : ''}<a href="#/all" class="grp-add" aria-label="${t('All groups, join or make one', '全部 group、加入或者開新 group')}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg>${groups.length > 1 ? '' : `<span>${t('Group', 'Group')}</span>`}</a></nav>
     <section class="hero-card ${doneToday ? 'done' : ''}">
       <div class="hero-top">
         <div class="hero-text">

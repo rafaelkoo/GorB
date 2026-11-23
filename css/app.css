@@ -911,3 +911,4 @@ details.week summary { cursor: pointer; padding: 4px 0; }
 .matches-card.slim { padding: 10px 16px; }
 .matches-card.slim .mt-note, .matches-card.slim #mtBody { display: none; }
 .matches-card.slim h3 { font-size: 1.05rem; }
+.grp-switch .grp-add { display: inline-flex; align-items: center; gap: 6px; justify-content: center; min-width: 38px; padding: 6px 12px; border-style: dashed; color: var(--chalk); }
