@@ -27,9 +27,17 @@ const setsTxt = n => t(`${n} set${n === 1 ? '' : 's'}`, `${n} 組`);
 
 export async function ranksScreen(user, groupId, measureId = 'days') {
   const groups = await api.myGroups();
-  const g = groups.find(x => x.id === groupId) || groups[0];
-  if (!g) { location.hash = '#/all'; return; }
-  const [rows, exRows] = await Promise.all([api.groupRankings(g.id), api.groupExerciseRanks(g.id)]);
+  if (!groups.length) { location.hash = '#/all'; return; }
+  // 'all': everyone you share any group with, each person once
+  const all = groupId === 'all' && groups.length > 1;
+  const g = all ? { id: 'all', name: t('Everyone in your groups', '你所有 group 嘅人') } : groups.find(x => x.id === groupId) || groups[0];
+  let rows, exRows;
+  if (all) {
+    const got = await Promise.all(groups.map(x => Promise.all([api.groupRankings(x.id), api.groupExerciseRanks(x.id)])));
+    const seen = new Set(), seenEx = new Set();
+    rows = got.flatMap(x => x[0]).filter(r => !seen.has(r.user_id) && seen.add(r.user_id));
+    exRows = got.flatMap(x => x[1]).filter(r => { const k = r.user_id + '|' + r.exercise_id; return !seenEx.has(k) && seenEx.add(k); });
+  } else [rows, exRows] = await Promise.all([api.groupRankings(g.id), api.groupExerciseRanks(g.id)]);
 
   // exercises someone here has a record for, most people first, then by name
   const byEx = {};
@@ -82,7 +90,8 @@ export async function ranksScreen(user, groupId, measureId = 'days') {
   }
 
   const el = render(`
-    <header class="page-head"><div><h2>${t('Rankings', '排名')}</h2><p class="muted">${esc(g.name)}${groups.length > 1 ? ` · <a href="#/all">${t('switch group', '轉 group')}</a>` : ''}</p></div></header>
+    <header class="page-head"><div><h2>${t('Rankings', '排名')}</h2><p class="muted">${esc(g.name)} · ${t(`${rows.length} people`, `${rows.length} 個人`)}</p></div></header>
+    ${groups.length > 1 ? `<nav class="grp-switch" aria-label="${t('Who to rank', '同邊個比')}"><a href="#/r/all/${esc(measureId)}" class="${all ? 'on' : ''}" ${all ? 'aria-current="page"' : ''}>${t('Everyone', '全部人')}</a>${groups.map(x => `<a href="#/r/${x.id}/${esc(measureId)}" class="${!all && x.id === g.id ? 'on' : ''}" ${!all && x.id === g.id ? 'aria-current="page"' : ''}>${esc(x.name)}</a>`).join('')}</nav>` : ''}
     <div class="chips scroll" role="tablist" aria-label="${t('Ranking', '排名項目')}">${gen.map(x => chip(x.id, x.label, !isEx && x.id === m.id)).join('')}</div>
     ${exIds.length ? `<div class="rank-ex"><p class="muted small">${t('Exercises', '動作')}</p>
       <div class="chips scroll" role="tablist" aria-label="${t('Exercises', '動作')}">${exIds.map(id => chip(id, exName(id), id === measureId)).join('')}</div></div>`

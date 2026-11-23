@@ -42,7 +42,7 @@ function drawTabs(page) {
   document.getElementById('tabs').innerHTML =
     tab('group', g ? `#/g/${g}` : '#/all', t('Group', 'Group')) +
     tab('log', '#/log', t('Log', '記錄')) +
-    tab('ranks', g ? `#/r/${g}` : '#/all', t('Ranks', '排名')) +
+    tab('ranks', '#/r/all', t('Ranks', '排名')) +
     tab('me', '#/me', t('Me', '我'));
   chatDot();
 }
