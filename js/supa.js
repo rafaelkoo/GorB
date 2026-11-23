@@ -106,7 +106,7 @@ export const claimQuest = id => sb.rpc('claim_quest', { p_id: id }).then(must);
 export const groupDogs = groupId => sb.rpc('group_dogs', { p_group: groupId }).then(must);
 export const groupBoss = groupId => sb.rpc('group_boss', { p_group: groupId }).then(must);
 // ---------- battles: moves, the Gym Tower, boss raids and friendly matches ----------
-export const allMoves = () => sb.from('moves').select('id, en, zh, type, stat, power, effect, effect_val, req_kind, req_cat, req_val, desc_en, desc_zh, sort').neq('req_kind', 'monster').order('sort').then(must);
+export const allMoves = () => sb.from('moves').select('id, en, zh, type, stat, power, effect, effect_val, req_kind, req_cat, req_val, desc_en, desc_zh, sort, types, stats, uses, req_moves').neq('req_kind', 'monster').order('sort').then(must);
 export const characterMoves = userId => sb.rpc('character_moves', { p_user: userId }).then(must);
 export const setMoves = ids => sb.rpc('set_moves', { p_moves: ids }).then(must);
 export const myTower = () => sb.rpc('my_tower').then(must);

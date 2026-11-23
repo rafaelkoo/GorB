@@ -834,3 +834,8 @@ textarea { resize: vertical; line-height: 1.4; }
 #raidGo, .boss-card > a.button { justify-self: stretch; }
 .mv-slot .mv-type, .mv-slot .muted { justify-self: start; }
 .mv-pick, .bt-mv { justify-content: stretch; align-content: center; }
+.mv-slot.fusion, .mv-pick.fusion, .bt-mv.fusion { background: linear-gradient(135deg, #2b2440, var(--floor) 70%); }
+.mv-slot.fusion b, .mv-pick.fusion b, .bt-mv.fusion b, .mv-locked.fusion b { color: #e3c6ff; }
+.mv-locked.fusion { border-color: #6b4f8f; }
+.mv-type + .mv-type { margin-left: -4px; }
+.mv-slot { align-content: start; }

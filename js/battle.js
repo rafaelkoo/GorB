@@ -16,7 +16,7 @@ export const MOVE_TYPES = {
 };
 const CAT = { chest: ['chest', '胸'], back: ['back', '背'], legs: ['legs', '腳'], shoulders: ['shoulders', '膊頭'], arms: ['arms', '手臂'] };
 const moveName = m => t(m.en, m.zh);
-const usesOf = m => (m.effect === 'heal' ? 2 : /^buff/.test(m.effect || '') ? 3 : null);
+const usesOf = m => (m.uses ?? (/^heal/.test(m.effect || '') ? 2 : /^buff/.test(m.effect || '') ? 3 : null));
 const monsterName = s => {
   const b = BOSSES[(s.monster ?? 0) % BOSSES.length], n = t(b.en, b.zh);
   return s.raid ? t(`Boss: ${n}`, `魔王：${n}`) : s.elite ? t(`Elite ${n}`, `精英${n}`) : n;
@@ -25,9 +25,12 @@ const fighterName = s => (s.monster != null ? monsterName(s) : s.name || '?');
 export const towerReward = n => ({ xp: 20 + 4 * n + (n % 5 === 0 ? 30 : 0), coins: 5 + n + (n % 5 === 0 ? 15 : 0) });
 
 // ---------------- what a move needs (for the locked ones) ----------------
-function needText(m, basis) {
+function needText(m, basis, learned, byId) {
   const b = basis || {};
   switch (m.req_kind) {
+    case 'fusion': { const parts = m.req_moves || [], have = parts.filter(id => learned.has(id));
+      return [parts.map(id => `${learned.has(id) ? '✓' : '✗'} ${moveName(byId[id] || { en: id, zh: id })}`).join(' + '), have.length / Math.max(1, parts.length)]; }
+    case 'climbs': return [t(`Top ${m.req_val} climbs in 60 days (you: ${b.climbs || 0})`, `60 日內爬完 ${m.req_val} 條線（你而家 ${b.climbs || 0} 條）`), (b.climbs || 0) / m.req_val];
     case 'lift': { const [en, zh] = CAT[m.req_cat] || [m.req_cat, m.req_cat]; const now = b.lifts?.[m.req_cat] || 0;
       return [t(`Best ${en} lift ${m.req_val} kg (you: ${now} kg)`, `${zh}最好做到 ${m.req_val} kg（你而家 ${now} kg）`), now / m.req_val]; }
     case 'maxlift': return [t(`Any lift ${m.req_val} kg (you: ${b.max || 0} kg)`, `任何動作做到 ${m.req_val} kg（你而家 ${b.max || 0} kg）`), (b.max || 0) / m.req_val];
@@ -37,11 +40,14 @@ function needText(m, basis) {
     default: return ['', 1];
   }
 }
+const typesOf = m => (m.types?.length ? m.types : [m.type]);
+const moveCol = m => (MOVE_TYPES[typesOf(m)[0]] || MOVE_TYPES.normal).col;
 const moveTag = m => {
-  const ty = MOVE_TYPES[m.type] || MOVE_TYPES.normal;
   const pw = m.power > 0 ? `${t('Power', '威力')} ${m.power}` : '';
-  return `<span class="mv-type" style="--c:${ty.col}">${t(ty.en, ty.zh)}</span>${pw ? `<span class="muted small">${pw}</span>` : ''}`;
+  const n = usesOf(m);
+  return `${typesOf(m).map(x => { const ty = MOVE_TYPES[x] || MOVE_TYPES.normal; return `<span class="mv-type" style="--c:${ty.col}">${t(ty.en, ty.zh)}</span>`; }).join('')}${pw ? `<span class="muted small">${pw}</span>` : ''}${m.uses ? `<span class="muted small">${t(`${n}× per fight`, `每場 ${n} 次`)}</span>` : ''}`;
 };
+const typeLine = m => typesOf(m).map(x => { const ty = MOVE_TYPES[x] || MOVE_TYPES.normal; return t(ty.en, ty.zh); }).join(' + ');
 
 // ---------------- Me page: moves card ----------------
 export function movesCardHtml() {
@@ -57,18 +63,23 @@ export async function mountMoves(el, user) {
   const draw = () => {
     const learned = new Set(mine.learned || []), eq = mine.equipped || [];
     const byId = Object.fromEntries(all.map(m => [m.id, m]));
-    const locked = all.filter(m => !learned.has(m.id)).map(m => ({ m, need: needText(m, mine.basis) })).sort((a, b) => b.need[1] - a.need[1]);
+    const locked = all.filter(m => !learned.has(m.id) && m.req_kind !== 'fusion').map(m => ({ m, need: needText(m, mine.basis, learned, byId) })).sort((a, b) => b.need[1] - a.need[1]);
+    const fusions = all.filter(m => m.req_kind === 'fusion');
     card.querySelector('#mvBody').innerHTML = `
       <p class="muted small">${t('Moves come from your real training (last 60 days). Lift heavier, do more cardio or climb harder to learn new ones. Stop going and you forget them.',
         '招式嚟自你真實嘅訓練（最近 60 日）。舉重啲、多啲 cardio、爬難啲，就學到新招。唔去就會唔記得。')}</p>
       <h4 class="q-h">${t('Equipped (tap another move below to swap it in)', '帶住出戰（撳下面其他招式就會換入去）')}</h4>
       <div class="mv-slots">${[0, 1, 2, 3].map(i => { const m = byId[eq[i]];
-        return m ? `<div class="mv-slot" style="--c:${(MOVE_TYPES[m.type] || MOVE_TYPES.normal).col}"><b>${esc(moveName(m))}</b>${moveTag(m)}</div>` : `<div class="mv-slot empty">—</div>`; }).join('')}</div>
+        return m ? `<div class="mv-slot ${m.req_kind === 'fusion' ? 'fusion' : ''}" style="--c:${moveCol(m)}"><b>${m.req_kind === 'fusion' ? '✦ ' : ''}${esc(moveName(m))}</b><span class="mv-top">${moveTag(m)}</span></div>` : `<div class="mv-slot empty">—</div>`; }).join('')}</div>
       ${mine.grit ? `<p class="small grit">💪 <b>${t('Grit', '毅力')}</b> · ${t('12+ gym days in 60: once per fight you survive a knockout on 1 HP.', '60 日內去咗 12 日以上：每場可以撐住一次唔被打低（剩 1 HP）。')}</p>`
         : `<p class="muted small">💪 ${t(`Grit: go 12 days in 60 (you: ${mine.basis?.days || 0}) to survive one knockout per fight.`, `毅力：60 日內去夠 12 日（你而家 ${mine.basis?.days || 0} 日），每場可以撐住一次唔被打低。`)}</p>`}
       <h4 class="q-h">${t(`Learned (${learned.size})`, `學咗（${learned.size}）`)}</h4>
-      <ul class="mv-list">${all.filter(m => learned.has(m.id)).map(m => `<li><button type="button" class="mv-pick ${eq.includes(m.id) ? 'on' : ''}" data-mv="${m.id}" aria-pressed="${eq.includes(m.id)}">
-        <span class="mv-top"><b>${esc(moveName(m))}</b>${moveTag(m)}</span><span class="muted small">${esc(t(m.desc_en, m.desc_zh))}</span></button></li>`).join('')}</ul>
+      <ul class="mv-list">${all.filter(m => learned.has(m.id)).map(m => `<li><button type="button" class="mv-pick ${eq.includes(m.id) ? 'on' : ''} ${m.req_kind === 'fusion' ? 'fusion' : ''}" data-mv="${m.id}" aria-pressed="${eq.includes(m.id)}">
+        <span class="mv-top"><b>${m.req_kind === 'fusion' ? '✦ ' : ''}${esc(moveName(m))}</b>${moveTag(m)}</span><span class="muted small">${esc(t(m.desc_en, m.desc_zh))}</span></button></li>`).join('')}</ul>
+      ${fusions.some(m => !learned.has(m.id)) ? `<h4 class="q-h">✦ ${t('Fusion moves: learn both parts to unlock', '合體技：學齊材料招式就會解鎖')}</h4>
+      <ul class="mv-list">${fusions.filter(m => !learned.has(m.id)).map(m => { const need = needText(m, mine.basis, learned, byId);
+        return `<li class="mv-locked fusion"><span class="mv-top"><b>🔒 ✦ ${esc(moveName(m))}</b>${moveTag(m)}</span>
+        <span class="small">${esc(need[0])}</span><span class="muted small">${esc(t(m.desc_en, m.desc_zh))}</span></li>`; }).join('')}</ul>` : ''}
       ${locked.length ? `<h4 class="q-h">${t('Still to learn', '未學到')}</h4>
       <ul class="mv-list">${locked.map(({ m, need }) => `<li class="mv-locked"><span class="mv-top"><b>🔒 ${esc(moveName(m))}</b>${moveTag(m)}</span>
         <span class="small">${esc(need[0])}</span><span class="q-bar" aria-hidden="true"><i style="width:${Math.round(Math.min(1, need[1]) * 100)}%"></i></span></li>`).join('')}</ul>` : ''}`;
@@ -229,9 +240,9 @@ export async function battleScreen(user, id) {
     const used = bt.state.used?.[me] || {};
     box.innerHTML = (snap[me].moves || []).map(m => {
       const cap = usesOf(m), left = cap == null ? null : cap - (used[m.id] || 0);
-      const ty = MOVE_TYPES[m.type] || MOVE_TYPES.normal;
-      return `<button type="button" class="bt-mv" data-mv="${m.id}" style="--c:${ty.col}" ${!myTurn || busyAnim || left === 0 ? 'disabled' : ''}>
-        <b>${esc(moveName(m))}</b><span>${t(ty.en, ty.zh)}${m.power > 0 ? ` · ${m.power}` : ''}${left != null ? ` · ${left}/${cap}` : ''}</span></button>`;
+      const fu = (m.types?.length || 0) > 1;
+      return `<button type="button" class="bt-mv ${fu ? 'fusion' : ''}" data-mv="${m.id}" style="--c:${moveCol(m)}" ${!myTurn || busyAnim || left === 0 ? 'disabled' : ''}>
+        <b>${fu ? '✦ ' : ''}${esc(moveName(m))}</b><span>${typeLine(m)}${m.power > 0 ? ` · ${m.power}` : ''}${left != null ? ` · ${left}/${cap}` : ''}</span></button>`;
     }).join('');
     box.querySelectorAll('[data-mv]').forEach(b => b.onclick = async () => {
       box.querySelectorAll('button').forEach(x => x.disabled = true);
