@@ -124,3 +124,4 @@ Phones mute it themselves (Do Not Disturb); the app has no mute.
 - **Rewards ledger** (`rewards`, migration 024): every coin/XP bonus is a row with a unique ref per person, written only by database functions. `character_card` adds it to what training earns.
 - **Check-in chest**: first check-in of the day opens a pixel treasure chest: 5–20 coins, or 15% a big one (40–60 coins + 30 XP); never more than 5 small ones in a row.
 - **Welcome-back bonus**: after 3+ days away, 10–50 XP once (a gym day alone is 20), so it helps people catch up without overtaking regulars.
+- **Summon**: tap a groupmate resting on the bench in the pixel gym → "📣 Summon" sends them a push (notify-reaction, `summon: true`). If they check in within 24 hours you both get 15 coins. One per friend per day; not for someone already in today (migration 025).

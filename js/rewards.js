@@ -12,8 +12,10 @@ export async function openTodayChest() {
   const day = londonDay(), seenKey = `gob_chest_${day}`;
   try { if (localStorage.getItem(seenKey)) return; } catch { /* fine */ }
   let rows = [];
-  try { rows = await api.todayRewards(day); } catch { return; }
+  const since = new Date(Date.now() - 20 * 3600e3).toISOString();      // generous; refs pick out today's
+  try { rows = (await api.todayRewards(since)).filter(r => r.kind === 'summon' ? r.ref.startsWith('summon-in:') : r.ref.endsWith(day)); } catch { return; }
   const chest = rows.find(r => r.kind === 'chest');
+  const called = rows.filter(r => r.kind === 'summon');
   if (!chest) return;
   try { localStorage.setItem(seenKey, '1'); } catch { /* fine */ }
   const back = rows.find(r => r.kind === 'comeback');
@@ -40,6 +42,7 @@ export async function openTodayChest() {
         const lines = [`<b class="chest-coins">+${chest.coins} 💧</b>`];
         if (chest.meta?.big) lines.unshift(`<span class="chest-big">${t('BIG CHEST!', '大獎！')}</span>`);
         if (chest.xp) lines.push(t(`+${chest.xp} XP`, `+${chest.xp} 經驗`));
+        if (called.length) lines.push(t(`Answered a summon: +${called.reduce((a, r) => a + r.coins, 0)} 💧 (they got some too)`, `應咗召喚：+${called.reduce((a, r) => a + r.coins, 0)} 💧（召喚你嘅人都有）`));
         if (back) lines.push(t(`Welcome-back bonus: +${back.xp} XP (${back.meta?.days_away} days away)`, `歡迎返嚟獎勵：+${back.xp} 經驗（停咗 ${back.meta?.days_away} 日）`));
         msg.innerHTML = lines.join('<br>');
         btn.disabled = false; btn.textContent = t('Nice', '正'); btn.focus();

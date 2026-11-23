@@ -51,10 +51,11 @@ export function gymCardHtml() {
   return `<section class="card gym-card" id="gymCard">
     <div class="card-head"><h3>${t('In the gym today', '今日喺 gym')}</h3><a class="link" href="#/me">${t('My character', '我嘅角色')} ›</a></div>
     <div class="gym-wrap"><canvas id="gymCanvas" role="img" aria-label="${t('Loading the gym…', '載入緊 gym…')}"></canvas></div>
-    <p class="muted small gym-cap" id="gymCap" aria-live="polite">${t('Tap someone to see what they did.', '撳一個人睇佢做咗乜。')}</p></section>`;
+    <p class="muted small gym-cap" id="gymCap" aria-live="polite">${t('Tap someone to see what they did.', '撳一個人睇佢做咗乜。')}</p>
+    <button type="button" class="ghost summon-btn" id="summonBtn" hidden></button></section>`;
 }
 
-export function mountGym(el, rows, user) {
+export function mountGym(el, rows, user, groupId) {
   stopGym();
   const card = el.querySelector('#gymCard'); if (!card) return;
   if (!rows) { card.hidden = true; return; }
@@ -93,6 +94,21 @@ export function mountGym(el, rows, user) {
     const x = (e.clientX - r.left) * k, y = (e.clientY - r.top) * k;
     const hit = boxes.filter(b => x >= b.x0 && x <= b.x1 && y >= b.y0 && y <= b.y1).pop();
     cap.textContent = hit ? caption(hit.p) : t('Tap someone to see what they did.', '撳一個人睇佢做咗乜。');
+    // someone resting who isn't you: offer to summon them
+    const sb = card.querySelector('#summonBtn');
+    if (hit && !hit.p.inGym && !hit.p.me) {
+      const p = hit.p; sb.hidden = false; sb.disabled = false;
+      sb.textContent = t(`📣 Summon ${p.name} to the gym`, `📣 召喚 ${p.name} 去 gym`);
+      sb.onclick = async () => {
+        sb.disabled = true;
+        try {
+          const r = await api.summon(p.id, groupId);
+          sb.textContent = r === 'sent' ? t(`📣 Summoned! If ${p.name} comes within 24 h, you both get 15 💧`, `📣 召喚咗！${p.name} 24 個鐘內嚟，你哋兩個都有 15 💧`)
+            : r === 'already_sent' ? t(`You already summoned ${p.name} today`, `你今日已經召喚過 ${p.name}`)
+            : r === 'already_in' ? t(`${p.name} is already here today`, `${p.name} 今日已經嚟咗`) : t('Couldn’t summon', '召喚唔到');
+        } catch (err) { sb.disabled = false; showError(err); }
+      };
+    } else sb.hidden = true;
     if (hit) {
       const p = hit.p, show = c => { if (c && cap.dataset.who === p.id) cap.textContent = `${caption(p)} · Lv ${c.level} ${typeLabel(c.type)}`; };
       cap.dataset.who = p.id;

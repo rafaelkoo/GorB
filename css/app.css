@@ -725,3 +725,5 @@ textarea { resize: vertical; line-height: 1.4; }
 .chest-msg { min-height: 3.2em; margin: 6px 0 14px; line-height: 1.5; }
 .chest-coins { font: 800 1.8rem/1.1 var(--display); color: #f2c430; }
 .chest-big { display: inline-block; font: 800 1.1rem/1 var(--display); color: #231a17; background: #f2c430; padding: 4px 10px; border-radius: 6px; margin-bottom: 4px; }
+.summon-btn { width: 100%; margin-top: 8px; min-height: 44px; font-weight: 700; }
+.summon-btn:disabled { opacity: 1; color: var(--green); }

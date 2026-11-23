@@ -271,7 +271,7 @@ export async function group(user, groupId, limit = FEED_PAGE) {
         <button id="leave" class="ghost">${t('Leave group', '退出 group')}</button></div>
     </section>`);
 
-  mountGym(el, gymRows, user);
+  mountGym(el, gymRows, user, groupId);
   // right after a check-in, offer notifications once
   if (pushSupported() && asked) {
     pushState().then(st => {

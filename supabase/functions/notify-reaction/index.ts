@@ -16,12 +16,13 @@ webpush.setVapidDetails('https://rafaelkoo.github.io/GorB/', Deno.env.get('VAPID
 const json = (o: unknown, status = 200) => new Response(JSON.stringify(o), { status, headers: { 'content-type': 'application/json' } });
 
 Deno.serve(async req => {
-  let id = '', chat = false;
-  try { const b = await req.json(); id = String(b?.id ?? ''); chat = b?.chat === true; } catch { /* no body */ }
+  let id = '', chat = false, summon = false;
+  try { const b = await req.json(); id = String(b?.id ?? ''); chat = b?.chat === true; summon = b?.summon === true; } catch { /* no body */ }
   if (!/^[0-9a-f-]{36}$/i.test(id)) return json({ skipped: 'no reaction id' }, 400);
 
   const tenMin = new Date(Date.now() - 10 * 60 * 1000).toISOString();
   if (chat) return chatReaction(id, tenMin);
+  if (summon) return summonPush(id, tenMin);
   const { data: rx } = await db.from('checkin_reactions').update({ notified_at: new Date().toISOString() })
     .eq('id', id).is('notified_at', null).gte('created_at', tenMin)
     .select('checkin_id, user_id, emoji').maybeSingle();
@@ -88,6 +89,38 @@ async function chatReaction(id: string, since: string) {
   const gone: string[] = [];
   await Promise.all(subs.map(async s => {
     try { await webpush.sendNotification({ endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } }, payload, { TTL: 86400, urgency: 'normal' }); sent++; }
+    catch (e) {
+      const code = (e as { statusCode?: number }).statusCode;
+      if (code === 404 || code === 410) gone.push(s.endpoint);
+      else console.error('push failed', code, (e as { body?: string }).body);
+    }
+  }));
+  if (gone.length) await db.from('push_subscriptions').delete().in('endpoint', gone);
+  return json({ sent, removed: gone.length });
+}
+
+// a summon from the pixel gym: "Rafael is calling you to the gym!"
+async function summonPush(id: string, since: string) {
+  const { data: sm } = await db.from('summons').update({ notified_at: new Date().toISOString() })
+    .eq('id', id).is('notified_at', null).gte('created_at', since)
+    .select('from_user, to_user, group_id').maybeSingle();
+  if (!sm) return json({ skipped: 'already sent, too old or not found' });
+  const [{ data: who }, { data: to }, { data: subs }] = await Promise.all([
+    db.from('profiles').select('display_name').eq('id', sm.from_user).single(),
+    db.from('profiles').select('lang').eq('id', sm.to_user).single(),
+    db.from('push_subscriptions').select('endpoint, p256dh, auth').eq('user_id', sm.to_user)
+  ]);
+  if (!subs?.length) return json({ sent: 0 });
+  const name = who?.display_name || 'Someone', zh = to?.lang === 'zh';
+  const payload = JSON.stringify({
+    title: zh ? `📣 ${name} 召喚你去 gym！` : `📣 ${name} is calling you to the gym!`,
+    body: zh ? '24 個鐘內打卡，你哋兩個都有 15 💧 汗水幣' : 'Check in within 24 hours and you both get 15 💧 sweat coins',
+    url: `./#/g/${sm.group_id}`, tag: `summon-${sm.to_user}`
+  });
+  let sent = 0;
+  const gone: string[] = [];
+  await Promise.all(subs.map(async s => {
+    try { await webpush.sendNotification({ endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } }, payload, { TTL: 86400, urgency: 'high' }); sent++; }
     catch (e) {
       const code = (e as { statusCode?: number }).statusCode;
       if (code === 404 || code === 410) gone.push(s.endpoint);
