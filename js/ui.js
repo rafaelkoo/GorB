@@ -21,9 +21,12 @@ export function showError(err) {
   box.className = 'error'; box.hidden = false; box.setAttribute('role', 'alert');
   box.textContent = err?.message || String(err);
 }
+// a short message floating above the tabs, wherever you've scrolled to
 export function toast(text) {
-  const box = document.createElement('p'); box.className = 'ok'; box.textContent = text;
-  $app().insertAdjacentElement('afterbegin', box);
+  document.querySelector('.toast')?.remove();
+  const box = document.createElement('p'); box.className = 'toast'; box.setAttribute('role', 'status'); box.textContent = text;
+  document.body.appendChild(box);
+  setTimeout(() => box.classList.add('out'), 3600); setTimeout(() => box.remove(), 4000);
   setTimeout(() => box.remove(), 6000);
 }
 export function wireLangSwitch(el, onChange) {

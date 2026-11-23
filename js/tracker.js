@@ -1,5 +1,6 @@
 // Gym tracker screens: log today's workout, and a person's progress.
 import * as api from './supa.js';
+import { toast } from './ui.js';
 import { EXERCISES, EX, CATS, BIG_FOUR, isTimed, isClimb, GRADES, vGrade, searchText } from './exercises.js';
 import { t, getLang, fmtDay, fmtLongToday } from './i18n.js';
 import { cleanPlan, dayName, suggestDay, findItem } from './plan.js';
@@ -123,7 +124,7 @@ export async function logScreen(user) {
       api.setGymLive(user.id, today, sets, lastTicked).catch(() => { liveSent = ''; });
     }, 1200);
   };
-  const keep = () => { saveDraft(user.id, draft); sendLive(); };
+  const keep = () => { saveDraft(user.id, draft); sendLive(); autosave(); };
   // FitTrack's fold logic: a finished exercise (every set ticked, or saved earlier today) folds to one
   // line; the first unfinished one is open; the rest wait folded. Tapping a card's arrow overrides that
   // (it.fold: true = you folded it, false = you opened it). Climbing never counts as finished on its own,
@@ -165,7 +166,7 @@ export async function logScreen(user) {
       </section>` : ''}
       <section class="card habits"><div class="card-head"><h3>${t('Today’s habits', '今日習慣')}</h3><span class="muted small">${habitsDone.size}/${habits.length} · +5 ${t('each', '分一個')}</span></div>
         <div class="habit-grid">${habits.map(h => `<button class="habit ${habitsDone.has(h.id) ? 'on' : ''}" data-habit="${h.id}" aria-pressed="${habitsDone.has(h.id)}"><span class="hcheck">✓</span>${esc(h.label)}</button>`).join('')}</div></section>
-      ${draft.items.length ? `<p class="muted small">${t(`${draft.items.length} exercise${draft.items.length === 1 ? '' : 's'} · ${nSets} set${nSets === 1 ? '' : 's'} · kept on this phone until you save`, `${draft.items.length} 個動作 · ${nSets} 組 · 未儲存之前會暫存喺呢部手機`)}</p>` : ''}
+      ${draft.items.length ? `<p class="muted small save-line">${t(`${draft.items.length} exercise${draft.items.length === 1 ? '' : 's'} · ${nSets} set${nSets === 1 ? '' : 's'}`, `${draft.items.length} 個動作 · ${nSets} 組`)} · <span id="saveState" aria-live="polite">${saveStateText()}</span></p>` : ''}
       ${draft.items.map((it, i) => {
         const last = past(it.id).at(-1);
         const head = it.extra && !draft.items[i - 1]?.extra ? `<p class="ex-extra-head">${t('Already done today (not in this day)', '今日已做（唔屬於呢日）')}</p>` : '';
@@ -202,7 +203,7 @@ export async function logScreen(user) {
       }).join('')}
       ${draft.items.length ? '' : `<section class="card empty"><p>${t('Nothing logged today yet.', '今日仲未記錄。')}</p><p class="muted">${t('Add your first exercise. Last time’s numbers fill in for you.', '加第一個動作，上次嘅數字會自動填好。')}</p></section>`}
       <button id="addex" class="big ghost">+ ${t('Add exercise', '加動作')}</button>
-      ${draft.items.length ? `<button id="save" class="big">${t('Save workout', '儲存訓練')}</button>` : ''}
+
       ${cardioHtml(cst)}`;
     wireCardio($app(), cst, user, draw);
     $app().querySelectorAll('[data-pick]').forEach(b => b.onclick = () => {
@@ -221,7 +222,7 @@ export async function logScreen(user) {
 
     $app().querySelectorAll('.ex').forEach(card => {
       const it = draft.items[+card.dataset.i];
-      card.querySelectorAll('select[data-f]').forEach(sel => sel.onchange = () => { it.sets[+sel.closest('.set').dataset.j].kg = +sel.value; keep(); });
+      card.querySelectorAll('select[data-f]').forEach(sel => sel.onchange = () => { const s = it.sets[+sel.closest('.set').dataset.j]; s.kg = +sel.value; s.touched = true; keep(); });
       card.querySelectorAll('input').forEach(inp => inp.oninput = () => {
         const s = it.sets[+inp.closest('.set').dataset.j];
         s[inp.dataset.f] = inp.value === '' ? null : Number(inp.value.replace(',', '.'));
@@ -272,33 +273,60 @@ export async function logScreen(user) {
       else draft.items.push({ id, sets: last ? last.sets.map(s => ({ kg: s.kg, reps: s.reps })) : [{ kg: null, reps: null }] });
       keep(); draw();
     });
-    $app().querySelector('#save')?.addEventListener('click', save);
   }
 
-  async function save(e) {
-    const btn = e.currentTarget, rows = [];
+  // ---- saving: automatic. A few seconds after you tick (or change) sets, today's ticked sets are
+  // written to the database (replacing today's record, so saving again is harmless). Unticked rows
+  // stay on this phone only; climbing rows count once ticked or once you've picked their grade.
+  function rowsToSave() {
+    const rows = [];
     for (const it of draft.items) {
       let n = 0;
       for (const s of it.sets) {
-        if (isClimb(it.id) ? s.kg == null : !(s.reps >= 1) && !(s.kg > 0)) continue;   // skip empty rows
-        if (!(s.kg >= 0) || !(Number.isInteger(s.reps) && s.reps >= 0)) return showError({ message: t(`Check the numbers for ${exName(it.id)}.`, `檢查吓「${exName(it.id)}」嘅數字。`) });
-        rows.push({ exercise_id: it.id, set_no: ++n, weight_kg: s.kg, reps: s.reps });
+        const counts = it.fromSave ? true : isClimb(it.id) ? (s.done || s.touched) : s.done;
+        if (!counts) continue;
+        if (isClimb(it.id) ? s.kg == null : !(s.reps >= 1) && !(s.kg > 0)) continue;
+        if (!(+s.kg >= 0) || !(Number.isInteger(+s.reps) && +s.reps >= 0)) return { bad: it.id };
+        rows.push({ exercise_id: it.id, set_no: ++n, weight_kg: +s.kg || 0, reps: +s.reps });
       }
     }
-    btnLoading(btn);
+    return { rows };
+  }
+  let saveTimer = 0, saving = false, again = false, lastSaved = draft.savedKey || null;
+  const announced = new Set(draft.announced || []);
+  function saveStateText() {
+    if (saveState === 'saving') return t('Saving…', '儲存緊…');
+    if (saveState === 'offline') return t('Not saved yet, no signal. Retrying…', '未儲存，冇網，會再試…');
+    if (saveState === 'bad') return t('Check the numbers to save', '檢查吓啲數字先儲存到');
+    return lastSaved ? t('✓ Ticked sets saved', '✓ 已剔嘅組已自動儲存') : t('Ticked sets save by themselves', '剔咗嘅組會自動儲存');
+  }
+  let saveState = 'idle';
+  const showState = s => { saveState = s; const el = $app().querySelector('#saveState'); if (el) el.textContent = saveStateText(); };
+  function autosave(delay = 2500) { clearTimeout(saveTimer); saveTimer = setTimeout(doSave, delay); }
+  async function doSave() {
+    if (saving) { again = true; return; }
+    const { rows, bad } = rowsToSave();
+    if (bad) { showState('bad'); return; }
+    const key = JSON.stringify(rows);
+    if (key === lastSaved) return showState('idle');
+    if (!rows.length && !lastSaved) return;              // nothing ticked yet: don't make an empty workout
+    saving = true; showState('saving');
     try {
       await api.saveWorkout(user.id, rows);
-      dropDraft(user.id);
-      await btnDone(btn, t('Saved', '已儲存'));
+      lastSaved = key; draft.savedKey = key;
+      // new bests, once each
       const prs = [...new Set(rows.map(r => r.exercise_id))]
         .map(id => ({ id, now: Math.max(...rows.filter(r => r.exercise_id === id && r.reps >= 1).map(r => r.weight_kg), 0), before: prOf(past(id)).kg }))
-        .filter(p => p.before > 0 && p.now > p.before);
-      location.hash = '#/p/me';
-      setTimeout(() => note(prs.length
-        ? t(`Saved. New PR: ${prs.map(p => `${exName(p.id)} ${amt(p.id, p.now)}`).join(', ')} 🏆`, `已儲存。破咗 PR：${prs.map(p => `${exName(p.id)} ${amt(p.id, p.now)}`).join('、')} 🏆`)
-        : t('Workout saved.', '訓練已儲存。')), 300);
-    } catch (err) { showError(err); btnReset(btn); }
+        .filter(p => p.before > 0 && p.now > p.before && !announced.has(`${p.id}:${p.now}`));
+      prs.forEach(p => announced.add(`${p.id}:${p.now}`)); draft.announced = [...announced];
+      saveDraft(user.id, draft);
+      if (prs.length) toast(t(`New PR: ${prs.map(p => `${exName(p.id)} ${amt(p.id, p.now)}`).join(', ')} 🏆`, `破咗 PR：${prs.map(p => `${exName(p.id)} ${amt(p.id, p.now)}`).join('、')} 🏆`));
+      showState('idle');
+    } catch { showState('offline'); clearTimeout(saveTimer); saveTimer = setTimeout(doSave, 20000); }
+    saving = false;
+    if (again) { again = false; doSave(); }
   }
+  addEventListener('online', () => { if (saveState === 'offline') doSave(); }, { once: true });
 
   draw();
 }
