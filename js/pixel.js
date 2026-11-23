@@ -8,26 +8,41 @@
 import { EX, isClimb } from './exercises.js';
 
 // ---------- parts ----------
-export const SKINS = ['#f7d9bf', '#eebc94', '#d99d6c', '#b5794b', '#8c5634', '#5f3a22'];
-export const HAIR_COLORS = ['#2a1f18', '#5b3a22', '#9b6a3a', '#dcb56c', '#ece3d3', '#b7392a', '#3d63b8', '#c95aa0'];
-export const TOPS = ['#e23b3b', '#f19a33', '#f2d245', '#45b45a', '#2e9fd6', '#3c5bd9', '#8c5bd6', '#e66fab', '#eeeeee', '#2b2b30'];
-export const SHORTS = ['#2b2b30', '#35466a', '#6a6a72', '#3c5bd9', '#46663a', '#7c2c2c', '#d6d6d6', '#8a6948'];
-export const HAIRS = ['short', 'spiky', 'long', 'bun', 'buzz', 'curly', 'mohawk', 'bald'];
+// Colour lists only ever grow at the end, so a saved index always means the same colour.
+export const SKINS = ['#f7d9bf', '#eebc94', '#d99d6c', '#b5794b', '#8c5634', '#5f3a22',
+  '#fde6d6', '#e3b483', '#c98a5a', '#6e4429', '#462a1a',                  // more natural tones
+  '#8fcf7a', '#86b3ea', '#b8bccb', '#c79be8', '#f2a3c0'];                 // fun: green, blue, robot grey, purple, pink
+export const SKIN_ORDER = [6, 0, 1, 7, 2, 8, 3, 4, 9, 5, 10, 11, 12, 13, 14, 15];   // light to deep, then fun
+export const HAIR_COLORS = ['#2a1f18', '#5b3a22', '#9b6a3a', '#dcb56c', '#ece3d3', '#b7392a', '#3d63b8', '#c95aa0',
+  '#8a8a8f', '#f0812a', '#3fbf9f', '#8a4fd8', '#f7f7f7', '#e04a6e'];
+export const TOPS = ['#e23b3b', '#f19a33', '#f2d245', '#45b45a', '#2e9fd6', '#3c5bd9', '#8c5bd6', '#e66fab', '#eeeeee', '#2b2b30',
+  '#7a2c3a', '#2e6b5a', '#f2b8c6', '#c3dc5e', '#6f7f3e', '#14b8b0'];
+export const SHORTS = ['#2b2b30', '#35466a', '#6a6a72', '#3c5bd9', '#46663a', '#7c2c2c', '#d6d6d6', '#8a6948',
+  '#e23b3b', '#8c5bd6', '#14b8b0', '#f19a33'];
+export const SHOES = ['#3a2e2a', '#f2f2f2', '#e23b3b', '#3c5bd9', '#9be33b', '#e66fab', '#f2d245', '#2b2b30'];
+export const GEAR = ['#e23b3b', '#f2f2f2', '#2b2b30', '#3c5bd9', '#f2d245', '#45b45a', '#e66fab', '#f19a33'];
+export const HAIRS = ['short', 'spiky', 'long', 'bun', 'buzz', 'curly', 'mohawk', 'bald', 'afro', 'ponytail', 'sidepart', 'braids', 'undercut', 'pigtails'];
 export const BUILDS = ['slim', 'normal', 'big'];
-export const AVATAR_PARTS = { skin: SKINS.length, hair: HAIRS.length, hairColor: HAIR_COLORS.length, top: TOPS.length, shorts: SHORTS.length, build: BUILDS.length };
+export const TOP_STYLES = ['tee', 'tank', 'stringer', 'longsleeve', 'hoodie', 'jersey', 'shirtless'];
+export const BOTTOMS = ['shorts', 'joggers', 'leggings'];
+export const HATS = ['none', 'headband', 'cap', 'capback', 'beanie', 'bandana'];
+export const FACES = ['none', 'stubble', 'beard', 'moustache', 'glasses', 'shades'];
 
 // everyone gets a look from their id until they make their own
 function hash(s) { let h = 2166136261; for (const c of String(s)) { h ^= c.charCodeAt(0); h = Math.imul(h, 16777619); } return h >>> 0; }
 export function defaultAvatar(id) {
   const h = hash(id);
-  return { v: 1, skin: h % 6, hair: HAIRS[(h >>> 3) % 7], hairColor: (h >>> 6) % 5, top: (h >>> 9) % 10, shorts: (h >>> 13) % 8, build: 'normal' };
+  return { v: 1, skin: h % 6, hair: HAIRS[(h >>> 3) % 7], hairColor: (h >>> 6) % 5, top: (h >>> 9) % 10, shorts: (h >>> 13) % 8, build: 'normal',
+    topStyle: 'tee', bottom: 'shorts', shoes: 0, hat: 'none', hatColor: 0, face: 'none' };
 }
 export function cleanAvatar(a, id) {
   const d = defaultAvatar(id), o = a && typeof a === 'object' ? a : {};
   const pick = (k, n) => (Number.isInteger(o[k]) && o[k] >= 0 && o[k] < n ? o[k] : d[k]);
+  const one = (k, list) => (list.includes(o[k]) ? o[k] : d[k]);
   return {
     v: 1, skin: pick('skin', SKINS.length), hairColor: pick('hairColor', HAIR_COLORS.length), top: pick('top', TOPS.length), shorts: pick('shorts', SHORTS.length),
-    hair: HAIRS.includes(o.hair) ? o.hair : d.hair, build: BUILDS.includes(o.build) ? o.build : d.build
+    shoes: pick('shoes', SHOES.length), hatColor: pick('hatColor', GEAR.length),
+    hair: one('hair', HAIRS), build: one('build', BUILDS), topStyle: one('topStyle', TOP_STYLES), bottom: one('bottom', BOTTOMS), hat: one('hat', HATS), face: one('face', FACES)
   };
 }
 
@@ -38,7 +53,6 @@ function shade(hex, f) {
   return `#${((m(r) << 16) | (m(g) << 8) | m(b)).toString(16).padStart(6, '0')}`;
 }
 const OUT = '#231a17';      // outline
-const SHOE = '#3a2e2a';
 const IRON = '#5d6470', IRON_D = '#3c414a', IRON_L = '#9aa3ad';
 
 // ---------- the character ----------
@@ -49,6 +63,11 @@ export function drawChar(c, x, y, av, pose = 'stand', frame = 0) {
   const skin = SKINS[av.skin], skinD = shade(skin, -0.18), top = TOPS[av.top], topD = shade(top, -0.25), sh = SHORTS[av.shorts], shD = shade(sh, -0.25);
   const hair = HAIR_COLORS[av.hairColor], hairD = shade(hair, -0.3), hairL = shade(hair, 0.25);
   const tw = av.build === 'slim' ? 6 : av.build === 'big' ? 10 : 8, hw = tw / 2;
+  const SHOE = SHOES[av.shoes ?? 0], ts = av.topStyle || 'tee', bt = av.bottom || 'shorts';
+  const gear = GEAR[av.hatColor ?? 0], gearD = shade(gear, -0.3);
+  const legCol = bt === 'shorts' ? skin : sh, legColD = bt === 'shorts' ? skinD : shD;   // trousers cover the legs
+  const bare = ts === 'tank' || ts === 'stringer' || ts === 'shirtless';                   // no sleeves
+  const longArm = ts === 'longsleeve' || ts === 'hoodie';
   const seated = ['sit', 'cycle', 'row', 'press'].includes(pose);
   const low = pose === 'squat' && frame === 1 ? 3 : 0;          // squatting down
   const by = (seated ? 5 : 0) + low;                             // body drop
@@ -64,12 +83,12 @@ export function drawChar(c, x, y, av, pose = 'stand', frame = 0) {
     if (seated) {
       // thighs come toward us: short legs, feet down in front
       const kick = (pose === 'cycle') ? (frame ? 1 : -1) : 0;
-      r(-hw + 1, ly - 1, 3, 3, skin); r(hw - 4, ly - 1, 3, 3, skin);
+      r(-hw + 1, ly - 1, 3, 3, legCol); r(hw - 4, ly - 1, 3, 3, legCol);
       r(-hw + 1, ly + 2 + kick, 3, 2, SHOE); r(hw - 4, ly + 2 - kick, 3, 2, SHOE);
       return;
     }
     if (pose === 'squat' && frame === 1) {    // knees out
-      r(-hw - 1, ly, 3, 2, skin); r(hw - 2, ly, 3, 2, skin);
+      r(-hw - 1, ly, 3, 2, legCol); r(hw - 2, ly, 3, 2, legCol);
       r(-hw - 1, ly + 2, 3, 1, SHOE); r(hw - 2, ly + 2, 3, 1, SHOE);
       return;
     }
@@ -78,16 +97,27 @@ export function drawChar(c, x, y, av, pose = 'stand', frame = 0) {
     if (pose === 'run') { lA = frame ? -2 : 0; lB = frame ? 0 : -2; }
     if (pose === 'climb') { lA = frame ? -2 : 0; lB = frame ? 0 : -2; }
     const lx = -Math.max(2, hw - 1), rx = Math.max(0, hw - 3) + (hw > 3 ? 0 : 0), lg = 4;
-    r(lx, ly, 2, lg + lA, skin); r(lx, ly, 1, lg + lA, skinD);
-    r(rx + (rx - lx < 3 ? 1 : 0), ly, 2, lg + lB, skin);
+    r(lx, ly, 2, lg + lA, legCol); r(lx, ly, 1, lg + lA, legColD);
+    r(rx + (rx - lx < 3 ? 1 : 0), ly, 2, lg + lB, legCol);
+    if (bt === 'joggers') { r(lx, ly + lg + lA - 1, 2, 1, legColD); r(rx + (rx - lx < 3 ? 1 : 0), ly + lg + lB - 1, 2, 1, legColD); }      // cuffs
+    if (bt === 'leggings') { r(lx, ly, 1, lg + lA, shade(sh, 0.3)); r(rx + (rx - lx < 3 ? 1 : 0) + 1, ly, 1, lg + lB, shade(sh, 0.3)); }   // side stripe
     r(lx - 1 + (pose === 'climb' ? 0 : 0), ly + lg + lA, 3, 2, SHOE); r(rx + (rx - lx < 3 ? 1 : 0), ly + lg + lB, 3, 2, SHOE);
   };
 
   // ---- body ----
   const body = () => {
     r(-1, H + 7, 2, 1, skinD);                                   // neck
-    r(-hw, H + 8, tw, 7, top); r(-hw, H + 8, 1, 7, topD); r(hw - 1, H + 8, 1, 7, topD);   // shirt
-    r(-hw + 2, H + 8, tw - 4, 1, shade(top, 0.15));              // collar light
+    if (ts === 'shirtless') {
+      r(-hw, H + 8, tw, 7, skin); r(-hw, H + 8, 1, 7, skinD); r(hw - 1, H + 8, 1, 7, skinD);
+      r(-hw + 1, H + 10, tw - 2, 1, skinD); r(0, H + 11, 1, 3, skinD); r(-hw + 2, H + 12, tw - 4, 1, shade(skin, -0.1));   // chest and abs
+    } else {
+      r(-hw, H + 8, tw, 7, top); r(-hw, H + 8, 1, 7, topD); r(hw - 1, H + 8, 1, 7, topD);   // shirt
+      r(-hw + 2, H + 8, tw - 4, 1, shade(top, 0.15));            // collar light
+      if (ts === 'tank') { r(-hw, H + 8, 1, 2, skin); r(hw - 1, H + 8, 1, 2, skin); r(-1, H + 8, 2, 1, skin); }
+      if (ts === 'stringer') { r(-hw, H + 8, 2, 4, skin); r(hw - 2, H + 8, 2, 4, skin); r(-1, H + 8, 2, 2, skin); }
+      if (ts === 'hoodie') { r(-3, H + 7, 6, 1, topD); r(-1, H + 9, 1, 2, '#f2f2f2'); r(1, H + 9, 1, 2, '#f2f2f2'); r(-hw + 2, H + 12, tw - 4, 2, topD); }
+      if (ts === 'jersey') { r(-hw, H + 8, tw, 1, '#f2f2f2'); r(-1, H + 10, 2, 3, '#f2f2f2'); r(-hw, H + 14, tw, 1, shade(top, -0.4)); }
+    }
     r(-hw, H + 15, tw, 3, sh); r(-hw, H + 17, tw, 1, shD); r(-1, H + 16, 2, 2, shD);      // shorts
   };
 
@@ -95,11 +125,11 @@ export function drawChar(c, x, y, av, pose = 'stand', frame = 0) {
   const arm = (side, hx, hy) => {
     // side -1 left / 1 right; (hx, hy) = hand position relative to (x, H)
     const sx = side < 0 ? -hw - 2 : hw;                          // shoulder column
-    r(sx, H + 8, 2, 2, top);                                    // sleeve
+    r(sx, H + 8, 2, 2, bare ? skin : top);                      // sleeve (or shoulder)
     // a straight-ish line of skin from shoulder to hand, 2px wide
     const x0 = sx, y0 = H + 10, x1 = hx, y1 = H + hy;
     const n = Math.max(Math.abs(x1 - x0), Math.abs(y1 - y0), 1);
-    for (let i = 0; i <= n; i++) r(x0 + (x1 - x0) * i / n, y0 + (y1 - y0) * i / n, 2, 1, i < n * 0.4 ? skin : skinD === skin ? skin : skin);
+    for (let i = 0; i <= n; i++) r(x0 + (x1 - x0) * i / n, y0 + (y1 - y0) * i / n, 2, 1, longArm && i < n ? top : skin);
     r(hx, H + hy, 2, 2, skinD);                                 // hand
   };
   const L = -hw - 2, R = hw;
@@ -136,38 +166,70 @@ export function drawChar(c, x, y, av, pose = 'stand', frame = 0) {
     }
   };
 
-  // ---- head ----
+  // ---- head: face, hair, then face extras and hats on top ----
+  const hs = av.hair, hat = av.hat || 'none', face = av.face || 'none';
+  const hatOn = hat === 'cap' || hat === 'capback' || hat === 'beanie' || hat === 'bandana';
+  const drawHat = hx => {
+    if (hat === 'headband') { r(hx - 1, H + 1, 10, 1, gear); r(hx + 8, H + 2, 1, 2, gearD); }
+    if (hat === 'cap') { r(hx - 1, H - 2, 10, 4, gear); r(hx + 1, H - 2, 4, 1, shade(gear, 0.25)); r(hx - 2, H + 2, 12, 1, gearD); r(hx + 3, H - 1, 2, 1, gearD); }
+    if (hat === 'capback') { r(hx - 1, H - 2, 10, 4, gear); r(hx + 1, H - 2, 4, 1, shade(gear, 0.25)); r(hx + 2, H + 1, 4, 1, gearD); r(hx + 3, H, 2, 1, skin); }
+    if (hat === 'beanie') { r(hx - 1, H - 3, 10, 5, gear); r(hx - 1, H + 1, 10, 1, gearD); r(hx + 3, H - 4, 2, 1, '#f2f2f2'); for (let i = 0; i < 10; i += 2) r(hx - 1 + i, H - 1, 1, 2, shade(gear, -0.12)); }
+    if (hat === 'bandana') { r(hx - 1, H - 2, 10, 4, gear); r(hx + 1, H - 1, 1, 1, '#f2f2f2'); r(hx + 5, H, 1, 1, '#f2f2f2'); r(hx + 8, H + 1, 2, 3, gearD); }
+  };
   const head = () => {
     const hx = -4;
     if (pose === 'climb') {   // seen from behind, facing the wall: all hair
-      r(hx, H, 8, 7, av.hair === 'bald' || av.hair === 'buzz' ? (av.hair === 'bald' ? skin : hair) : hair);
-      r(hx - 1, H + 3, 1, 2, skinD); r(hx + 8, H + 3, 1, 2, skinD); r(hx + 1, H + 6, 6, 1, skinD);
-      if (av.hair === 'long') { r(hx - 1, H + 2, 10, 8, hair); r(hx, H + 9, 8, 1, hairD); }
-      if (av.hair === 'bun') r(hx + 2, H - 3, 4, 3, hair);
-      if (av.hair === 'spiky') { r(hx + 2, H - 2, 2, 2, hair); r(hx + 5, H - 1, 2, 1, hair); }
-      if (av.hair === 'mohawk') { r(hx, H, 8, 7, skin); r(hx + 3, H - 3, 2, 9, hair); }
-      r(hx + 1, H, 4, 1, hairL);
+      const capOnly = hs === 'bald' || hs === 'buzz' || hs === 'mohawk' || hs === 'undercut';
+      r(hx, H, 8, 7, hs === 'bald' ? skin : hs === 'mohawk' ? skin : hair);
+      r(hx - 1, H + 3, 1, 2, skinD); r(hx + 8, H + 3, 1, 2, skinD); r(hx + 1, H + 6, 6, 1, capOnly ? skinD : hairD);
+      if (hs === 'long' || hs === 'braids') { r(hx - 1, H + 2, 10, 8, hair); r(hx, H + 9, 8, 1, hairD); }
+      if (hs === 'bun') r(hx + 2, H - 3, 4, 3, hair);
+      if (hs === 'spiky') { r(hx + 2, H - 2, 2, 2, hair); r(hx + 5, H - 1, 2, 1, hair); }
+      if (hs === 'mohawk') r(hx + 3, H - 3, 2, 9, hair);
+      if (hs === 'afro') { r(hx - 3, H - 3, 14, 10, hair); r(hx - 2, H - 3, 4, 1, hairL); }
+      if (hs === 'ponytail') { r(hx + 3, H + 3, 2, 7, hair); r(hx + 3, H + 9, 2, 1, hairD); }
+      if (hs === 'pigtails') { r(hx - 3, H + 2, 2, 5, hair); r(hx + 9, H + 2, 2, 5, hair); }
+      if (hs === 'undercut') r(hx, H - 1, 8, 3, hair);
+      if (hs !== 'bald' && hs !== 'afro') r(hx + 1, H, 4, 1, hairL);
+      if (hat !== 'none') drawHat(hx);
       return;
     }
+    // hair that hangs behind the face
+    if (hs === 'afro') { r(hx - 3, H - 3, 14, 9, hair); r(hx - 2, H - 4, 12, 1, hair); }
+    if (hs === 'long' || hs === 'braids') { r(hx - 1, H + 2, 10, 8, hair); }
     r(hx, H, 8, 7, skin); r(hx, H + 6, 8, 1, skinD);               // face + jaw shade
     r(hx - 1, H + 3, 1, 2, skinD); r(hx + 8, H + 3, 1, 2, skinD);  // ears
     const sleepy = pose === 'sit';
     if (sleepy) { r(hx + 2, H + 4, 2, 1, OUT); r(hx + 5, H + 4, 2, 1, OUT); }      // eyes shut
     else { r(hx + 2, H + 3, 1, 2, OUT); r(hx + 5, H + 3, 1, 2, OUT); }
     r(hx + 1, H + 5, 1, 1, shade(skin, -0.08)); r(hx + 6, H + 5, 1, 1, shade(skin, -0.08));   // cheeks
-    if (!sleepy && pose !== 'stand') r(hx + 3, H + 5, 2, 1, shade(skin, -0.35));               // effort
-    // hair
-    const hs = av.hair;
-    if (hs === 'bald') { r(hx + 1, H, 3, 1, shade(skin, 0.25)); return; }
-    if (hs === 'buzz') { r(hx, H, 8, 2, hair); r(hx, H + 2, 1, 1, hair); r(hx + 7, H + 2, 1, 1, hair); return; }
-    if (hs === 'mohawk') { r(hx + 1, H, 6, 1, shade(skin, 0.12)); r(hx + 3, H - 4, 2, 6, hair); r(hx + 3, H - 4, 1, 2, hairL); r(hx + 3, H + 1, 2, 1, hairD); return; }
-    r(hx - 1, H - 1, 10, 3, hair); r(hx - 1, H + 2, 1, 3, hair); r(hx + 8, H + 2, 1, 3, hair);   // base cap of hair
-    r(hx + 1, H - 1, 4, 1, hairL);
-    if (hs === 'short') r(hx, H + 2, 3, 1, hair);
-    if (hs === 'spiky') { r(hx, H - 2, 1, 1, hair); r(hx + 2, H - 3, 2, 2, hair); r(hx + 5, H - 2, 2, 1, hair); r(hx + 7, H - 3, 1, 2, hair); }
-    if (hs === 'long') { r(hx - 1, H + 2, 2, 8, hair); r(hx + 7, H + 2, 2, 8, hair); r(hx - 1, H + 9, 2, 1, hairD); r(hx + 7, H + 9, 2, 1, hairD); }
-    if (hs === 'bun') { r(hx + 2, H - 4, 4, 3, hair); r(hx + 3, H - 4, 2, 1, hairL); }
-    if (hs === 'curly') { r(hx - 2, H, 2, 4, hair); r(hx + 8, H, 2, 4, hair); r(hx, H - 2, 2, 1, hair); r(hx + 4, H - 2, 3, 1, hair); r(hx + 2, H + 2, 1, 1, hairD); }
+    if (!sleepy && pose !== 'stand' && face !== 'beard' && face !== 'moustache') r(hx + 3, H + 5, 2, 1, shade(skin, -0.35));   // effort
+    // face extras
+    if (face === 'stubble') { for (let i = 0; i < 8; i += 2) r(hx + i, H + 6, 1, 1, shade(skin, -0.4)); r(hx + 1, H + 5, 1, 1, shade(skin, -0.3)); r(hx + 6, H + 5, 1, 1, shade(skin, -0.3)); }
+    if (face === 'beard') { r(hx, H + 4, 1, 3, hair); r(hx + 7, H + 4, 1, 3, hair); r(hx + 1, H + 5, 6, 2, hair); r(hx + 3, H + 5, 2, 1, shade(skin, -0.35)); r(hx + 1, H + 7, 6, 1, hairD); }
+    if (face === 'moustache') { r(hx + 2, H + 5, 4, 1, hair); r(hx + 1, H + 6, 1, 1, hair); r(hx + 6, H + 6, 1, 1, hair); }
+    if (face === 'glasses' && !sleepy) { for (const gx of [hx + 1, hx + 4]) { r(gx, H + 2, 3, 1, OUT); r(gx, H + 5, 3, 1, OUT); r(gx, H + 3, 1, 2, OUT); r(gx + 2, H + 3, 1, 2, OUT); } r(hx + 3, H + 3, 1, 1, OUT); }
+    if (face === 'shades') { r(hx + 1, H + 3, 3, 2, '#121214'); r(hx + 4, H + 3, 3, 2, '#121214'); r(hx, H + 3, 8, 1, '#121214'); r(hx + 1, H + 3, 1, 1, '#5d6470'); r(hx + 4, H + 3, 1, 1, '#5d6470'); }
+    // hair on top (a hat hides most of it)
+    if (hs === 'bald') { if (!hatOn) r(hx + 1, H, 3, 1, shade(skin, 0.25)); }
+    else if (hs === 'buzz') { if (!hatOn) r(hx, H, 8, 2, hair); r(hx, H + 2, 1, 1, hair); r(hx + 7, H + 2, 1, 1, hair); }
+    else if (hs === 'mohawk') { if (!hatOn) { r(hx + 1, H, 6, 1, shade(skin, 0.12)); r(hx + 3, H - 4, 2, 6, hair); r(hx + 3, H - 4, 1, 2, hairL); r(hx + 3, H + 1, 2, 1, hairD); } }
+    else if (hs === 'undercut') { r(hx - 1, H + 1, 1, 3, shade(hair, 0.35)); r(hx + 8, H + 1, 1, 3, shade(hair, 0.35)); if (!hatOn) { r(hx, H - 2, 8, 3, hair); r(hx + 4, H + 1, 4, 1, hair); r(hx + 1, H - 2, 4, 1, hairL); } }
+    else if (hs === 'afro') { if (!hatOn) { r(hx - 2, H - 4, 12, 4, hair); r(hx - 1, H - 4, 4, 1, hairL); } r(hx - 3, H - 1, 3, 6, hair); r(hx + 8, H - 1, 3, 6, hair); r(hx, H, 8, 1, hair); }
+    else {
+      r(hx - 1, H - 1, 10, 3, hair); r(hx - 1, H + 2, 1, 3, hair); r(hx + 8, H + 2, 1, 3, hair);   // base cap of hair
+      r(hx + 1, H - 1, 4, 1, hairL);
+      if (hs === 'short') r(hx, H + 2, 3, 1, hair);
+      if (hs === 'spiky' && !hatOn) { r(hx, H - 2, 1, 1, hair); r(hx + 2, H - 3, 2, 2, hair); r(hx + 5, H - 2, 2, 1, hair); r(hx + 7, H - 3, 1, 2, hair); }
+      if (hs === 'long') { r(hx - 1, H + 2, 2, 8, hair); r(hx + 7, H + 2, 2, 8, hair); r(hx - 1, H + 9, 2, 1, hairD); r(hx + 7, H + 9, 2, 1, hairD); }
+      if (hs === 'braids') { for (let i = 0; i < 8; i++) { r(hx - 1, H + 2 + i, 2, 1, i % 2 ? hairD : hair); r(hx + 7, H + 2 + i, 2, 1, i % 2 ? hair : hairD); } r(hx - 1, H + 10, 2, 1, gear); r(hx + 7, H + 10, 2, 1, gear); }
+      if (hs === 'bun' && !hatOn) { r(hx + 2, H - 4, 4, 3, hair); r(hx + 3, H - 4, 2, 1, hairL); }
+      if (hs === 'curly') { r(hx - 2, H, 2, 4, hair); r(hx + 8, H, 2, 4, hair); if (!hatOn) { r(hx, H - 2, 2, 1, hair); r(hx + 4, H - 2, 3, 1, hair); } r(hx + 2, H + 2, 1, 1, hairD); }
+      if (hs === 'sidepart') { r(hx, H + 2, 5, 1, hair); r(hx, H + 1, 6, 1, hair); r(hx + 6, H - 1, 1, 1, hairD); }
+      if (hs === 'ponytail') { r(hx + 8, H, 2, 2, hair); r(hx + 9, H + 2, 2, 6, hair); r(hx + 9, H + 7, 2, 1, hairD); r(hx + 8, H, 1, 1, gear); }
+      if (hs === 'pigtails') { r(hx - 3, H + 1, 2, 6, hair); r(hx + 9, H + 1, 2, 6, hair); r(hx - 2, H + 1, 1, 1, gear); r(hx + 9, H + 1, 1, 1, gear); }
+    }
+    if (hat !== 'none') drawHat(hx);
   };
 
   legs(); body(); arms(); head();

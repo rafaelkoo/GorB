@@ -6,7 +6,7 @@ import { t, getLang } from './i18n.js';
 import { esc, showError } from './ui.js';
 import { EX, CATS } from './exercises.js';
 import { cardioName } from './cardio.js';
-import { drawGym, drawPortrait, stationFor, cleanAvatar, W, H, SKINS, HAIR_COLORS, TOPS, SHORTS, HAIRS, BUILDS } from './pixel.js';
+import { drawGym, drawPortrait, stationFor, cleanAvatar, W, H, SKINS, SKIN_ORDER, HAIR_COLORS, TOPS, SHORTS, SHOES, GEAR, HAIRS, BUILDS, TOP_STYLES, BOTTOMS, HATS, FACES } from './pixel.js';
 import { btnLoading, btnDone, btnReset } from './motion.js';
 
 const exLabel = id => (getLang() === 'zh' ? EX[id]?.zh : EX[id]?.en) || '';
@@ -159,23 +159,40 @@ export function avatarCardHtml() {
 
 export function mountAvatarEditor(el, user, profile) {
   const card = el.querySelector('#avatarCard'); if (!card) return;
-  let av = cleanAvatar(profile.avatar, user.id), saved = JSON.stringify(av), pose = 'stand', f = 0;
+  let av = cleanAvatar(profile.avatar, user.id), saved = JSON.stringify(av), pose = 'stand', f = 0, tab = 'body';
   const cv = card.querySelector('#avPreview'), opts = card.querySelector('#avOpts'), save = card.querySelector('#avSave');
-  const swatches = (key, list, label) => `<fieldset class="av-row"><legend>${label}</legend><div class="sw">${list.map((col, i) =>
-    `<button type="button" data-k="${key}" data-v="${i}" class="swatch ${av[key] === i ? 'on' : ''}" style="--c:${col}" aria-pressed="${av[key] === i}" aria-label="${label} ${i + 1}"></button>`).join('')}</div></fieldset>`;
-  const names = { short: t('Short', '短髮'), spiky: t('Spiky', '刺蝟頭'), long: t('Long', '長髮'), bun: t('Bun', '丸子頭'), buzz: t('Buzz', '陸軍裝'), curly: t('Curly', '曲髮'), mohawk: t('Mohawk', '莫希干'), bald: t('Bald', '光頭') };
-  const builds = { slim: t('Slim', '瘦'), normal: t('Normal', '標準'), big: t('Big', '大隻') };
-  const chips = (key, list, nm, label) => `<fieldset class="av-row"><legend>${label}</legend><div class="chips">${list.map(v =>
-    `<button type="button" data-k="${key}" data-s="${v}" class="chip ${av[key] === v ? 'on' : ''}" aria-pressed="${av[key] === v}">${esc(nm[v])}</button>`).join('')}</div></fieldset>`;
-  const draw = () => {
+  const swatches = (key, list, label, order = list.map((_, i) => i)) => `<fieldset class="av-row"><legend>${label}</legend><div class="sw">${order.map(i =>
+    `<button type="button" data-k="${key}" data-v="${i}" class="swatch ${av[key] === i ? 'on' : ''}" style="--c:${list[i]}" aria-pressed="${av[key] === i}" aria-label="${label} ${order.indexOf(i) + 1}"></button>`).join('')}</div></fieldset>`;
+  const N = {
+    hair: { short: ['Short', '短髮'], spiky: ['Spiky', '刺蝟頭'], long: ['Long', '長髮'], bun: ['Bun', '丸子頭'], buzz: ['Buzz', '陸軍裝'], curly: ['Curly', '曲髮'], mohawk: ['Mohawk', '莫希干'], bald: ['Bald', '光頭'],
+      afro: ['Afro', '爆炸頭'], ponytail: ['Ponytail', '馬尾'], sidepart: ['Side part', '側分'], braids: ['Braids', '辮'], undercut: ['Undercut', '鏟青'], pigtails: ['Pigtails', '孖辮'] },
+    build: { slim: ['Slim', '瘦'], normal: ['Normal', '標準'], big: ['Big', '大隻'] },
+    topStyle: { tee: ['T-shirt', 'T 恤'], tank: ['Tank', '背心'], stringer: ['Stringer', '健身背心'], longsleeve: ['Long sleeve', '長袖'], hoodie: ['Hoodie', '連帽衛衣'], jersey: ['Jersey', '球衣'], shirtless: ['No top', '赤膊'] },
+    bottom: { shorts: ['Shorts', '短褲'], joggers: ['Joggers', '運動長褲'], leggings: ['Leggings', '緊身褲'] },
+    hat: { none: ['None', '冇'], headband: ['Headband', '頭帶'], cap: ['Cap', '帽'], capback: ['Cap (backwards)', '倒戴帽'], beanie: ['Beanie', '冷帽'], bandana: ['Bandana', '頭巾'] },
+    face: { none: ['None', '冇'], stubble: ['Stubble', '鬚根'], beard: ['Beard', '鬍鬚'], moustache: ['Moustache', '八字鬚'], glasses: ['Glasses', '眼鏡'], shades: ['Shades', '太陽眼鏡'] }
+  };
+  const chips = (key, list, label) => `<fieldset class="av-row"><legend>${label}</legend><div class="chips">${list.map(v =>
+    `<button type="button" data-k="${key}" data-s="${v}" class="chip ${av[key] === v ? 'on' : ''}" aria-pressed="${av[key] === v}">${esc(t(...N[key][v]))}</button>`).join('')}</div></fieldset>`;
+  const TABS = [['body', t('Body', '身體')], ['hair', t('Hair', '頭髮')], ['clothes', t('Clothes', '衫褲')], ['gear', t('Hats', '帽')]];
+  const panel = () => ({
+    body: swatches('skin', SKINS, t('Skin', '膚色'), SKIN_ORDER) + chips('build', BUILDS, t('Build', '身形')),
+    hair: chips('hair', HAIRS, t('Hair', '髮型')) + swatches('hairColor', HAIR_COLORS, t('Hair colour', '髮色')) + chips('face', FACES, t('Face', '面部')),
+    clothes: chips('topStyle', TOP_STYLES, t('Top', '上衣')) + (av.topStyle === 'shirtless' ? '' : swatches('top', TOPS, t('Top colour', '上衣顏色')))
+      + chips('bottom', BOTTOMS, t('Bottoms', '褲')) + swatches('shorts', SHORTS, t('Bottoms colour', '褲顏色')) + swatches('shoes', SHOES, t('Shoes', '鞋')),
+    gear: chips('hat', HATS, t('Hat', '帽')) + (av.hat === 'none' ? '' : swatches('hatColor', GEAR, t('Hat colour', '帽顏色')))
+  })[tab];
+  const draw = (focusSel) => {
     drawPortrait(cv, av, pose, f);
-    opts.innerHTML = swatches('skin', SKINS, t('Skin', '膚色')) + chips('hair', HAIRS, names, t('Hair', '髮型')) + swatches('hairColor', HAIR_COLORS, t('Hair colour', '髮色'))
-      + swatches('top', TOPS, t('Top', '上衣')) + swatches('shorts', SHORTS, t('Shorts', '短褲')) + chips('build', BUILDS, builds, t('Build', '身形'));
+    opts.innerHTML = `<div class="seg av-tabs" role="tablist">${TABS.map(([k, l]) => `<button type="button" role="tab" data-tab="${k}" aria-selected="${tab === k}" class="${tab === k ? 'on' : ''}">${l}</button>`).join('')}</div>
+      <div role="tabpanel" class="av-panel">${panel()}</div>`;
+    opts.querySelectorAll('[data-tab]').forEach(b => b.onclick = () => { tab = b.dataset.tab; draw(`[data-tab="${tab}"]`); });
     opts.querySelectorAll('[data-k]').forEach(b => b.onclick = () => {
       av = { ...av, [b.dataset.k]: b.dataset.s ?? +b.dataset.v };
-      draw(); save.disabled = JSON.stringify(av) === saved;
-      opts.querySelector(`[data-k="${b.dataset.k}"][${b.dataset.s ? `data-s="${b.dataset.s}"` : `data-v="${b.dataset.v}"`}]`)?.focus();
+      save.disabled = JSON.stringify(av) === saved;
+      draw(`[data-k="${b.dataset.k}"][${b.dataset.s ? `data-s="${b.dataset.s}"` : `data-v="${b.dataset.v}"`}]`);
     });
+    if (focusSel) opts.querySelector(focusSel)?.focus({ preventScroll: true });
   };
   draw();
   card.querySelectorAll('[data-pose]').forEach(b => b.onclick = () => {

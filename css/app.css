@@ -713,3 +713,6 @@ textarea { resize: vertical; line-height: 1.4; }
 .toast.out { opacity: 0; transform: translate(-50%, 10px); }
 @keyframes toastin { from { opacity: 0; transform: translate(-50%, 14px); } }
 @media (prefers-reduced-motion: reduce) { .toast { animation: none; transition: none; } }
+.av-tabs { display: grid; grid-template-columns: repeat(4, 1fr); margin-bottom: 4px; }
+.av-tabs button { padding: 7px 2px; font-size: .78rem; min-height: 36px; }
+.av-panel { display: grid; gap: 10px; }
