@@ -95,6 +95,7 @@ export function chatLive(groupId, onRow, onStatus, onReaction) {
 export const leaveGroup = (groupId, userId) => sb.from('group_members').delete().match({ group_id: groupId, user_id: userId }).then(must);
 export const weekReview = groupId => sb.rpc('group_week_review', { p_group: groupId }).then(must);
 export const groupHistory = groupId => sb.rpc('group_history', { p_group: groupId }).then(must);
+export const characterCard = userId => sb.rpc('character_card', { p_user: userId }).then(must);
 export const gymToday = groupId => sb.rpc('group_gym_today', { p_group: groupId }).then(must);
 export const leaderboard = groupId => sb.rpc('group_leaderboard', { p_group: groupId }).then(must);
 export const members = groupId => sb.from('group_members').select('user_id').eq('group_id', groupId).then(must);

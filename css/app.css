@@ -686,3 +686,24 @@ textarea { resize: vertical; line-height: 1.4; }
 .av-stage { width: 132px; }
 .av-pose { width: 100%; display: grid; grid-template-columns: repeat(3, 1fr); }
 .av-pose button { padding: 6px 2px; font-size: .75rem; }
+
+/* ---------- character card (Pokémon style) ---------- */
+.char-card { border-top: 4px solid var(--type); background: linear-gradient(180deg, color-mix(in srgb, var(--type) 16%, var(--mat)) 0, var(--mat) 120px); }
+.cc-top { display: grid; grid-template-columns: 96px 1fr; gap: 14px; align-items: center; }
+.cc-top canvas { width: 96px; height: auto; aspect-ratio: 128 / 136; image-rendering: pixelated; border-radius: 12px; background: color-mix(in srgb, var(--type) 30%, #e9d9b8); }
+.cc-id h3 { margin: 0 0 4px; }
+.cc-lv { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.cc-lv b { font: 800 1.3rem/1 var(--display); }
+.type-badge { padding: 3px 10px; border-radius: 999px; background: var(--type); color: #fff; font-size: .8rem; font-weight: 700; text-shadow: 0 1px 0 rgba(0,0,0,.25); }
+.xp { height: 8px; border-radius: 999px; background: var(--floor); margin: 8px 0 4px; overflow: hidden; }
+.xp i { display: block; height: 100%; background: linear-gradient(90deg, #5fd3f3, #3c8ae6); border-radius: inherit; }
+.coins { margin: 4px 0 0; font-size: .92rem; }
+.cc-stats { margin: 14px 0 6px; display: grid; gap: 8px; }
+.cc-stats .st { display: grid; grid-template-columns: 74px 1fr; align-items: center; gap: 10px; }
+.cc-stats dt { font-size: .85rem; color: var(--dust); }
+.cc-stats dd { margin: 0; display: grid; grid-template-columns: 1fr 40px; gap: 8px; align-items: center; }
+.cc-stats .bar { height: 10px; border-radius: 3px; background: var(--floor); overflow: hidden; }
+.cc-stats .bar i { display: block; height: 100%; background: var(--type); }
+.cc-stats dd b { text-align: right; font-variant-numeric: tabular-nums; }
+.cc-how summary { cursor: pointer; color: var(--blue, #6ea8ff); min-height: 40px; display: flex; align-items: center; }
+.cc-how ul { margin: 0 0 4px; padding-left: 18px; display: grid; gap: 4px; font-size: .88rem; color: var(--dust); }
