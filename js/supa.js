@@ -96,6 +96,9 @@ export const leaveGroup = (groupId, userId) => sb.from('group_members').delete()
 export const weekReview = groupId => sb.rpc('group_week_review', { p_group: groupId }).then(must);
 export const groupHistory = groupId => sb.rpc('group_history', { p_group: groupId }).then(must);
 export const characterCard = userId => sb.rpc('character_card', { p_user: userId }).then(must);
+// what you're ticking in the Log today, for the pixel gym (see migration 023)
+export const setGymLive = (userId, day, sets, lastEx) =>
+  sb.from('gym_live').upsert({ user_id: userId, day, sets, last_ex: lastEx, updated_at: new Date().toISOString() }, { onConflict: 'user_id' }).then(must);
 export const gymToday = groupId => sb.rpc('group_gym_today', { p_group: groupId }).then(must);
 export const leaderboard = groupId => sb.rpc('group_leaderboard', { p_group: groupId }).then(must);
 export const members = groupId => sb.from('group_members').select('user_id').eq('group_id', groupId).then(must);

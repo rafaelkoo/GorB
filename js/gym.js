@@ -4,7 +4,7 @@
 import * as api from './supa.js';
 import { t, getLang } from './i18n.js';
 import { esc, showError } from './ui.js';
-import { EX } from './exercises.js';
+import { EX, CATS } from './exercises.js';
 import { cardioName } from './cardio.js';
 import { drawGym, drawPortrait, stationFor, cleanAvatar, W, H, SKINS, HAIR_COLORS, TOPS, SHORTS, HAIRS, BUILDS } from './pixel.js';
 import { btnLoading, btnDone, btnReset } from './motion.js';
@@ -15,14 +15,32 @@ const reduced = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
 let stopAnim = null;
 export function stopGym() { stopAnim?.(); stopAnim = null; }
 
-// rows from group_gym_today → people for the scene, you first-ish
+const CAT_ZH = { chest: '胸', back: '背', legs: '腿', shoulders: '肩', arms: '手臂', core: '核心', other: '其他' };
+const catLabel = k => t(CATS[k] || 'Other', CAT_ZH[k] || '其他');
+// what you're mainly training today: the body part with the most sets (ticked or saved), and in it the
+// exercise you ticked last (or the one with the most sets). That decides your station.
+export function mainFocus(setsByEx = {}, lastEx = null) {
+  const byCat = {};
+  for (const [id, n] of Object.entries(setsByEx)) { const c = EX[id]?.cat || 'other'; byCat[c] = (byCat[c] || 0) + n; }
+  const cats = Object.keys(byCat);
+  if (!cats.length) return null;
+  const cat = cats.sort((a, b) => byCat[b] - byCat[a])[0];
+  const inCat = Object.keys(setsByEx).filter(id => (EX[id]?.cat || 'other') === cat);
+  const ex = lastEx && inCat.includes(lastEx) ? lastEx : inCat.sort((a, b) => setsByEx[b] - setsByEx[a])[0];
+  return { cat, ex, sets: Object.values(setsByEx).reduce((a, n) => a + n, 0) };
+}
+// rows from group_gym_today → people for the scene
 function people(rows, user) {
-  return rows.map(r => ({
-    id: r.user_id, name: r.display_name || '?', me: r.user_id === user.id,
-    avatar: cleanAvatar(r.avatar, r.user_id),
-    inGym: !!r.checked_in, station: stationFor(r.exercise_id, r.cardio),
-    what: r.exercise_id ? exLabel(r.exercise_id) : r.cardio ? cardioName(r.cardio) : '', sets: r.sets
-  }));
+  return rows.map(r => {
+    const f = mainFocus(r.sets_by_ex || (r.exercise_id ? { [r.exercise_id]: r.sets || 1 } : {}), r.last_ex);
+    return {
+      id: r.user_id, name: r.display_name || '?', me: r.user_id === user.id,
+      avatar: cleanAvatar(r.avatar, r.user_id),
+      // ticking sets counts as being at the gym, even before the photo check-in
+      inGym: !!r.checked_in || !!f, station: stationFor(f?.ex, r.cardio),
+      what: f ? `${catLabel(f.cat)} · ${exLabel(f.ex)}` : r.cardio ? cardioName(r.cardio) : '', sets: f?.sets || 0
+    };
+  });
 }
 const caption = p => !p.inGym
   ? t(`${p.name} hasn’t been today. Resting on the bench 💤`, `${p.name} 今日未去，喺長櫈度休息緊 💤`)

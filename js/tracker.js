@@ -107,7 +107,23 @@ export async function logScreen(user) {
     else draft = { saved: false, dayId: suggested?.id || null, items: itemsFor(suggested) };
   }
   function pickedDay() { return fullPlan.days.find(d => d.id === draft?.dayId) || null; }
-  const keep = () => saveDraft(user.id, draft);
+  // the pixel gym follows what you tick: send the ticked sets per exercise a moment after each change
+  let liveTimer = 0, lastTicked = null, liveSent = '';
+  const sendLive = () => {
+    clearTimeout(liveTimer);
+    liveTimer = setTimeout(() => {
+      const sets = {};
+      for (const it of draft.items) {
+        const n = it.fromSave ? it.sets.length : it.sets.filter(s => s.done).length;
+        if (n) sets[it.id] = (sets[it.id] || 0) + n;
+      }
+      const key = JSON.stringify([sets, lastTicked]);
+      if (key === liveSent) return;
+      liveSent = key;
+      api.setGymLive(user.id, today, sets, lastTicked).catch(() => { liveSent = ''; });
+    }, 1200);
+  };
+  const keep = () => { saveDraft(user.id, draft); sendLive(); };
   // FitTrack's fold logic: a finished exercise (every set ticked, or saved earlier today) folds to one
   // line; the first unfinished one is open; the rest wait folded. Tapping a card's arrow overrides that
   // (it.fold: true = you folded it, false = you opened it). Climbing never counts as finished on its own,
@@ -215,19 +231,19 @@ export async function logScreen(user) {
         const act = b.dataset.act;
         if (act === 'drop') draft.items.splice(+card.dataset.i, 1);
         if (act === 'addset') { const l = it.sets.at(-1) || {}; it.sets.push(isClimb(it.id) ? { kg: l.kg ?? climbStart(it.id), reps: 0 } : { kg: l.kg ?? null, reps: l.reps ?? null }); }
-        if (act === 'top') { const j = +b.closest('.set').dataset.j, x = it.sets[j]; x.reps = x.reps >= 1 ? 0 : 1; x.done = x.reps >= 1; if (x.done) popAfter(`.ex[data-i="${card.dataset.i}"] .set[data-j="${j}"] .tick`, 1.2); }
+        if (act === 'top') { const j = +b.closest('.set').dataset.j, x = it.sets[j]; x.reps = x.reps >= 1 ? 0 : 1; x.done = x.reps >= 1; if (x.done) lastTicked = it.id; if (x.done) popAfter(`.ex[data-i="${card.dataset.i}"] .set[data-j="${j}"] .tick`, 1.2); }
         if (act === 'unset') it.sets.splice(+b.closest('.set').dataset.j, 1);
         if (act === 'fold') { it.fold = isOpen(it, +card.dataset.i); }
         if (act === 'tick') {
           const j = +b.closest('.set').dataset.j, x = it.sets[j]; x.done = !x.done;
-          if (x.done) { startRest(restSec); popAfter(`.ex[data-i="${card.dataset.i}"] .set[data-j="${j}"] .tick`, 1.2); }
+          if (x.done) { lastTicked = it.id; startRest(restSec); popAfter(`.ex[data-i="${card.dataset.i}"] .set[data-j="${j}"] .tick`, 1.2); }
           // last set ticked: this one folds and the next unfinished one opens
           if (x.done && exDone(it)) { delete it.fold; foldedNow = +card.dataset.i; }
         }
         if (act === 'hold') {
           const j = +b.closest('.set').dataset.j;
           if (hold && hold.i === +card.dataset.i && hold.j === j) {   // stop: write the seconds, tick the set
-            const x = it.sets[j]; x.reps = holdSecs(); x.done = true; stopHold(); startRest(restSec);
+            const x = it.sets[j]; x.reps = holdSecs(); x.done = true; lastTicked = it.id; stopHold(); startRest(restSec);
             if (exDone(it)) { delete it.fold; foldedNow = +card.dataset.i; }
           } else { stopHold(); hold = { i: +card.dataset.i, j, t0: Date.now() }; holdTick = setInterval(() => { const el = $app().querySelector('.hold.on'); if (el) el.textContent = holdSecs() + 's'; else stopHold(); }, 250); }
         }
