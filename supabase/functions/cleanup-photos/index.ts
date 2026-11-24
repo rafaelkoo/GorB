@@ -1,4 +1,4 @@
-// Supabase Edge Function: deletes check-in photos once they're a week old.
+// Supabase Edge Function: deletes check-in photos once they're a week old, and chat photos after 5 days.
 // The check-in itself stays (gym days, rankings and streaks don't change); only the
 // picture and its thumbnail go, and the row is marked photo_expired so the feed shows a placeholder.
 // Run once a day by pg_cron (migration 20261111000010). It takes no input and only ever
@@ -12,6 +12,7 @@ const db = createClient(
 );
 const BUCKET = 'checkins';
 const KEEP_DAYS = 7;
+const CHAT_KEEP_DAYS = 5;
 const thumbPath = (p: string) => p.replace(/\.jpg$/, '_t.jpg');
 const json = (o: unknown, status = 200) =>
   new Response(JSON.stringify(o), { status, headers: { 'content-type': 'application/json' } });
@@ -33,5 +34,20 @@ Deno.serve(async () => {
     removed += rows.length;
     if (rows.length < 100) break;
   }
-  return json({ removed, cutoff });
+  // chat photos: 5 days, then the message stays and says the photo has gone
+  const chatCutoff = new Date(Date.now() - CHAT_KEEP_DAYS * 864e5).toISOString();
+  let chat = 0;
+  for (let round = 0; round < 5; round++) {
+    const { data: rows, error } = await db.from('chat_messages').select('id, photo_path')
+      .not('photo_path', 'is', null).eq('photo_expired', false).lt('created_at', chatCutoff).order('created_at').limit(100);
+    if (error) return json({ error: error.message, removed, chat }, 500);
+    if (!rows?.length) break;
+    const rm = await db.storage.from('chat').remove(rows.flatMap(r => [r.photo_path, thumbPath(r.photo_path)]));
+    if (rm.error) return json({ error: rm.error.message, removed, chat }, 500);
+    const up = await db.from('chat_messages').update({ photo_expired: true }).in('id', rows.map(r => r.id));
+    if (up.error) return json({ error: up.error.message, removed, chat }, 500);
+    chat += rows.length;
+    if (rows.length < 100) break;
+  }
+  return json({ removed, cutoff, chat, chatCutoff });
 });

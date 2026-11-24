@@ -9,6 +9,11 @@ export const PHOTO_MAX_PX = 1080;   // longest side after resize
 export const PHOTO_QUALITY = 0.8;   // JPEG quality
 export const THUMB_MAX_PX = 480;    // feed thumbnail, longest side
 export const THUMB_QUALITY = 0.7;
+// chat photos are shrunk harder: they're only for a quick look, and deleted after 5 days
+export const CHAT_PHOTO_MAX_PX = 960;
+export const CHAT_PHOTO_QUALITY = 0.7;
+export const CHAT_THUMB_MAX_PX = 360;
+export const CHAT_THUMB_QUALITY = 0.6;
 export const FEED_PAGE = 10;        // check-ins loaded per "Show more"
 // Web Push public key (safe to publish). Empty = notifications hidden until set up.
 export const VAPID_PUBLIC_KEY = 'BOX2AmdyotHhW-UUjet-lDCAZj29a4LS6BXmjV_zzbF5w-7rpRX_Ftw3YlqrxacLcJKv4RmW6LZEjtXERYopcec';

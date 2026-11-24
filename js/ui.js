@@ -207,7 +207,7 @@ export function replySheet(user, groupId, r) {
   box.querySelector('#rtext').focus();
 }
 
-export async function openPhoto(path, onReply) {
+export async function openPhoto(path, onReply, getUrl = api.fullPhoto) {
   const box = document.createElement('div');
   box.className = 'lightbox'; box.setAttribute('role', 'dialog'); box.setAttribute('aria-label', t('Photo', '相'));
   box.innerHTML = `<p class="muted">${t('Loading photo…', '載入緊…')}</p>`;
@@ -216,7 +216,7 @@ export async function openPhoto(path, onReply) {
   document.addEventListener('keydown', function esc_(e) { if (e.key === 'Escape') { close(); document.removeEventListener('keydown', esc_); } });
   document.body.append(box);
   try {
-    const url = await api.fullPhoto(path);
+    const url = await getUrl(path);
     box.innerHTML = `<img src="${esc(url)}" alt="${t('Check-in photo, full size', '打卡相（原圖）')}">${onReply ? `<button class="lb-reply">${ICON.chat(18)} ${t('Reply', '回覆')}</button>` : ''}`;
     box.querySelector('.lb-reply')?.addEventListener('click', e => { e.stopPropagation(); close(); onReply(); });
   }

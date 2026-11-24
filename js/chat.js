@@ -7,6 +7,7 @@ import { t, getLang } from './i18n.js';
 import { esc, render, showError, openPhoto } from './ui.js';
 import { ICON } from './icons.js';
 import { pickEmoji } from './emoji.js';
+import { shrinkPhoto } from './camera.js';
 
 let stop = null, poll = null, onVis = null;
 // leave the chat: stop live updates (called on every route change)
@@ -73,7 +74,8 @@ export async function chatScreen(user, groupId) {
     const o = findMsg(m.reply_to);
     if (o === false) return '';
     if (!o) return `<span class="rq loading"><small>${t('Message…', '訊息…')}</small></span>`;
-    return `<button type="button" class="rq ${o.user_id === user.id ? 'mine' : ''}" data-goto="${esc(o.id)}" aria-label="${esc(t(`Replying to ${nameOf(o.user_id)}: ${snip(o.body, 60)}`, `回覆 ${nameOf(o.user_id)}：${snip(o.body, 60)}`))}"><b>${esc(nameOf(o.user_id))}</b><small>${o.checkin_id ? '📷 ' : ''}${esc(snip(o.body))}</small></button>`;
+    const ob = o.body || (o.photo_path ? t('Photo', '相') : '');
+    return `<button type="button" class="rq ${o.user_id === user.id ? 'mine' : ''}" data-goto="${esc(o.id)}" aria-label="${esc(t(`Replying to ${nameOf(o.user_id)}: ${snip(ob, 60)}`, `回覆 ${nameOf(o.user_id)}：${snip(ob, 60)}`))}"><b>${esc(nameOf(o.user_id))}</b><small>${o.checkin_id || o.photo_path ? '📷 ' : ''}${esc(snip(ob))}</small></button>`;
   };
   const rxHtml = m => {
     const l = rx[m.id]; if (!l?.length) return '';
@@ -112,11 +114,27 @@ export async function chatScreen(user, groupId) {
     <section class="chat" aria-live="polite" aria-label="${t('Messages', '訊息')}"><div id="older"></div><div id="list"></div></section>
     <form class="composer" id="send">
       <div class="reply-bar" id="replyBar" hidden></div>
+      <div class="photo-pick" id="photoPick" hidden></div>
+      <input type="file" id="photoIn" accept="image/*" hidden>
+      <button type="button" class="ghost chat-cam" id="photoBtn" aria-label="${t('Send a photo', '傳相')}"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="6" width="18" height="14" rx="2"></rect><circle cx="12" cy="13" r="3.5"></circle><path d="M8 6l1.5-2h5L16 6"></path></svg></button>
       <textarea id="text" rows="1" maxlength="1000" placeholder="${t('Message', '訊息')}" aria-label="${t('Message', '訊息')}"></textarea>
       <button type="submit" id="sendBtn" aria-label="${t('Send', '傳送')}"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"></path></svg></button>
     </form>`);
   const list = el.querySelector('#list'), older = el.querySelector('#older');
 
+  // a photo in a message: the small preview, tap for the bigger one; after 5 days just a note
+  const photoHtml = m => {
+    if (!m.photo_path && !m.localUrl) return '';
+    if (m.photo_expired) return `<p class="chat-photo-gone">📷 ${t('Photo removed after 5 days', '相已經過咗 5 日，刪除咗')}</p>`;
+    if (m.localUrl) return `<span class="chat-photo"><img src="${esc(m.localUrl)}" alt="${t('Photo', '相')}"></span>`;
+    return `<button type="button" class="chat-photo" data-cphoto="${esc(m.photo_path)}" aria-label="${t('Open the photo', '睇張相')}"><img data-thumb="${esc(m.photo_path.replace(/\.jpg$/, '_t.jpg'))}" alt="${t('Photo', '相')}"></button>`;
+  };
+  async function loadThumbs() {
+    const imgs = [...list.querySelectorAll('img[data-thumb]')].filter(i => !i.src);
+    if (!imgs.length) return;
+    try { const links = await api.chatPhotoLinks([...new Set(imgs.map(i => i.dataset.thumb))]); imgs.forEach(i => { if (links[i.dataset.thumb]) i.src = links[i.dataset.thumb]; }); }
+    catch { /* shown without the preview */ }
+  }
   function lineHtml(m, prev) {
     let out = '';
     if (!prev || ukDay(prev.created_at) !== ukDay(m.created_at)) out += `<p class="chat-day"><span>${esc(dayLabel(m.created_at))}</span></p>`;
@@ -130,7 +148,7 @@ export async function chatScreen(user, groupId) {
     return out + `<div class="msg ${mine ? 'me' : ''} ${grouped ? 'cont' : ''} ${m.pending ? 'pending' : ''} ${m.failed ? 'failed' : ''} ${rx[m.id]?.length ? 'has-rx' : ''}" data-id="${esc(m.id)}"${real ? ` tabindex="0" aria-label="${esc(`${nameOf(m.user_id)}: ${snip(m.body, 120)}`)}" aria-haspopup="menu"` : ''}>
       <span class="swipe-hint" aria-hidden="true">↩</span>
       ${!mine && !grouped ? `<b class="msg-who">${esc(nameOf(m.user_id))}</b>` : ''}
-      ${replyHtml(m)}${quoteHtml(m)}<p>${esc(m.body)}</p><span class="msg-time">${m.failed ? t('Not sent · tap to retry', '傳送失敗 · 撳一下再試') : m.pending ? t('Sending…', '傳送緊…') : esc(timeOf(m.created_at))}</span>${rxHtml(m)}</div>`;
+      ${replyHtml(m)}${quoteHtml(m)}${photoHtml(m)}${m.body ? `<p>${esc(m.body)}</p>` : ''}<span class="msg-time">${m.failed ? t('Not sent · tap to retry', '傳送失敗 · 撳一下再試') : m.pending ? t('Sending…', '傳送緊…') : esc(timeOf(m.created_at))}</span>${rxHtml(m)}</div>`;
   }
   function draw(stick) {
     const near = stick || window.innerHeight + window.scrollY > document.body.scrollHeight - 160;
@@ -141,6 +159,8 @@ export async function chatScreen(user, groupId) {
     older.querySelector('#loadOlder')?.addEventListener('click', loadOlder);
     list.querySelectorAll('.msg.failed').forEach(b => b.onclick = () => retry(b.dataset.id));
     list.querySelectorAll('[data-photo]').forEach(b => b.onclick = () => openPhoto(b.dataset.photo));
+    list.querySelectorAll('[data-cphoto]').forEach(b => b.onclick = e => { e.stopPropagation(); openPhoto(b.dataset.cphoto, null, api.chatPhotoFull); });
+    loadThumbs();
     list.querySelectorAll('[data-goto]').forEach(b => b.onclick = e => { e.stopPropagation(); goTo(b.dataset.goto); });
     list.querySelectorAll('[data-rx]').forEach(b => b.onclick = e => { e.stopPropagation(); const m = findMsg(b.dataset.rx); if (m) openMenu(m, b.closest('.msg')); });
     loadCards(); loadRefs();
@@ -279,9 +299,16 @@ export async function chatScreen(user, groupId) {
     if (e.key === 'Enter' || e.key === ' ' || e.key === 'ContextMenu') { e.preventDefault(); const m = findMsg(b.dataset.id); if (m) openMenu(m, b); }
   });
 
-  async function sendBody(body, tmpId, reply) {
+  async function sendBody(body, tmpId, reply, photo = null) {
     try {
-      const row = await api.sendChat(user.id, g.id, body, null, reply);
+      let path = null;
+      if (photo) {
+        const p = pending.find(x => x.id === tmpId);
+        path = p?.photo_path || await api.uploadChatPhoto(g.id, user.id, photo.full, photo.thumb);
+        if (p) p.photo_path = path;   // a retry doesn't upload it twice
+      }
+      const row = await api.sendChat(user.id, g.id, body, null, reply, path);
+      const done = pending.find(p => p.id === tmpId); if (done?.localUrl) setTimeout(() => URL.revokeObjectURL(done.localUrl), 5000);
       pending = pending.filter(p => p.id !== tmpId);
       addRows([row]); draw(true);
     } catch (err) {
@@ -290,18 +317,34 @@ export async function chatScreen(user, groupId) {
   }
   function retry(id) {
     const p = pending.find(x => x.id === id); if (!p) return;
-    p.failed = false; p.pending = true; draw(); sendBody(p.body, id, p.reply_to);
+    p.failed = false; p.pending = true; draw(); sendBody(p.body, id, p.reply_to, p.photo);
   }
   const ta = el.querySelector('#text');
   const grow = () => { ta.style.height = 'auto'; ta.style.height = Math.min(ta.scrollHeight, 140) + 'px'; };
   ta.oninput = grow;
   ta.onkeydown = e => { if (e.key === 'Enter' && !e.shiftKey && !e.isComposing && matchMedia('(pointer: fine)').matches) { e.preventDefault(); el.querySelector('#send').requestSubmit(); } };
+  // ----- a photo to send: picked from the gallery or taken, shrunk before it goes -----
+  let picked = null;   // { full, thumb, url }
+  const pickBox = el.querySelector('#photoPick'), photoIn = el.querySelector('#photoIn');
+  const showPick = () => {
+    pickBox.hidden = !picked;
+    pickBox.innerHTML = picked ? `<img src="${esc(picked.url)}" alt=""><span class="small">${t(`Photo · ${Math.round(picked.full.size / 1024)} KB · deleted after 5 days`, `相 · ${Math.round(picked.full.size / 1024)} KB · 5 日後刪除`)}</span>
+      <button type="button" class="ghost x" id="noPhoto" aria-label="${t('Remove the photo', '唔傳呢張')}">✕</button>` : '';
+    pickBox.querySelector('#noPhoto')?.addEventListener('click', () => { URL.revokeObjectURL(picked.url); picked = null; showPick(); });
+  };
+  el.querySelector('#photoBtn').onclick = () => photoIn.click();
+  photoIn.onchange = async () => {
+    const f = photoIn.files?.[0]; photoIn.value = ''; if (!f) return;
+    try { const s = await shrinkPhoto(f); if (picked) URL.revokeObjectURL(picked.url); picked = { ...s, url: URL.createObjectURL(s.thumb) }; showPick(); ta.focus(); }
+    catch (err) { showError(err); }
+  };
   el.querySelector('#send').onsubmit = e => {
     e.preventDefault();
-    const body = ta.value.trim(); if (!body) return;
-    const tmp = { id: 'tmp-' + Date.now(), user_id: user.id, kind: 'text', body, created_at: new Date().toISOString(), pending: true, reply_to: replyTo?.id || null };
-    pending.push(tmp); ta.value = ''; grow(); setReply(null); ta.focus(); draw(true);
-    sendBody(body, tmp.id, tmp.reply_to);
+    const body = ta.value.trim(); if (!body && !picked) return;
+    const photo = picked ? { full: picked.full, thumb: picked.thumb } : null;
+    const tmp = { id: 'tmp-' + Date.now(), user_id: user.id, kind: 'text', body, created_at: new Date().toISOString(), pending: true, reply_to: replyTo?.id || null, photo, localUrl: picked?.url || null };
+    pending.push(tmp); ta.value = ''; grow(); setReply(null); picked = null; showPick(); ta.focus(); draw(true);
+    sendBody(body, tmp.id, tmp.reply_to, photo);
   };
 
   // rename: anyone in the group; shows up as a grey line for everyone

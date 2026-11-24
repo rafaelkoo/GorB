@@ -41,16 +41,34 @@ export const setGroupPrefs = (groupId, prefs) => sb.rpc('set_group_prefs', { p_g
 export const renameGroup = (groupId, name) => sb.rpc('rename_group', { p_group: groupId, p_name: name }).then(must);
 
 // ---------- group chat (members only, kept forever) ----------
-const CHAT_COLS = 'id, group_id, user_id, kind, body, created_at, checkin_id, reply_to';
+const CHAT_COLS = 'id, group_id, user_id, kind, body, created_at, checkin_id, reply_to, photo_path, photo_expired';
 export const chatPage = (groupId, before, limit = 50) => {
   let q = sb.from('chat_messages').select(CHAT_COLS).eq('group_id', groupId).order('created_at', { ascending: false }).limit(limit);
   if (before) q = q.lt('created_at', before);
   return q.then(must).then(rows => rows.reverse());
 };
 export const chatSince = (groupId, after) => sb.from('chat_messages').select(CHAT_COLS).eq('group_id', groupId).gt('created_at', after).order('created_at').then(must);
-export const sendChat = (userId, groupId, body, checkinId = null, replyTo = null) =>
-  sb.from('chat_messages').insert({ group_id: groupId, user_id: userId, body, ...(checkinId ? { checkin_id: checkinId } : {}), ...(replyTo ? { reply_to: replyTo } : {}) })
+export const sendChat = (userId, groupId, body, checkinId = null, replyTo = null, photoPath = null) =>
+  sb.from('chat_messages').insert({ group_id: groupId, user_id: userId, body, ...(checkinId ? { checkin_id: checkinId } : {}), ...(replyTo ? { reply_to: replyTo } : {}), ...(photoPath ? { photo_path: photoPath } : {}) })
     .select(CHAT_COLS).single().then(must);
+// chat photos: private bucket 'chat', <group>/<you>/<random>.jpg (+ _t.jpg preview), gone after 5 days
+export async function uploadChatPhoto(groupId, userId, full, thumb) {
+  const path = `${groupId}/${userId}/${crypto.randomUUID()}.jpg`;
+  const opts = { contentType: 'image/jpeg', cacheControl: '432000', upsert: false };
+  must(await sb.storage.from('chat').upload(path, full, opts));
+  must(await sb.storage.from('chat').upload(path.replace(/\.jpg$/, '_t.jpg'), thumb, opts));
+  return path;
+}
+const chatLinks = {};
+export async function chatPhotoLinks(paths) {
+  const soon = Date.now() + 10 * 60 * 1000, need = paths.filter(p => !(chatLinks[p]?.exp > soon));
+  if (need.length) {
+    const signed = must(await sb.storage.from('chat').createSignedUrls(need, 6 * 3600));
+    for (const s of signed) if (s.signedUrl) chatLinks[s.path] = { url: s.signedUrl, exp: Date.now() + 6 * 3600 * 1000 };
+  }
+  return Object.fromEntries(paths.map(p => [p, chatLinks[p]?.url || null]));
+}
+export const chatPhotoFull = async path => (await chatPhotoLinks([path]))[path];
 // messages by id (the ones replies point at, when they're older than what's loaded)
 export const chatByIds = ids => (ids.length ? sb.from('chat_messages').select(CHAT_COLS).in('id', ids).then(must) : Promise.resolve([]));
 // emoji reactions on chat messages: { messageId: [{ user_id, emoji }] }
