@@ -1119,3 +1119,4 @@ canvas.dex-shadow { filter: brightness(0) opacity(.45); }
 .ut-mv { font-size: .72rem; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--c); color: var(--chalk); }
 .pt-card.legend, .dx-tile.legend { border-color: #c98bff; box-shadow: inset 0 0 0 1px rgba(201,139,255,.35); }
 .pt-evo.legend { border-color: #c98bff; }
+.boss-card canvas.caught { opacity: .35; filter: grayscale(.6); }

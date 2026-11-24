@@ -19,7 +19,7 @@ export function bossCardHtml(b) {
     <div class="boss-row">
       <canvas id="bossCanvas" width="96" height="80" role="img" aria-label="${esc(name)}"></canvas>
       <div class="boss-main">
-        <div class="boss-title"><b>${b.defeated ? t(`${name} is down!`, `${name} 打低咗！`) : t(`Boss: ${name}`, `魔王：${name}`)}</b>
+        <div class="boss-title"><b>${b.caught_by ? t(`👑 ${esc(b.caught_by.name)} caught ${name}!`, `👑 ${esc(b.caught_by.name)} 捉咗${name}！`) : b.defeated ? t(`${name} is down!`, `${name} 打低咗！`) : t(`Boss: ${name}`, `魔王：${name}`)}</b>
           <span class="muted small">${b.defeated ? '🎉' : t(`${daysLeft} day${daysLeft === 1 ? '' : 's'} left`, `仲有 ${daysLeft} 日`)}</span></div>
         <div class="boss-hp" role="progressbar" aria-valuemin="0" aria-valuemax="${b.hp}" aria-valuenow="${left}" aria-label="${t('Boss HP', '魔王血量')}"><i style="width:${pct}%"></i><span>HP ${left} / ${b.hp}</span></div>
         <div class="boss-act">${b.defeated ? '' : b.open ? `<a class="button small-btn" href="#/battle/${b.open}">${t('Continue', '繼續攻擊')}</a>`
@@ -31,6 +31,7 @@ export function bossCardHtml(b) {
     <ol class="boss-dmg">${b.members.map(m => `<li><span class="nm">${esc(m.name)}</span>
       ${m.mult > 1 ? `<span class="ud" title="${t('Underdog bonus: lower level than the group average', '以弱勝強：等級低過 group 平均')}">⚡ ×${m.mult}</span>` : ''}
       <span class="muted small">${t(`${m.hits ?? 0} attack${m.hits === 1 ? '' : 's'}`, `攻擊 ${m.hits ?? 0} 次`)}</span><b>${m.dmg}</b></li>`).join('')}</ol>
+    ${b.caught_by ? `<p class="muted small raid-wait">${t('Caught, so it’s gone for this week: it counts as beaten and everyone gets the loot. A new boss comes on Monday.', '捉咗即係今個星期冇咗：當打低咗計，大家都有戰利品。星期一會有新魔王。')}</p>` : ''}
     ${b.defeated && b.loot_elsewhere ? `<p class="muted small raid-wait">${t('You already got this week’s boss loot in another group (one per week).', '你今個星期已經喺另一個 group 攞咗戰利品（每星期一份）。')}</p>` : ''}
     <ul class="boss-how">
       <li>${t('A new boss every Monday, one of six that only turn up here: the things that stop a whole group going. Its HP is 100 for every day of everyone’s weekly target.', '每個星期一有新魔王，係六隻只會喺度出現嘅怪之一：令成個 group 唔去 gym 嘅嘢。血量 = 大家每星期目標日數加埋 × 100。')}</li>
@@ -50,7 +51,8 @@ export async function mountBoss(el, b, groupId) {
     e.target.disabled = true;
     try { const id = await api.raidFight(groupId); location.hash = `#/battle/${id}`; } catch (err) { e.target.disabled = false; showError(err); }
   });
-  const state = b.defeated ? 'ko' : 'idle';
+  const state = b.caught_by ? 'idle' : b.defeated ? 'ko' : 'idle';
+  if (b.caught_by) cv.classList.add('caught');   // gone into someone's ball
   let f = 0; drawBoss(cv, b.boss, 0, state);
   const tick = setInterval(() => { if (!document.body.contains(cv)) return clearInterval(tick); if (!reduced()) { f ^= 1; drawBoss(cv, b.boss, f, state); } }, 600);
   // loot: this week's if beaten, and last week's if it was beaten and not picked up yet
