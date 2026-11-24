@@ -1,5 +1,6 @@
 // Gym tracker screens: log today's workout, and a person's progress.
 import * as api from './supa.js';
+import { mountTeamCard } from './pets.js';
 import { toast } from './ui.js';
 import { EXERCISES, EX, CATS, BIG_FOUR, isTimed, isClimb, GRADES, vGrade, searchText } from './exercises.js';
 import { t, getLang, fmtDay, fmtLongToday } from './i18n.js';
@@ -438,6 +439,7 @@ export async function progressScreen(user, who) {
       ${mine ? `<a class="link" href="#/me">${t('Me', '我')} ›</a>` : ''}</header>
     ${mine ? `<a class="big" href="#/log">${t('Log today’s workout', '記錄今日訓練')}</a>` : ''}
     ${mine ? levelCardHtml(points(rows, habitRows, ciDays, weekStart), weekStart) : ''}
+    <section class="card" id="teamCard" hidden></section>
     ${coverageHtml(coverage(rows, weekStart))}
     <section class="card"><h3>${t('Personal bests', '個人最佳')}</h3>
       <div class="pbs">${BIG_FOUR.map(id => { const p = prOf(sessions[id] || []); return `<div><span class="muted">${esc(exName(id))}</span><b>${p.kg ? kg(p.kg) : '—'}</b></div>`; }).join('')}
@@ -451,5 +453,6 @@ export async function progressScreen(user, who) {
         <p class="muted">${t('Last', '上次')} (${esc(fmtDay(last.date))}): ${esc(setsText(last.sets, id))} · ${t(`${list.length} session${list.length === 1 ? '' : 's'}`, `${list.length} 次`)}</p></section>`;
     }).join('') : `<section class="card empty"><p class="muted">${mine ? t('Nothing logged yet. Log your first workout.', '仲未有記錄，記低你第一次訓練啦。') : t('Nothing logged yet.', '仲未有記錄。')}</p></section>`}`;
   $app().querySelectorAll('[data-open]').forEach(b => b.onclick = () => openExercise(user, b.dataset.open, 'prog', uid));
+  const tc = $app().querySelector('#teamCard'); if (tc) mountTeamCard(tc, uid, mine);
 }
 

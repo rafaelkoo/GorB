@@ -1112,3 +1112,8 @@ canvas.dex-shadow { filter: brightness(0) opacity(.45); }
 .photo-pick { flex-basis: 100%; background: var(--mat-2); border-radius: 12px; }
 .photo-pick[hidden] { display: none; }
 .composer .chat-cam { background: transparent; color: var(--chalk); border: 1px solid var(--line); }
+.ut-lead { display: grid; grid-template-columns: 64px 1fr; gap: 10px; align-items: center; margin: 4px 0 10px; }
+.ut-lead canvas { width: 64px; height: 68px; image-rendering: pixelated; }
+.ut-lead > div { display: grid; gap: 4px; justify-items: start; }
+.ut-moves { display: flex; flex-wrap: wrap; gap: 4px; }
+.ut-mv { font-size: .72rem; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--c); color: var(--chalk); }

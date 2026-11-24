@@ -251,6 +251,37 @@ export async function petsScreen(user) {
   draw();
 }
 
+// ---------------- someone's team, on their progress page (yours too) ----------------
+export async function mountTeamCard(card, uid, mine) {
+  let tm;
+  try { tm = await api.userTeam(uid); } catch { return; }
+  if (!tm) return;
+  card.hidden = false;
+  const grade = v => ivGrade({ hp: v, atk: v, def: v, spd: v, tec: v });
+  const stats = s => `<table class="pt-stats"><tbody>${STATS.map(([k, en, zh]) => `<tr><th>${t(en, zh)}</th><td>${s?.[k] ?? '–'}</td></tr>`).join('')}</tbody></table>`;
+  card.innerHTML = `<div class="card-head"><h3>🐾 ${mine ? t('Your team', '你嘅隊伍') : t(`${esc(tm.name)}’s team`, `${esc(tm.name)} 嘅隊伍`)}</h3>${mine ? `<a class="link" href="#/pets">${t('Manage', '管理')} ›</a>` : ''}</div>
+    <p class="muted small">${[t(`Tower floor ${tm.tower || 0}`, `塔第 ${tm.tower || 0} 層`), t(`${tm.pets_total} pet${tm.pets_total === 1 ? '' : 's'}`, `${tm.pets_total} 隻寵物`), t(`dex ${tm.dex}/18`, `圖鑑 ${tm.dex}/18`), tm.evolved_total ? `✨ ${tm.evolved_total}` : ''].filter(Boolean).join(' · ')}</p>
+    <div class="ut-lead"><canvas id="utAv" width="64" height="68" role="img" aria-label="${esc(tm.name)}"></canvas><div>
+      <b>${esc(tm.name)} · Lv ${tm.level}</b>${typeChip(tm.type === 'rookie' ? 'normal' : tm.type)}
+      <span class="ut-moves">${(tm.moves || []).map(m => `<span class="ut-mv" style="--c:${(MOVE_TYPES[m.type] || MOVE_TYPES.normal).col}">${esc(t(m.en, m.zh))}</span>`).join('')}</span></div></div>
+    ${tm.team.length ? `<div class="pt-team ut-team">${tm.team.map((p, i) => `<button type="button" class="pt-card ${p.evolved ? 'evo' : ''}" data-ut="${i}">${sprite(p.species, 64, petName(p), p.evolved)}
+        <b>${esc(petName(p))}</b><span class="pt-lv">Lv ${p.level}</span><span class="pt-meta">${typeChip(p.type)}<span class="pt-grade g-${grade(p.iv_avg)}">${grade(p.iv_avg)}</span></span></button>`).join('')}</div>`
+      : `<p class="muted small">${mine ? t('No pets in your team yet.', '你隊入面仲未有寵物。') : t('No pets in their team yet.', '佢隊入面仲未有寵物。')}</p>`}`;
+  const av = card.querySelector('#utAv');
+  if (av) { const a = cleanAvatar(tm.avatar, uid); drawPortrait(av, a, 'stand', 0); let f = 0; const tk = setInterval(() => { if (!document.body.contains(av)) return clearInterval(tk); if (!reduced()) { f ^= 1; drawPortrait(av, a, 'stand', f); } }, 560); }
+  wireSprites(card);
+  card.querySelectorAll('[data-ut]').forEach(b => b.onclick = () => {
+    const p = tm.team[+b.dataset.ut], s = p.snap || {};
+    const { box } = sheet(`<div class="pt-head">${sprite(p.species, 96, petName(p), p.evolved)}<div><h3>${esc(petName(p))}</h3>
+        <span class="pt-meta">${typeChip(p.type)}${p.boss ? '<span class="pt-boss">👑 Boss</span>' : ''}<span class="pt-grade g-${grade(p.iv_avg)}">${grade(p.iv_avg)}</span></span>
+        <span class="muted small">Lv ${p.level}${p.evolved ? ` · ✨ ${t(`evolved from ${speciesName(p.species)}`, `由${speciesName(p.species)}進化`)}` : ''}${p.nickname ? ` · ${esc(speciesName(p.species, p.evolved))}` : ''}</span></div></div>
+      ${stats(s)}
+      <p class="muted small">${t('Moves', '招式')}: ${(s.moves || []).map(m => esc(t(m.en, m.zh))).join(' · ')}</p>
+      <button type="button" class="ghost" data-close>${t('Close', '關閉')}</button>`, petName(p));
+    wireSprites(box);
+  });
+}
+
 // ---------------- the dex ----------------
 const TOWER_FLOORS = (() => { const m = {}; for (let f = 1; f <= 30; f++) { const i = f % 5 === 0 ? 12 + ((f / 5 - 1) % 6) : [0, 2, 9, 1, 6, 4, 7, 3, 10, 8, 5, 11][(f - Math.floor(f / 5) - 1) % 12]; (m[i] ||= []).push(f); } return m; })();
 export async function dexScreen() {
