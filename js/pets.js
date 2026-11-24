@@ -117,7 +117,18 @@ export async function petsScreen(user) {
   try { [, prof] = await Promise.all([load(), user ? api.getProfile(user.id).catch(() => null) : null]); } catch (err) { showError(err); return; }
   const myAv = user ? cleanAvatar(prof?.avatar, user.id) : null;
   const teamIds = () => pets.filter(p => p.slot != null).sort((a, b) => a.slot - b.slot).map(p => p.id);
-  const saveTeam = async ids => { try { await api.setTeam(ids); await load(); draw(); } catch (err) { showError(err); } };
+  // where you stand in the line (0 = first); you're always in it
+  let mePos = Math.min(prof?.team_me_pos ?? 0, teamIds().length);
+  const saveTeam = async (ids, pos = mePos) => {
+    try { pos = Math.max(0, Math.min(pos, ids.length)); await api.setTeam(ids, pos); mePos = pos; await load(); draw(); } catch (err) { showError(err); }
+  };
+  // the line as shown: pet ids with 'me' slotted in
+  const order = () => { const ids = teamIds(), o = [...ids]; o.splice(Math.min(mePos, ids.length), 0, 'me'); return o; };
+  const moveIn = (key, dir) => {
+    const o = order(), i = o.indexOf(key), j = i + dir; if (j < 0 || j >= o.length) return;
+    [o[i], o[j]] = [o[j], o[i]];
+    saveTeam(o.filter(x => x !== 'me'), o.indexOf('me'));
+  };
 
   const card = p => `<button type="button" class="pt-card ${p.evolved ? 'evo' : ''} ${p.legend ? 'legend' : ''}" data-pet="${p.id}">${sprite(p.species, 64, petName(p), p.evolved)}
       <b>${esc(petName(p))}</b><span class="pt-lv">Lv ${p.level || 1}</span><span class="pt-meta">${typeChip(p.type)}<span class="pt-grade g-${ivGrade(p.iv)}" title="${t('IV grade', 'IV 評級')}">${ivGrade(p.iv)}</span></span></button>`;
@@ -132,9 +143,12 @@ export async function petsScreen(user) {
         <span class="small muted">${t(`Or keep its form: at level 20 it learns ${mvName(x.ultimate)}, the strongest move there is.`, `或者保持原形：到 20 級會學識最強嘅招式「${mvName(x.ultimate)}」。`)}</span>
         <div class="evo-btns"><button type="button" data-evo="go">✨ ${t('Evolve', '進化')}</button><button type="button" class="ghost" data-evo="later">${t('Not now', '遲啲先')}</button><button type="button" class="ghost" data-evo="keep">${t('Keep its form', '保持原形')}</button></div></div></section>`).join('')}
       <section class="card"><div class="card-head"><h3>${t('Your team', '你嘅隊伍')}</h3><span class="muted small">${team.length + 1} / 6</span></div>
-        <p class="muted small">${t('You fight first; your pets come in when you switch or go down. Tower, Boss Lair and the group boss (each pet there adds 10% to your damage, an evolved one 15%).', '你先出場；換人或者你倒低咗，寵物就會上。塔、Boss 巢穴同 group 魔王都用得（打魔王每隻寵物多 10% 傷害，進化咗嘅多 15%）。')}</p>
-        <div class="pt-team"><div class="pt-card me">${myAv ? `<canvas id="ptMe" width="64" height="68" role="img" aria-label="${t('Your character', '你嘅角色')}"></canvas>` : `<span class="pt-you" aria-hidden="true">🙋</span>`}<b>${esc(prof?.display_name || t('You', '你'))}</b><span class="pt-meta muted small">${t('Leader', '隊長')}</span></div>
-          ${team.map(card).join('')}${Array.from({ length: 5 - team.length }, () => `<div class="pt-card empty" aria-hidden="true">＋</div>`).join('')}</div></section>
+        <p class="muted small">${t('You’re always in your team; put yourself and your pets in any order with the arrows. The first one starts the fight, the next comes in when one goes down, or switch any time. Tower, Boss Lair and the group boss (each pet there adds 10% to your damage, an evolved one 15%).', '你一定喺隊入面；用箭咀排你同寵物嘅次序。排第一嗰個先出場，有人倒低就輪下一個，亦可以隨時換人。塔、Boss 巢穴同 group 魔王都用得（打魔王每隻寵物多 10% 傷害，進化咗嘅多 15%）。')}</p>
+        <div class="pt-team">${order().map((k, i, all) => {
+          const arrows = all.length > 1 ? `<span class="pt-ord"><button type="button" class="ghost" data-mv-ord="${k}" data-dir="-1" ${i === 0 ? 'disabled' : ''} aria-label="${t('Move earlier', '排前啲')}">◀</button><b>${i + 1}</b><button type="button" class="ghost" data-mv-ord="${k}" data-dir="1" ${i === all.length - 1 ? 'disabled' : ''} aria-label="${t('Move later', '排後啲')}">▶</button></span>` : '';
+          if (k === 'me') return `<div class="pt-slot"><div class="pt-card me">${myAv ? `<canvas id="ptMe" width="64" height="68" role="img" aria-label="${t('Your character', '你嘅角色')}"></canvas>` : `<span class="pt-you" aria-hidden="true">🙋</span>`}<b>${esc(prof?.display_name || t('You', '你'))}</b><span class="pt-meta muted small">${i === 0 ? t('Goes first', '打頭陣') : t('You', '你')}</span></div>${arrows}</div>`;
+          return `<div class="pt-slot">${card(pets.find(p => p.id === k))}${arrows}</div>`;
+        }).join('')}${Array.from({ length: 5 - team.length }, () => `<div class="pt-slot"><div class="pt-card empty" aria-hidden="true">＋</div></div>`).join('')}</div></section>
       <section class="card"><div class="card-head"><h3>${t('Box', '寵物箱')}</h3><span class="muted small">${pets.length}</span></div>
         ${box.length ? `<div class="pt-box">${box.map(card).join('')}</div>`
           : `<p class="muted small">${pets.length ? t('Everyone is in your team.', '全部都喺隊入面。') : t('No pets yet. Knock a monster low in the tower, then throw a ball (buy them in the shop).', '仲未有寵物。喺塔將怪打到殘血，再掟個球（喺商店買）。')}</p>
@@ -153,6 +167,7 @@ export async function petsScreen(user) {
     const me = el.querySelector('#ptMe');
     if (me) { let f = 0; drawPortrait(me, myAv, 'stand', 0); const tk = setInterval(() => { if (!document.body.contains(me)) return clearInterval(tk); if (!reduced()) { f ^= 1; drawPortrait(me, myAv, 'stand', f); } }, 560); }
     el.querySelectorAll('[data-pet]').forEach(b => b.onclick = () => petSheet(pets.find(p => p.id === b.dataset.pet)));
+    el.querySelectorAll('[data-mv-ord]').forEach(b => b.onclick = () => { el.querySelectorAll('[data-mv-ord]').forEach(x => x.disabled = true); moveIn(b.dataset.mvOrd, +b.dataset.dir); });
     el.querySelectorAll('[data-ask]').forEach(sec => sec.querySelectorAll('[data-evo]').forEach(b => b.onclick = async () => {
       const x = pets.find(q => q.id === sec.dataset.ask); sec.querySelectorAll('button').forEach(y => y.disabled = true);
       try {
@@ -200,7 +215,9 @@ export async function petsScreen(user) {
       <button type="button" class="ghost" data-close>${t('Close', '關閉')}</button>`, petName(p));
     wireSprites(box);
     box.querySelector('[data-act="in"]')?.addEventListener('click', () => { close(); saveTeam([...teamIds(), p.id]); });
-    box.querySelector('[data-act="out"]')?.addEventListener('click', () => { close(); saveTeam(teamIds().filter(x => x !== p.id)); });
+    box.querySelector('[data-act="out"]')?.addEventListener('click', () => {
+      close(); const o = order().filter(x => x !== p.id); saveTeam(o.filter(x => x !== 'me'), o.indexOf('me'));
+    });
     box.querySelector('[data-act="test"]').onclick = async e => {
       e.target.disabled = true;
       try { const id = await api.petTest(p.id); close(); location.hash = `#/battle/${id}`; } catch (err) { e.target.disabled = false; showError(err); }
@@ -255,8 +272,8 @@ export async function petsScreen(user) {
 
 // ---------------- someone's team, on their progress page (yours too) ----------------
 export async function mountTeamCard(card, uid, mine) {
-  let tm;
-  try { tm = await api.userTeam(uid); } catch { return; }
+  let tm, pos = 0;
+  try { [tm, pos] = await Promise.all([api.userTeam(uid), api.userTeamOrder(uid).catch(() => 0)]); } catch { return; }
   if (!tm) return;
   card.hidden = false;
   const grade = v => ivGrade({ hp: v, atk: v, def: v, spd: v, tec: v });
@@ -266,7 +283,8 @@ export async function mountTeamCard(card, uid, mine) {
     <div class="ut-lead"><canvas id="utAv" width="64" height="68" role="img" aria-label="${esc(tm.name)}"></canvas><div>
       <b>${esc(tm.name)} · Lv ${tm.level}</b>${typeChip(tm.type === 'rookie' ? 'normal' : tm.type)}
       <span class="ut-moves">${(tm.moves || []).map(m => `<span class="ut-mv" style="--c:${(MOVE_TYPES[m.type] || MOVE_TYPES.normal).col}">${esc(t(m.en, m.zh))}</span>`).join('')}</span></div></div>
-    ${tm.team.length ? `<div class="pt-team ut-team">${tm.team.map((p, i) => `<button type="button" class="pt-card ${p.evolved ? 'evo' : ''}" data-ut="${i}">${sprite(p.species, 64, petName(p), p.evolved)}
+    ${tm.team.length ? `<p class="small ut-order">${t('Order', '出場次序')}: ${(() => { const n = tm.team.map(p => esc(petName(p))); n.splice(Math.min(pos || 0, n.length), 0, `<b>${esc(tm.name)}</b>`); return n.join(' → '); })()}</p>
+      <div class="pt-team ut-team">${tm.team.map((p, i) => `<button type="button" class="pt-card ${p.evolved ? 'evo' : ''}" data-ut="${i}">${sprite(p.species, 64, petName(p), p.evolved)}
         <b>${esc(petName(p))}</b><span class="pt-lv">Lv ${p.level}</span><span class="pt-meta">${typeChip(p.type)}<span class="pt-grade g-${grade(p.iv_avg)}">${grade(p.iv_avg)}</span></span></button>`).join('')}</div>`
       : `<p class="muted small">${mine ? t('No pets in your team yet.', '你隊入面仲未有寵物。') : t('No pets in their team yet.', '佢隊入面仲未有寵物。')}</p>`}`;
   const av = card.querySelector('#utAv');

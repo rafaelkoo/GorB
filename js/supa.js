@@ -138,7 +138,7 @@ export const shopItems = () => sb.from('shop_items').select('*').order('sort').t
 export const myBag = () => sb.rpc('my_items').then(must);
 export const shopBuy = (item, qty = 1) => sb.rpc('shop_buy', { p_item: item, p_qty: qty }).then(must);
 export const myPets = () => sb.rpc('my_pets').then(must);
-export const setTeam = ids => sb.rpc('set_team', { p_pets: ids }).then(must);
+export const setTeam = (ids, mePos = 0) => sb.rpc('set_team', { p_pets: ids, p_me_pos: mePos }).then(must);
 export const petUpdate = (id, nickname, release = false) => sb.rpc('pet_update', { p_pet: id, p_nickname: nickname, p_release: release }).then(must);
 export const battleItem = (id, item) => sb.rpc('battle_item', { p_id: id, p_item: item }).then(must);
 export const battleSwitch = (id, to) => sb.rpc('battle_switch', { p_id: id, p_to: to }).then(must);
@@ -146,6 +146,7 @@ export const buyMove = id => sb.rpc('buy_move', { p_move: id }).then(must);
 export const petFeed = (id, item) => sb.rpc('pet_feed', { p_pet: id, p_item: item }).then(must);
 export const petTeach = (id, move) => sb.rpc('pet_teach', { p_pet: id, p_move: move }).then(must);
 export const petTest = id => sb.rpc('pet_test', { p_pet: id }).then(must);
+export const userTeamOrder = id => sb.rpc('user_team_order', { p_user: id }).then(must);
 export const userTeam = id => sb.rpc('user_team', { p_user: id }).then(must);
 export const petEvoChoice = (id, choice) => sb.rpc('pet_evo_choice', { p_pet: id, p_choice: choice }).then(must);
 export const movesByIds = ids => (ids.length ? sb.from('moves').select('id, en, zh, type, power, effect, effect_val, uses, desc_en, desc_zh').in('id', ids).then(must) : Promise.resolve([]));
