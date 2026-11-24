@@ -73,8 +73,8 @@ export async function logScreen(user) {
   const today = api.ukToday(), weekday = api.ukWeekday();
   const weekStart = api.ukWeekStart();
   const [rows, savedPlan, body, ticks, wlog, clogs] = await Promise.all([api.liftHistory(user.id), api.getPlan(user.id), api.bodyProfile(user.id), api.habitTicks(user.id, api.ukToday()), api.weights(user.id), api.cardioLogs(user.id, weekStart)]);
-  const cst = { logs: clogs, pick: null, mins: 30, target: schemeOf(body?.goal_id)?.cardio || null, today, weekStart };
-  const habitsDone = new Set(ticks.map(x => x.habit)), habits = habitList(wlog.at(-1) ? +wlog.at(-1).weight_kg : null, schemeOf(body?.goal_id)?.steps);
+  const cst = { logs: clogs, pick: null, mins: 30, target: schemeOf(body?.goal_id, body?.goal_answers)?.cardio || null, today, weekStart };
+  const habitsDone = new Set(ticks.map(x => x.habit)), habits = habitList(wlog.at(-1) ? +wlog.at(-1).weight_kg : null, schemeOf(body?.goal_id, body?.goal_answers)?.steps);
   const restSec = body?.rest_sec || 90;
   const history = bySession(rows);
   const fullPlan = cleanPlan(savedPlan || {});
@@ -93,7 +93,7 @@ export async function logScreen(user) {
   // the plan's rep range [lo, hi] for an exercise (the chosen day first, then any day)
   // the plan's reps for an exercise; not in the plan → null, and the coach uses your own usual reps
   // not in the plan but you've picked a goal (Me page): that goal's rep range for this kind of exercise
-  const sc = schemeOf(body?.goal_id), scKey = schemeKey(body?.goal_id);
+  const sc = schemeOf(body?.goal_id, body?.goal_answers), scKey = schemeKey(body?.goal_id, body?.goal_answers);
   const planRange = id => { const e = (pickedDay()?.items || []).find(x => x.id === id) || findItem(fullPlan, id); if (e) return [e.lo || e.reps, e.reps]; if (sc) { const [, lo, hi] = schemeFor(sc, id); return [lo, hi]; } return [null, null]; };
   const twice = scKey === 'fat' || scKey === 'endurance';
   const inPlan = id => !!((pickedDay()?.items || []).find(x => x.id === id) || findItem(fullPlan, id));
@@ -453,17 +453,3 @@ export async function progressScreen(user, who) {
   $app().querySelectorAll('[data-open]').forEach(b => b.onclick = () => openExercise(user, b.dataset.open, 'prog', uid));
 }
 
-// PB board for the group page: rows = members, columns = the four lifts + total
-export async function pbBoardHtml(groupId, userId) {
-  const rows = await api.groupLifts(groupId);
-  if (!rows.length) return `<p class="muted">${t('No lifts logged yet. Log a workout to get on the board.', '仲未有人記錄。記一次訓練就上榜。')}</p>`;
-  const people = {};
-  for (const r of rows) (people[r.user_id] ||= { name: r.display_name, kg: {} }).kg[r.exercise_id] = +r.best_kg;
-  const list = Object.entries(people).map(([id, p]) => ({ id, ...p, total: BIG_FOUR.reduce((s, e) => s + (p.kg[e] || 0), 0) }))
-    .sort((a, b) => b.total - a.total);
-  const short = { bench_press: t('Bench', '臥推'), deadlift: t('Dead', '硬舉'), squat: t('Squat', '深蹲'), ohp: t('OHP', '推舉') };
-  return `<div class="tablewrap"><table class="pb"><thead><tr><th>${t('Name', '名')}</th>${BIG_FOUR.map(e => `<th>${short[e]}</th>`).join('')}<th>${t('Total', '總和')}</th></tr></thead>
-    <tbody>${list.map(p => `<tr class="${p.id === userId ? 'me' : ''}"><td><a href="#/p/${p.id}">${esc(p.name)}</a></td>
-      ${BIG_FOUR.map(e => `<td>${p.kg[e] ? +p.kg[e] : '—'}</td>`).join('')}<td><b>${+p.total.toFixed(2)}</b></td></tr>`).join('')}</tbody></table></div>
-    <p class="muted small">${t('kg, heaviest set with at least 1 rep. Tap a name to see their progress.', '單位 kg，最少 1 下嘅最重一組。撳個名睇佢嘅進度。')}</p>`;
-}

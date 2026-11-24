@@ -1,7 +1,6 @@
 // Supabase client + every call the app makes, in one place.
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { SUPABASE_URL, SUPABASE_ANON_KEY, PHOTO_BUCKET } from './config.js';
-import { BIG_FOUR } from './exercises.js';
 import { t } from './i18n.js';
 
 export const configured = !SUPABASE_URL.includes('YOUR-PROJECT') && !SUPABASE_ANON_KEY.includes('YOUR-');
@@ -242,7 +241,6 @@ export async function saveWorkout(userId, rows) {
 // every set of one person (you or a groupmate), oldest first
 export const liftHistory = userId => sb.rpc('lift_history', { p_user: userId }).then(must);
 // heaviest set per member for the four PB-board lifts
-export const groupLifts = groupId => sb.rpc('group_lifts', { p_group: groupId, p_exercises: BIG_FOUR }).then(must);
 
 // ---------- me: language, targets, personal details ----------
 export const ukDayOf = iso => new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/London' }).format(new Date(iso));
@@ -262,8 +260,6 @@ export const weights = userId => sb.from('body_weights').select('logged_on, weig
 export const logWeight = (userId, kg) =>
   sb.from('body_weights').upsert({ user_id: userId, logged_on: ukToday(), weight_kg: kg }, { onConflict: 'user_id,logged_on' }).then(must);
 export const liftTargets = userId => sb.from('lift_targets').select('exercise_id, target_kg, target_reps, by_date, set_on, base_e1rm').eq('user_id', userId).then(must);
-export const setLiftTarget = (userId, exercise_id, target_kg) =>
-  sb.from('lift_targets').upsert({ user_id: userId, exercise_id, target_kg }, { onConflict: 'user_id,exercise_id' }).then(must);
 export const dropLiftTarget = (userId, exercise_id) => sb.from('lift_targets').delete().match({ user_id: userId, exercise_id }).then(must);
 export const groupRankings = groupId => sb.rpc('group_rankings', { p_group: groupId }).then(must);
 export const groupExerciseRanks = groupId => sb.rpc('group_exercise_ranks', { p_group: groupId }).then(must);
@@ -316,7 +312,6 @@ export const upsertCardio = rows => sb.from('cardio_logs').upsert(rows, { onConf
 
 // ---------- habits (private) + check-in dates for points ----------
 export const habitTicks = (userId, from) => sb.from('habit_ticks').select('day, habit').eq('user_id', userId).gte('day', from).then(must);
-export const allHabitCount = userId => sb.from('habit_ticks').select('day').eq('user_id', userId).then(must).then(r => r.length);
 export const setHabit = (userId, habit, on) => on
   ? sb.from('habit_ticks').upsert({ user_id: userId, day: ukToday(), habit }, { onConflict: 'user_id,day,habit', ignoreDuplicates: true }).then(must)
   : sb.from('habit_ticks').delete().match({ user_id: userId, day: ukToday(), habit }).then(must);

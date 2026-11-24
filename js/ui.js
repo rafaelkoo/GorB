@@ -115,30 +115,6 @@ export function pickName(user, onDone) {
   };
 }
 
-// ---------- groups ----------
-export async function home(user) {
-  const groups = await api.myGroups();
-  if (groups.length === 1 && !location.hash.includes('all')) { location.hash = `#/g/${groups[0].id}`; return; }
-  const el = render(`
-    <header class="page-head"><h2>${t('Your groups', '你嘅 group')}</h2></header>
-    <section class="card">
-      ${groups.length ? `<ul class="list">${groups.map(g => `<li><a href="#/g/${g.id}">${esc(g.name)}<span aria-hidden="true">›</span></a></li>`).join('')}</ul>`
-                      : `<p class="muted">${t('No groups yet. Make one or join with a code.', '仲未有 group。開一個，或者用邀請碼加入。')}</p>`}
-    </section>
-    <section class="card"><h3>${t('Make a group', '開 group')}</h3>
-      <form id="mk"><input id="gname" required maxlength="60" placeholder="${t('Group name', 'Group 名')}" aria-label="${t('Group name', 'Group 名')}"><button>${t('Create', '建立')}</button></form></section>
-    <section class="card"><h3>${t('Join a group', '加入 group')}</h3>
-      <form id="jn"><input id="gcode" required maxlength="8" placeholder="${t('Invite code', '邀請碼')}" aria-label="${t('Invite code', '邀請碼')}" autocapitalize="characters"><button>${t('Join', '加入')}</button></form></section>`);
-  el.querySelector('#mk').onsubmit = async e => {
-    e.preventDefault();
-    try { const g = await api.createGroup(el.querySelector('#gname').value); location.hash = `#/g/${g.id}`; } catch (err) { showError(err); }
-  };
-  el.querySelector('#jn').onsubmit = async e => {
-    e.preventDefault();
-    try { const g = await api.joinGroup(el.querySelector('#gcode').value); window.dispatchEvent(new Event('customchange')); location.hash = `#/g/${g.id}`; } catch (err) { showError(err); }
-  };
-}
-
 // Month table with a bar per person. Ties at the bottom are all marked (tie rule not decided yet).
 // last week (Mon–Sun) in this group: days against each person's target, and new PBs
 function weekHtml(rv, user) {
@@ -381,11 +357,6 @@ export async function group(user, groupId, limit = FEED_PAGE) {
     if (!confirm(t('Delete this check-in and its photo?', '刪除呢次打卡同張相？'))) return;
     try { await api.deleteCheckin(feed.find(r => r.id === b.dataset.id)); group(user, groupId, limit); } catch (err) { showError(err); }
   });
-}
-
-export async function joinByLink(code) {
-  try { const g = await api.joinGroup(code); window.dispatchEvent(new Event('customchange')); location.hash = `#/g/${g.id}`; }
-  catch (err) { location.hash = '#/all'; setTimeout(() => showError(err), 50); }
 }
 
 // ---------- check-in ----------

@@ -7,6 +7,7 @@ import { questsCardHtml, mountQuests } from './quests.js';
 import { seasonCardHtml, mountSeason } from './season.js';
 import { movesCardHtml, mountMoves } from './battle.js';
 import { BIG_FOUR } from './exercises.js';
+import { GQS, STD } from './ftdata.js';
 import { t, getLang, setLang, langSwitchHtml, fmtDay } from './i18n.js';
 import { exName, kg, picker, spark, bySession, prOf } from './tracker.js';
 import { pushSupported, pushState, enablePush, disablePush, testNotification } from './push.js';
@@ -35,6 +36,41 @@ const bmi = (w, h) => +(w / ((h / 100) ** 2)).toFixed(1);
 const bmiLabel = b => b < 18.5 ? t('Underweight', '過輕') : b < 23 ? t('Healthy', '正常') : b < 27.5 ? t('Overweight', '過重') : t('Obese', '肥胖');
 // Mifflin–St Jeor × 1.55 (moderately active), as in FitTrack; FitTrack had no sex field and used the male constant
 const tdee = (w, h, a, sex) => Math.round((10 * w + 6.25 * h - 5 * a + (sex === 'female' ? -161 : 5)) * 1.55);
+
+// the follow-up questions for the chosen goal (FitTrack's GQS)
+function goalQuestionsHtml(b, profile) {
+  const qs = GQS[b.goal_id]; if (!qs?.length) return '';
+  const ans = b.goal_answers || {};
+  const cur = q => (q.id === 'gym_days' ? ans.gym_days ?? profile.days_per_week : ans[q.id]);
+  return `<div class="goal-qs">${qs.map(q => q.type === 'choice'
+    ? `<div class="gq"><span class="gq-q">${esc(t(q.en, q.zh))}</span><div class="chips wrap">${q.opts.map(o => `<button type="button" data-gq="${q.id}" data-gq-opt="${o.id}" class="${cur(q) === o.id ? 'on' : ''}" aria-pressed="${cur(q) === o.id}">${esc(t(o.en, o.zh))}</button>`).join('')}</div></div>`
+    : `<label class="gq"><span class="gq-q">${esc(t(q.en, q.zh))}</span><input data-gq="${q.id}" inputmode="decimal" min="${q.min ?? ''}" max="${q.max ?? ''}" step="${q.step ?? 1}" value="${cur(q) ?? ''}" placeholder="${q.def ?? ''}"></label>`).join('')}
+    <p class="muted small">${t('Your answers tune the training guide: rep ranges, cardio minutes and gym days.', '你嘅答案會調整訓練指南：次數範圍、cardio 分鐘同去 gym 日數。')}</p></div>`;
+}
+
+// strength level against your body weight (FitTrack's standards: novice / intermediate / advanced)
+const LEVELS = [['Starting out', '入門'], ['Novice', '新手'], ['Intermediate', '中級'], ['Advanced', '進階']];
+const LIFT_ORDER = { all3: ['squat', 'bench_press', 'deadlift'], squat: ['squat'], bench: ['bench_press'], deadlift: ['deadlift'] };
+function strengthCardHtml(history, bw, b) {
+  const since = new Date(Date.now() - 90 * 864e5).toISOString().slice(0, 10), best = {};
+  for (const r of history || []) if (STD[r.exercise_id] && r.performed_on >= since && r.reps >= 1 && r.reps <= 30 && r.weight_kg > 0)
+    best[r.exercise_id] = Math.max(best[r.exercise_id] || 0, e1rm(+r.weight_kg, r.reps));
+  let ids = Object.keys(best);
+  if (!ids.length) return '';
+  const first = b.goal_id === 'strength' ? LIFT_ORDER[b.goal_answers?.lift] || [] : [];
+  ids.sort((x, y) => (first.includes(y) - first.includes(x)) || best[y] / STD[y][1] - best[x] / STD[x][1]);
+  return `<section class="card str-card"><div class="card-head"><h3>${t('Strength level', '力量等級')}</h3><span class="muted small">${t('vs body weight, last 90 days', '對比體重 · 最近 90 日')}</span></div>
+    ${bw ? `<ul class="str-list">${ids.slice(0, 8).map(id => {
+      const r = best[id] / bw, s = STD[id], lv = r < s[0] ? 0 : r < s[1] ? 1 : r < s[2] ? 2 : 3;
+      const lo = lv === 0 ? 0 : s[lv - 1], hi = lv === 3 ? s[2] : s[lv], pct = lv === 3 ? 100 : Math.round((r - lo) / (hi - lo) * 100);
+      const nextKg = lv < 3 ? Math.ceil(hi * bw / 2.5) * 2.5 : null;
+      return `<li class="${first.includes(id) ? 'focus' : ''}"><div class="str-top"><b>${esc(exName(id))}</b><span class="str-lv lv${lv}">${t(...LEVELS[lv])}</span></div>
+        <span class="q-bar" aria-hidden="true"><i style="width:${Math.max(4, Math.min(100, pct))}%"></i></span>
+        <span class="muted small">${t(`${kg(Math.round(best[id]))} (${r.toFixed(2)}× body weight)${nextKg ? ` · ${LEVELS[lv + 1][0]} at about ${kg(nextKg)}` : ''}`, `${kg(Math.round(best[id]))}（${r.toFixed(2)} 倍體重）${nextKg ? ` · 大約 ${kg(nextKg)} 到${LEVELS[lv + 1][1]}` : ''}`)}</span></li>`;
+    }).join('')}</ul>
+    <p class="muted small">${t('Estimated one-rep max from your best sets. Dumbbell lifts are per dumbbell. A rough guide, not a test.', '用你最好嗰組估算一次最大重量。啞鈴動作計單隻。只係大概參考。')}</p>`
+    : `<p class="muted">${t('Log your body weight above to see your level for each lift.', '喺上面記錄體重，就會見到每個動作嘅等級。')}</p>`}</section>`;
+}
 
 const num = v => (v === '' || v == null ? null : Number(String(v).replace(',', '.')));
 
@@ -135,6 +171,7 @@ export async function meScreen(user) {
     <section class="card">
       <div class="card-head"><h3>${t('My goal', '我嘅目標')}</h3></div>
       <div class="chips wrap" id="goals">${GOALS.map(g => `<button data-goal="${g.id}" class="${b.goal_id === g.id ? 'on' : ''}">${esc(t(g.en, g.zh))}</button>`).join('')}</div>
+      ${goalQuestionsHtml(b, profile)}
       ${canCalc ? `<div class="stats four">
           <div><span class="muted">BMI</span><b>${bmi(latest, +b.height_cm)}</b><span class="muted small">${bmiLabel(bmi(latest, +b.height_cm))}</span></div>
           <div><span class="muted">${t('Calories', '卡路里')}</span><b>${plan ? maint + plan.kcal : maint}</b><span class="muted small">kcal / ${t('day', '日')}</span></div>
@@ -145,6 +182,7 @@ export async function meScreen(user) {
       : `<p class="muted">${t('Fill in your height, age and today’s weight to see BMI, calories, protein and water for your goal.', '填埋身高、年齡同今日體重，就會計到 BMI、卡路里、蛋白質同飲水量。')}</p>`}
     </section>
 
+    ${strengthCardHtml(history, latest, b)}
     <section class="card">
       <div class="card-head"><h3>${t('My details', '我嘅資料')}</h3></div>
       <form id="details" class="grid2">
@@ -207,6 +245,17 @@ export async function meScreen(user) {
     if (!(v >= 30 && v <= 300)) return showError({ message: t('Enter a weight between 30 and 300 kg.', '輸入 30 至 300 kg 之間嘅體重。') });
     try { await api.logWeight(user.id, v); await again(); toast(t('Weight logged.', '體重已記錄。')); } catch (err) { showError(err); }
   };
+  // goal follow-up answers: saved with the goal; gym days and kilos to lose go into the existing settings
+  const saveAnswer = async (q, v) => {
+    const ans = { ...(b.goal_answers || {}), [q]: v };
+    try {
+      await api.saveBodyProfile(user.id, { goal_answers: ans, ...(q === 'target_kg' && latest && v ? { goal_weight_kg: +(latest - v).toFixed(1) } : {}) });
+      if (q === 'gym_days' && v) await api.updateProfile(user.id, { days_per_week: v });
+      await again(); toast(t('Saved', '儲存咗'));
+    } catch (err) { showError(err); }
+  };
+  el.querySelectorAll('[data-gq-opt]').forEach(btn => btn.onclick = () => saveAnswer(btn.dataset.gq, btn.dataset.gqOpt));
+  el.querySelectorAll('input[data-gq]').forEach(inp => inp.onchange = () => { const v = num(inp.value); if (v != null) saveAnswer(inp.dataset.gq, v); });
   el.querySelectorAll('[data-goal]').forEach(btn => btn.onclick = async () => {
     try { await api.saveBodyProfile(user.id, { goal_id: btn.dataset.goal === b.goal_id ? null : btn.dataset.goal }); await again(); popAfter(`[data-goal="${btn.dataset.goal}"]`); } catch (err) { showError(err); }
   });

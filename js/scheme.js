@@ -15,9 +15,23 @@ export const SCHEMES = {
 };
 const BY_GOAL = { lose_weight: 'fat', build_muscle: 'muscle', recomp: 'recomp', strength: 'strength', endurance: 'endurance', wellness: 'wellness' };
 
-// scheme key for a goal id; no goal → null (the page asks you to pick one)
-export const schemeKey = goalId => BY_GOAL[goalId] || null;
-export const schemeOf = goalId => SCHEMES[schemeKey(goalId)] || null;
+// scheme key for a goal id; no goal → null (the page asks you to pick one).
+// ans = the goal's follow-up answers (Me page): body recomp can lean to fat loss or to muscle.
+export const schemeKey = (goalId, ans) => {
+  if (goalId === 'recomp' && ans?.priority === 'fat') return 'fat';
+  if (goalId === 'recomp' && ans?.priority === 'muscle') return 'muscle';
+  return BY_GOAL[goalId] || null;
+};
+// the scheme, tuned by the answers: your own weekly cardio target, more or less cardio while losing weight
+export const schemeOf = (goalId, ans) => {
+  const base = SCHEMES[schemeKey(goalId, ans)];
+  if (!base) return null;
+  const sc = { ...base };
+  if (goalId === 'lose_weight' && ans?.approach === 'cardio_only') sc.cardio += 60;
+  if (goalId === 'lose_weight' && ans?.approach === 'weights_only') sc.cardio = Math.max(60, sc.cardio - 60);
+  if (+ans?.weekly_mins > 0) sc.cardio = +ans.weekly_mins;
+  return sc;
+};
 
 // [sets, lo, hi] for one exercise under a scheme
 export const schemeFor = (sc, id) => (isCompound(id) ? sc.c : sc.i);

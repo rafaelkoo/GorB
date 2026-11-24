@@ -986,3 +986,15 @@ button.mv-slot { font: inherit; color: var(--chalk); text-align: left; justify-c
 @keyframes sheetFade { from { background-color: rgba(0, 0, 0, 0); } }
 .sheet { animation: sheetFade 200ms ease-out; }
 @media (prefers-reduced-motion: reduce) { .mv-slot.picked, .mv-slot.mv-new, .mv-pick.mv-new, .bt-moves.ready .bt-mv, .bt-mv.chosen, .sheet { animation: none !important; } }
+.goal-qs { display: grid; gap: 12px; border-top: 1px solid var(--line); padding-top: 12px; }
+.gq { display: grid; gap: 6px; }
+.gq-q { font-weight: 600; font-size: .92rem; }
+.gq input { max-width: 140px; }
+.str-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.str-list li { display: grid; gap: 4px; }
+.str-list li.focus b { color: var(--yellow); }
+.str-top { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.str-lv { font-size: .78rem; font-weight: 700; padding: 1px 9px; border-radius: 999px; border: 1px solid var(--line); }
+.str-lv.lv1 { color: #9fd3f0; border-color: #2e5f7a; }
+.str-lv.lv2 { color: #7fd39f; border-color: #2c6b45; }
+.str-lv.lv3 { color: var(--yellow); border-color: #6b5a22; }

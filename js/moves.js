@@ -1592,4 +1592,3 @@ for (const [id, list] of Object.entries(PATCH)) {
   list.forEach((p, i) => { if (p && m.mistakes[i]) m.mistakes[i].patch = p; });
 }
 
-export const MOVE_IDS = Object.keys(MOVES);

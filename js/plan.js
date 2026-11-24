@@ -82,7 +82,7 @@ export async function planScreen(user, dayId) {
   if (saved && !Array.isArray(saved.days)) api.savePlan(user.id, plan).catch(() => {});   // convert the old weekday plan once
   let cur = plan.days.find(d => d.id === dayId) || plan.days[0] || null;
   const [profile, body] = await Promise.all([api.getProfile(user.id), api.bodyProfile(user.id)]);
-  const sc = schemeOf(body?.goal_id);
+  const sc = schemeOf(body?.goal_id, body?.goal_answers);
 
   let saving = null;
   const save = () => { clearTimeout(saving); saving = setTimeout(() => api.savePlan(user.id, plan).catch(showError), 400); };

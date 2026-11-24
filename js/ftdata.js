@@ -1,11 +1,8 @@
 // Static data. Exercise ids, goal ids and plan shape are identical to the
 // first FitTrack version so saved data keeps working.
 
-export const SCORE_CFG = { set_done: 5, task_done: 10, pr_broken: 25, workout_saved: 15 };
 export const LEVEL_XP = 500;
 export const WD = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-export const WD_ZH = { Mon: '一', Tue: '二', Wed: '三', Thu: '四', Fri: '五', Sat: '六', Sun: '日' };
-export const WD_LONG = { Mon: ['星期一', 'Monday'], Tue: ['星期二', 'Tuesday'], Wed: ['星期三', 'Wednesday'], Thu: ['星期四', 'Thursday'], Fri: ['星期五', 'Friday'], Sat: ['星期六', 'Saturday'], Sun: ['星期日', 'Sunday'] };
 
 export const CATS = {
   chest: { zh: '胸', zhL: '胸部', en: 'Chest', target: 75 },
@@ -58,8 +55,6 @@ export const MUSCLES = {
 };
 
 const LV = { B: 'Beginner', I: 'Intermediate', A: 'Advanced' };
-const LV_ZH = { Beginner: '新手', Intermediate: '中級', Advanced: '進階' };
-export const levelZh = l => LV_ZH[l] || l;
 const EQ_ZH = { Barbell: '槓鈴', Dumbbell: '啞鈴', Machine: '器械', Cable: '滑輪', Bodyweight: '自身體重', Other: '其他' };
 export const equipZh = e => EQ_ZH[e] || e;
 
@@ -162,7 +157,7 @@ const RAW = [
 ];
 
 export const EX = {};
-export const EX_LIST = RAW.map(r => {
+const EX_LIST = RAW.map(r => {
   const [id, zh, en, cat, equip, lv, muscles, dZh, dEn, move, approx, cardio] = r;
   const e = { id, zh, en, cat, equip, level: LV[lv], muscles, dZh, dEn, move, approx: !!approx, isCardio: !!cardio };
   EX[id] = e; return e;

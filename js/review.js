@@ -58,13 +58,13 @@ export function weeklyReview(d, today) {
   const before = d.weights.filter(w => w.logged_on < from).at(-1);
   const wChange = weighed && before ? Math.round((+wIn.at(-1).weight_kg - +before.weight_kg) * 10) / 10 : null;
 
-  const sc = schemeOf(d.body?.goal_id);
+  const sc = schemeOf(d.body?.goal_id, d.body?.goal_answers);
   const cardioMin = weekMinutes(d.cardio, from, today);
   const sets = coverage(d.rows.filter(r => r.performed_on <= today), from);
 
   // next week: what to lift on each planned exercise (rep range from the plan)
   const next = plan ? [...new Map(allItems(plan).filter(e => !EX[e.id]?.climb).map(e => [e.id, e])).values()]
-    .map(e => ({ id: e.id, timed: !!EX[e.id]?.timed, s: (EX[e.id]?.timed ? holdNext(e.id, hist[e.id], today, e.lo || e.reps, e.reps) : nextLoad(e.id, hist[e.id], today, e.lo || e.reps, e.reps, { twice: ['fat', 'endurance'].includes(schemeKey(d.body?.goal_id)) })) })).filter(x => x.s && x.s.kg).slice(0, 8) : [];
+    .map(e => ({ id: e.id, timed: !!EX[e.id]?.timed, s: (EX[e.id]?.timed ? holdNext(e.id, hist[e.id], today, e.lo || e.reps, e.reps) : nextLoad(e.id, hist[e.id], today, e.lo || e.reps, e.reps, { twice: ['fat', 'endurance'].includes(schemeKey(d.body?.goal_id, d.body?.goal_answers)) })) })).filter(x => x.s && x.s.kg).slice(0, 8) : [];
 
   const judged = lifts.filter(l => !l.base);
   const score = Math.round((planned ? Math.min(1, done / planned) : 1) * 60 + (judged.length ? judged.filter(l => l.ok).length / judged.length * 25 : 12) + (weighed ? 15 : 0));

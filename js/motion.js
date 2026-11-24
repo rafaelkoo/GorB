@@ -2,7 +2,6 @@
 // numbers that count up, a springy pop on whatever you just tapped, and buttons that go
 // spinner → tick. Screens re-draw with innerHTML, so motion is triggered on purpose here,
 // never by CSS transitions alone. Everything is skipped when the phone asks for less motion.
-export const SPRING = 'cubic-bezier(.34,1.56,.64,1)';
 const OUT = 'cubic-bezier(.16,1,.3,1)';
 const calm = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
 
