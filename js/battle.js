@@ -73,17 +73,34 @@ export function shortDesc(m) {
 const typeLine = m => typesOf(m).map(x => { const ty = MOVE_TYPES[x] || MOVE_TYPES.normal; return t(ty.en, ty.zh); }).join(' + ');
 
 // ---------------- Me page: moves card ----------------
-export function movesCardHtml() {
-  return `<section class="card moves-card" id="movesCard"><div class="card-head"><h3>${t('Moves', '招式')}</h3>
-    </div><nav class="adv-quick" aria-label="${t('Adventure', '冒險')}"><a href="#/tower">🗼 ${t('Tower', '塔')}</a><a href="#/pets">🐾 ${t('Pets', '寵物')}</a><a href="#/lair">👑 Boss</a><a href="#/shop">🏪 ${t('Shop', '商店')}</a></nav><div id="mvBody"><p class="muted small">${t('Loading…', '載入緊…')}</p></div></section>`;
+// the adventure buttons, at the top of the Me page
+export function advCardHtml() {
+  return `<nav class="adv-quick adv-hub" aria-label="${t('Adventure', '冒險')}"><a href="#/tower">🗼<span>${t('Tower', '塔')}</span></a><a href="#/pets">🐾<span>${t('Pets', '寵物')}</span></a><a href="#/dex">📖<span>${t('Dex', '圖鑑')}</span></a><a href="#/lair">👑<span>Boss</span></a><a href="#/shop">🏪<span>${t('Shop', '商店')}</span></a></nav>`;
+}
+export function movesCardHtml(compact = false) {
+  return `<section class="card moves-card ${compact ? 'compact' : ''}" id="movesCard"><div class="card-head"><h3>${t('Moves', '招式')}</h3>${compact ? `<a class="link" href="#/moves">${t('Change', '更換')} ›</a>` : ''}
+    </div><div id="mvBody"><p class="muted small">${t('Loading…', '載入緊…')}</p></div></section>`;
+}
+// all your moves on a page of their own
+export async function movesScreen(user) {
+  const el = render(`<header class="page-head"><div><h2>⚔️ ${t('Moves', '招式')}</h2></div><a class="link" href="#/me">‹ ${t('Me', '我')}</a></header>${movesCardHtml()}`);
+  mountMoves(el, user);
 }
 
-export async function mountMoves(el, user) {
+export async function mountMoves(el, user, compact = false) {
   const card = el.querySelector('#movesCard'); if (!card) return;
   let all, mine;
   try { [all, mine] = await Promise.all([api.allMoves(), api.characterMoves(user.id)]); } catch { card.hidden = true; return; }
   if (!mine || !all?.length) { card.hidden = true; return; }
   let slot = null;   // the equipped slot you picked to replace
+  if (compact) {   // the Me page: just your 4 and what's next; the rest is on #/moves
+    const learned = new Set(mine.learned || []), eq = mine.equipped || [], byId = Object.fromEntries(all.map(m => [m.id, m]));
+    const next = all.filter(m => !learned.has(m.id) && !['fusion', 'shop'].includes(m.req_kind)).map(m => ({ m, need: needText(m, mine.basis, learned, byId) })).sort((a, b) => b.need[1] - a.need[1])[0];
+    card.querySelector('#mvBody').innerHTML = `<a class="mv-slots mv-mini" href="#/moves" aria-label="${t('Change your moves', '更換招式')}">${[0, 1, 2, 3].map(i => { const m = byId[eq[i]];
+        return m ? `<span class="mv-slot ${m.req_kind === 'fusion' ? 'fusion' : ''} ${m.req_kind === 'shop' ? 'shop' : ''}" style="--c:${moveCol(m)}"><b>${m.req_kind === 'fusion' ? '✦ ' : m.req_kind === 'shop' ? '🏪 ' : ''}${esc(moveName(m))}</b><small class="muted">${typeLine(m)}${m.power ? ` · ${m.power}` : ''}</small></span>` : `<span class="mv-slot empty">—</span>`; }).join('')}</a>
+      <p class="muted small mv-sum">${t(`${learned.size} learned`, `學咗 ${learned.size} 招`)}${mine.grit ? ' · 💪 ' + t('Grit', '毅力') : ''}${next ? ` · ${t('Next', '下一招')}: ${esc(moveName(next.m))} (${Math.round(Math.min(1, next.need[1]) * 100)}%)` : ''}</p>`;
+    return;
+  }
   const draw = () => {
     const learned = new Set(mine.learned || []), eq = mine.equipped || [], bought = new Set(mine.bought || []);
     const byId = Object.fromEntries(all.map(m => [m.id, m]));

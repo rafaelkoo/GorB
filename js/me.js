@@ -5,7 +5,7 @@ import { avatarCardHtml, mountAvatarEditor, characterCardHtml, mountCharacterCar
 import { cleanAvatar } from './pixel.js';
 import { questsCardHtml, mountQuests } from './quests.js';
 import { seasonCardHtml, mountSeason } from './season.js';
-import { movesCardHtml, mountMoves } from './battle.js';
+import { movesCardHtml, mountMoves, advCardHtml } from './battle.js';
 import { BIG_FOUR } from './exercises.js';
 import { GQS, STD } from './ftdata.js';
 import { t, getLang, setLang, langSwitchHtml, fmtDay } from './i18n.js';
@@ -123,10 +123,14 @@ export async function meScreen(user) {
     </header>
 
     ${characterCardHtml(card, profile.display_name, cleanAvatar(profile.avatar, user.id))}
-    ${movesCardHtml()}
+    ${advCardHtml()}
+    ${movesCardHtml(true)}
     ${seasonCardHtml()}
     ${questsCardHtml()}
+        <details class="fold" data-fold="avatar"><summary class="fold-sum"><span>🎨 ${t('My character’s look', '角色外觀')}</span><span class="fold-chev" aria-hidden="true">›</span></summary>
     ${avatarCardHtml()}
+    </details>
+    <details class="fold" data-fold="training"><summary class="fold-sum"><span>🏋️ ${t('Training setup: target days, lift targets, workout days', '訓練設定：目標日數、舉重目標、訓練日')}</span><span class="fold-chev" aria-hidden="true">›</span></summary>
     <section class="card">
       <div class="card-head"><h3>${t('Gym days this week', '今個星期去 gym')}</h3></div>
       <div class="week">
@@ -154,7 +158,9 @@ export async function meScreen(user) {
     </section>
 
     <a class="card linkcard" href="#/plan"><div><h3>${t('Workout days', '訓練日')}</h3><p class="muted small">${t('Your days to pick from, like Arms or Legs. The Log page fills in the one you pick.', '你會揀嘅訓練日，例如手臂日、腿日。喺「記錄」頁揀咗就會自動填好。')}</p></div><span aria-hidden="true">›</span></a>
+    </details>
 
+    <details class="fold" data-fold="body"><summary class="fold-sum"><span>📏 ${t('Body, goal and strength', '身體、目標同力量')}</span><span class="fold-chev" aria-hidden="true">›</span></summary>
     <section class="card">
       <div class="card-head"><h3>${t('Body weight', '體重')}</h3><span class="pill ${b.share_body ? 'on' : ''}">${b.share_body ? t('Shown to groups', 'Group 睇到') : t('Private', '私人')}</span></div>
       <div class="stats">
@@ -197,7 +203,9 @@ export async function meScreen(user) {
         <button class="full">${t('Save details', '儲存資料')}</button>
       </form>
     </section>
+    </details>
 
+    <details class="fold" data-fold="settings"><summary class="fold-sum"><span>⚙️ ${t('Settings and FitTrack', '設定同 FitTrack')}</span><span class="fold-chev" aria-hidden="true">›</span></summary>
     <section class="card">
       <div class="card-head"><h3>${t('Bring over FitTrack', '搬 FitTrack 資料過嚟')}</h3></div>
       <p class="muted small">${t('In FitTrack: Me → Export. Then pick that fittrack-backup file here. Workouts, body weight, details, goal, plan and targets come across; days you already logged here are kept as they are.', '喺 FitTrack：我 → 匯出。然後喺呢度揀嗰個 fittrack-backup 檔。訓練記錄、體重、資料、目標、計劃同舉重目標都會搬過嚟；呢度已經有記錄嘅日子會保持唔變。')}</p>
@@ -214,14 +222,21 @@ export async function meScreen(user) {
       ${pushSupported() ? `<div class="setting col"><span>${t('Notifications', '通知')}</span><p id="nstate" class="muted small">…</p>
         <div class="row"><button id="non" hidden>${t('Turn on', '開')}</button><button id="ntest" class="ghost" hidden>${t('Send test', '測試')}</button><button id="noff" class="ghost" hidden>${t('Turn off', '關')}</button></div></div>` : ''}
       <button id="signout" class="ghost danger">${t('Sign out', '登出')}</button>
-    </section>`);
+    </section>
+    </details>`);
+
 
   const again = () => meScreen(user).catch(showError);
 
   mountAvatarEditor(el, user, profile);
   mountCharacterCard(el, cleanAvatar(profile.avatar, user.id), user.id);
   mountQuests(el);
-  mountMoves(el, user);
+  mountMoves(el, user, true);
+  // the folded groups remember whether you left them open
+  el.querySelectorAll('details.fold').forEach(d => {
+    try { d.open = localStorage.getItem('gob_fold_' + d.dataset.fold) === '1'; } catch {}
+    d.addEventListener('toggle', () => { try { localStorage.setItem('gob_fold_' + d.dataset.fold, d.open ? '1' : '0'); } catch {} });
+  });
   mountSeason(el, () => mountAvatarEditor(el, user, profile));
   el.querySelector('#days').onchange = async e => {
     try { await api.updateProfile(user.id, { days_per_week: e.target.value ? +e.target.value : null }); again(); } catch (err) { showError(err); }

@@ -1133,3 +1133,18 @@ canvas.dex-shadow { filter: brightness(0) opacity(.45); }
 @media (prefers-reduced-motion: reduce) { .pt-slot.lifted .pt-card { transform: none; transition: none; } }
 .ut-order { margin: 0 0 8px; color: var(--dust); }
 .bt-left { display: block; margin-top: 4px; font-size: .78rem; font-weight: 600; color: #4a4a4a; } .bt-left.low { color: #c0392b; }
+/* Me page: adventure row, compact moves, folded groups */
+.adv-hub { grid-template-columns: repeat(5, 1fr); margin: 0 0 12px; }
+.adv-hub a { grid-template-rows: auto auto; gap: 2px; font-size: 1.3rem; min-height: 60px; }
+.adv-hub a span { font-size: .75rem; font-weight: 600; }
+.mv-mini { text-decoration: none; color: inherit; }
+.mv-mini .mv-slot { min-height: 0; padding: 8px 10px; display: grid; gap: 2px; }
+.mv-mini .mv-slot b { font-size: .88rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mv-sum { margin: 8px 0 0; }
+.fold { margin: 0 0 12px; }
+.fold > .fold-sum { list-style: none; display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 14px 16px; background: var(--mat); border: 1px solid var(--line); border-radius: var(--r-card, 16px); cursor: pointer; font-weight: 600; }
+.fold > .fold-sum::-webkit-details-marker { display: none; }
+.fold-chev { transition: transform .2s ease; color: var(--dust); font-size: 1.2rem; }
+.fold[open] > .fold-sum { margin-bottom: 12px; }
+.fold[open] .fold-chev { transform: rotate(90deg); }
+@media (prefers-reduced-motion: reduce) { .fold-chev { transition: none; } }
