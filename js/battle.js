@@ -154,21 +154,21 @@ export async function towerScreen() {
   for (let f = n + 2; f >= Math.max(1, n - 3); f--) floors.push(f);
   el.querySelector('#twBody').innerHTML = `
     <section class="card tw-card">
-      <div class="tw-tickets"><b>🎟️ ${tw.tickets}</b><span class="muted small">/ 9 · ${t('Your first check-in each day gives 3', '每日第一次打卡有 3 張')}</span></div>
+      <div class="tw-tickets"><b>🎟️ ${tw.tickets}</b><span class="muted small">/ 9 · ${t('3 free every day, +3 for your first check-in', '每日免費 3 張，第一次打卡再多 3 張')}</span></div>
       <ol class="tw-floors">${floors.map(f => f > n ? `<li class="tw-f up"><span>${t(`Floor ${f}`, `第 ${f} 層`)}</span><span class="muted">？</span></li>`
         : f === n ? `<li class="tw-f next ${tw.elite ? 'elite' : ''}"><canvas id="twMon" width="96" height="80" role="img" aria-label="${esc(t(mb.en, mb.zh))}"></canvas>
             <div><b>${t(`Floor ${f}`, `第 ${f} 層`)}${tw.boss ? ' · 👑 Boss' : tw.elite ? ` · ${t('Elite', '精英')}` : ''}</b><span>${esc(t(mb.en, mb.zh))}</span>
             <span class="muted small">${t(`First clear: +${rw.xp} XP +${rw.coins} 💧`, `第一次過：+${rw.xp} 經驗 +${rw.coins} 💧`)}</span></div></li>`
         : `<li class="tw-f done"><span>${t(`Floor ${f}`, `第 ${f} 層`)}</span><span>✓</span></li>`).join('')}</ol>
       <button type="button" id="twGo" ${!tw.open && tw.tickets < 1 ? 'disabled' : ''}>${tw.open ? t('Back to your fight', '返去繼續打') : t(`Fight floor ${n} · 1 🎟️`, `挑戰第 ${n} 層 · 1 🎟️`)}</button>
-      ${!tw.open && tw.tickets < 1 ? `<p class="muted small">${t('No tickets left. Check in at the gym to get 3 more.', '冇券喇。去 gym 打卡就有多 3 張。')}</p>` : ''}
+      ${!tw.open && tw.tickets < 1 ? `<p class="muted small">${t('No tickets left. You get 3 free tomorrow, or 3 more when you check in at the gym.', '冇券喇。聽日有 3 張免費，或者去 gym 打卡即刻多 3 張。')}</p>` : ''}
     </section>
     ${tw.best?.length ? `<section class="card"><div class="card-head"><h3>${t('Highest floors', '最高層數')}</h3></div>
       <ol class="tw-best">${tw.best.slice(0, 10).map(b => `<li><span>${esc(b.name)}</span><b>${b.floor}</b></li>`).join('')}</ol></section>` : ''}
     <details class="card cc-how"><summary>${t('How it works', '點樣玩')}</summary><ul>
       <li>${t('Each floor has one of your excuses not to train. Every 5th floor is a boss; beat it and you can fight it again (and catch it) in the Boss Lair.', '每層都係一個你唔去 gym 嘅藉口。每 5 層有隻 Boss；打贏咗就可以喺 Boss 巢穴再挑戰（同捉佢）。')}</li>
       <li>${t('Your stats and moves come from your real training, so the way up is going to the gym.', '你嘅能力同招式嚟自真實訓練，想爬高就要去 gym。')}</li>
-      <li>${t('A fight costs 1 ticket. Win or lose, it’s used.', '每場用 1 張券，贏定輸都會用咗。')}</li>
+      <li>${t('A fight costs 1 ticket. Win or lose, it’s used. You get 3 free every day and 3 more for your first check-in (up to 9).', '每場用 1 張券，贏定輸都會用咗。每日免費 3 張，第一次打卡再多 3 張（最多 9 張）。')}</li>
       <li>${t('Bring your pet team, use drinks, and throw a ball when a monster is low to catch it.', '可以帶寵物隊伍、用飲品，怪物殘血時掟球就捉得到佢。')}</li>
       <li>${t('Strength beats Climbing, Climbing beats Endurance, Endurance beats Strength.', '力量剋攀石，攀石剋耐力，耐力剋力量。')}</li></ul></details>`;
   const cv = el.querySelector('#twMon');
