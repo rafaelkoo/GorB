@@ -20,7 +20,7 @@ const moveName = m => t(m.en, m.zh);
 const usesOf = m => (m.uses ?? (/^heal/.test(m.effect || '') ? 2 : /^buff/.test(m.effect || '') ? 3 : null));
 const monsterName = s => {
   const b = BOSSES[(s.monster ?? 0) % BOSSES.length], n = t(b.en, b.zh);
-  return s.raid ? t(`Boss: ${n}`, `魔王：${n}`) : s.elite ? t(`Elite ${n}`, `精英${n}`) : n;
+  return s.raid ? t(`Boss: ${n}`, `魔王：${n}`) : s.boss_floor ? `Boss ${n}` : s.elite ? t(`Elite ${n}`, `精英${n}`) : n;
 };
 const speciesNm = i => { const b = BOSSES[i % BOSSES.length]; return t(b.en, b.zh); };
 const fighterName = s => (s.pet ? (s.name || speciesNm(s.species)) : s.monster != null ? monsterName(s) : s.name || '?');
@@ -80,22 +80,27 @@ export async function mountMoves(el, user) {
   if (!mine || !all?.length) { card.hidden = true; return; }
   let slot = null;   // the equipped slot you picked to replace
   const draw = () => {
-    const learned = new Set(mine.learned || []), eq = mine.equipped || [];
+    const learned = new Set(mine.learned || []), eq = mine.equipped || [], bought = new Set(mine.bought || []);
     const byId = Object.fromEntries(all.map(m => [m.id, m]));
-    const locked = all.filter(m => !learned.has(m.id) && m.req_kind !== 'fusion').map(m => ({ m, need: needText(m, mine.basis, learned, byId) })).sort((a, b) => b.need[1] - a.need[1]);
+    const shopMoves = all.filter(m => m.req_kind === 'shop');
+    const locked = all.filter(m => !learned.has(m.id) && m.req_kind !== 'fusion' && m.req_kind !== 'shop').map(m => ({ m, need: needText(m, mine.basis, learned, byId) })).sort((a, b) => b.need[1] - a.need[1]);
     const fusions = all.filter(m => m.req_kind === 'fusion');
     card.querySelector('#mvBody').innerHTML = `
       <p class="muted small">${t('Moves come from your real training (last 60 days). Lift heavier, do more cardio or climb harder to learn new ones. Stop going and you forget them.',
         '招式嚟自你真實嘅訓練（最近 60 日）。舉重啲、多啲 cardio、爬難啲，就學到新招。唔去就會唔記得。')}</p>
       <h4 class="q-h">${t('Equipped: tap one, then the move to swap in', '帶住出戰：撳一格，再揀要換入去嘅招')}</h4>
       <div class="mv-slots">${[0, 1, 2, 3].map(i => { const m = byId[eq[i]];
-        return m ? `<button type="button" data-slot="${i}" aria-pressed="${slot === i}" class="mv-slot ${m.req_kind === 'fusion' ? 'fusion' : ''} ${slot === i ? 'picked' : ''}" style="--c:${moveCol(m)}"><b>${m.req_kind === 'fusion' ? '✦ ' : ''}${esc(moveName(m))}</b><span class="mv-top">${moveTag(m)}</span></button>` : `<div class="mv-slot empty">—</div>`; }).join('')}</div>
+        return m ? `<button type="button" data-slot="${i}" aria-pressed="${slot === i}" class="mv-slot ${m.req_kind === 'fusion' ? 'fusion' : ''} ${m.req_kind === 'shop' ? 'shop' : ''} ${slot === i ? 'picked' : ''}" style="--c:${moveCol(m)}"><b>${m.req_kind === 'fusion' ? '✦ ' : m.req_kind === 'shop' ? '🏪 ' : ''}${esc(moveName(m))}</b><span class="mv-top">${moveTag(m)}</span></button>` : `<div class="mv-slot empty">—</div>`; }).join('')}</div>
       ${slot != null ? `<p class="small mv-hint">${t('Now tap a move below to put in this slot', '而家撳下面一招，就會換入呢格')}</p>` : ''}
       ${mine.grit ? `<p class="small grit">💪 <b>${t('Grit', '毅力')}</b> · ${t('12+ gym days in 60: once per fight you survive a knockout on 1 HP.', '60 日內去咗 12 日以上：每場可以撐住一次唔被打低（剩 1 HP）。')}</p>`
         : `<p class="muted small">💪 ${t(`Grit: go 12 days in 60 (you: ${mine.basis?.days || 0}) to survive one knockout per fight.`, `毅力：60 日內去夠 12 日（你而家 ${mine.basis?.days || 0} 日），每場可以撐住一次唔被打低。`)}</p>`}
       <h4 class="q-h">${t(`Learned (${learned.size})`, `學咗（${learned.size}）`)}</h4>
       <ul class="mv-list">${all.filter(m => learned.has(m.id)).map(m => `<li><button type="button" class="mv-pick ${eq.includes(m.id) ? 'on' : ''} ${m.req_kind === 'fusion' ? 'fusion' : ''}" data-mv="${m.id}" aria-pressed="${eq.includes(m.id)}">
         <span class="mv-top"><b>${m.req_kind === 'fusion' ? '✦ ' : ''}${esc(moveName(m))}</b>${moveTag(m)}</span><span class="muted small">${esc(t(m.desc_en, m.desc_zh))}</span></button></li>`).join('')}</ul>
+      ${shopMoves.length ? `<h4 class="q-h">🏪 ${t('Shop moves: bought with coins, 1 at a time in your 4', '商店招式：用金幣買，4 招入面最多帶 1 招')}</h4>
+      <ul class="mv-list">${shopMoves.map(m => bought.has(m.id)
+        ? `<li><button type="button" class="mv-pick shop ${eq.includes(m.id) ? 'on' : ''}" data-mv="${m.id}" aria-pressed="${eq.includes(m.id)}"><span class="mv-top"><b>🏪 ${esc(moveName(m))}</b>${moveTag(m)}</span><span class="muted small">${esc(t(m.desc_en, m.desc_zh))}</span></button></li>`
+        : `<li class="mv-locked"><span class="mv-top"><b>🔒 ${esc(moveName(m))}</b>${moveTag(m)}</span><span class="small">💧 ${m.price} · <a class="link" href="#/shop">${t('Buy in the shop', '去商店買')}</a></span></li>`).join('')}</ul>` : ''}
       ${fusions.some(m => !learned.has(m.id)) ? `<h4 class="q-h">✦ ${t('Fusion moves: learn both parts to unlock', '合體技：學齊材料招式就會解鎖')}</h4>
       <ul class="mv-list">${fusions.filter(m => !learned.has(m.id)).map(m => { const need = needText(m, mine.basis, learned, byId);
         return `<li class="mv-locked fusion"><span class="mv-top"><b>🔒 ✦ ${esc(moveName(m))}</b>${moveTag(m)}</span>
@@ -117,6 +122,9 @@ export async function mountMoves(el, user) {
     card.querySelectorAll('[data-mv]').forEach(b => b.onclick = () => {
       const id = b.dataset.mv;
       if (eq.includes(id)) return;
+      // only one shop move at a time: a new one takes the old one's place
+      const oldShop = byId[id]?.req_kind === 'shop' ? eq.findIndex(x => byId[x]?.req_kind === 'shop') : -1;
+      if (oldShop >= 0) { const next = [...eq]; next[oldShop] = id; return save(next); }
       if (eq.length < 4) return save([...eq, id]);
       if (slot != null) { const next = [...eq]; next[slot] = id; return save(next); }
       // otherwise ask which one it replaces
@@ -149,7 +157,7 @@ export async function towerScreen() {
       <div class="tw-tickets"><b>🎟️ ${tw.tickets}</b><span class="muted small">/ 9 · ${t('Your first check-in each day gives 3', '每日第一次打卡有 3 張')}</span></div>
       <ol class="tw-floors">${floors.map(f => f > n ? `<li class="tw-f up"><span>${t(`Floor ${f}`, `第 ${f} 層`)}</span><span class="muted">？</span></li>`
         : f === n ? `<li class="tw-f next ${tw.elite ? 'elite' : ''}"><canvas id="twMon" width="96" height="80" role="img" aria-label="${esc(t(mb.en, mb.zh))}"></canvas>
-            <div><b>${t(`Floor ${f}`, `第 ${f} 層`)}${tw.elite ? ` · ${t('Elite', '精英')}` : ''}</b><span>${esc(t(mb.en, mb.zh))}</span>
+            <div><b>${t(`Floor ${f}`, `第 ${f} 層`)}${tw.boss ? ' · 👑 Boss' : tw.elite ? ` · ${t('Elite', '精英')}` : ''}</b><span>${esc(t(mb.en, mb.zh))}</span>
             <span class="muted small">${t(`First clear: +${rw.xp} XP +${rw.coins} 💧`, `第一次過：+${rw.xp} 經驗 +${rw.coins} 💧`)}</span></div></li>`
         : `<li class="tw-f done"><span>${t(`Floor ${f}`, `第 ${f} 層`)}</span><span>✓</span></li>`).join('')}</ol>
       <button type="button" id="twGo" ${!tw.open && tw.tickets < 1 ? 'disabled' : ''}>${tw.open ? t('Back to your fight', '返去繼續打') : t(`Fight floor ${n} · 1 🎟️`, `挑戰第 ${n} 層 · 1 🎟️`)}</button>
@@ -158,7 +166,7 @@ export async function towerScreen() {
     ${tw.best?.length ? `<section class="card"><div class="card-head"><h3>${t('Highest floors', '最高層數')}</h3></div>
       <ol class="tw-best">${tw.best.slice(0, 10).map(b => `<li><span>${esc(b.name)}</span><b>${b.floor}</b></li>`).join('')}</ol></section>` : ''}
     <details class="card cc-how"><summary>${t('How it works', '點樣玩')}</summary><ul>
-      <li>${t('Each floor has a bad-habit monster. Every 5th floor is a tougher elite.', '每層有一隻壞習慣怪物，每 5 層有隻精英，特別難打。')}</li>
+      <li>${t('Each floor has one of your excuses not to train. Every 5th floor is a boss; beat it and you can fight it again (and catch it) in the Boss Lair.', '每層都係一個你唔去 gym 嘅藉口。每 5 層有隻 Boss；打贏咗就可以喺 Boss 巢穴再挑戰（同捉佢）。')}</li>
       <li>${t('Your stats and moves come from your real training, so the way up is going to the gym.', '你嘅能力同招式嚟自真實訓練，想爬高就要去 gym。')}</li>
       <li>${t('A fight costs 1 ticket. Win or lose, it’s used.', '每場用 1 張券，贏定輸都會用咗。')}</li>
       <li>${t('Bring your pet team, use drinks, and throw a ball when a monster is low to catch it.', '可以帶寵物隊伍、用飲品，怪物殘血時掟球就捉得到佢。')}</li>
@@ -434,6 +442,7 @@ export async function battleScreen(user, id) {
     } else if (bt.kind === 'tower') {
       const r = towerReward(bt.floor);
       head = won ? t(`Floor ${bt.floor} cleared! 🎉`, `第 ${bt.floor} 層過咗！🎉`) : t(`Floor ${bt.floor}: not this time`, `第 ${bt.floor} 層：今次輸咗`);
+      if (won && snap.b.boss_floor) btns += `<a class="button ghost" href="#/lair">👑 ${t('Now in the Boss Lair', '已經喺 Boss 巢穴開放')}</a>`;
       body = won ? t(`+${r.xp} XP +${r.coins} 💧`, `+${r.xp} 經驗 +${r.coins} 💧`) : t('Train, get stronger, come back.', '去 gym 練勁啲再嚟。');
       btns += `<button type="button" id="btNext">${won ? t('Next floor · 1 🎟️', '下一層 · 1 🎟️') : t('Try again · 1 🎟️', '再試 · 1 🎟️')}</button>`;
     } else if (bt.kind === 'raid') {

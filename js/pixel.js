@@ -470,18 +470,18 @@ export const BOSSES = [
   { en: 'The Snooze Clock', zh: '貪睡鬧鐘' },
   { en: 'Bubble Tea Beast', zh: '珍奶怪' },
   { en: 'Doomscroll Demon', zh: '碌手機魔' },
-  // 6–11: more tower monsters you can catch as pets
-  { en: 'Kettlebell Pup', zh: '鐵鈴狗' },
-  { en: 'Treadmill Turtle', zh: '跑步機龜' },
-  { en: 'Chalk Bat', zh: '粉筆蝠' },
-  { en: 'Foam Roller Worm', zh: '滾筒蟲' },
-  { en: 'Jump Rope Snake', zh: '跳繩蛇' },
-  { en: 'Shaker Golem', zh: '搖搖杯魔像' },
-  // 12–17: boss species, only in the Boss Lair
-  { en: 'Deadlift Dragon', zh: '硬拉龍' },
-  { en: 'Marathon Phoenix', zh: '馬拉松鳳凰' },
-  { en: 'Summit Yeti', zh: '攀頂雪人' },
-  { en: 'Iron Golem', zh: '鐵人魔像' },
+  // 6–11: more excuses not to go, in the tower; catch them as pets
+  { en: 'Takeaway Goblin', zh: '外賣哥布林' },
+  { en: 'Duvet Burrito', zh: '被竇卷' },
+  { en: 'Rain Cloud', zh: '落雨雲' },
+  { en: 'DOMS Jelly', zh: '肌肉痛啫喱' },
+  { en: 'Overtime Ghost', zh: '加班鬼' },
+  { en: 'Beer Belly Barrel', zh: '啤酒肚桶' },
+  // 12–17: boss species: every 5th tower floor, then the Boss Lair
+  { en: 'Next-Monday Dragon', zh: '下星期一龍' },
+  { en: 'Tomorrow Phoenix', zh: '聽日先鳳凰' },
+  { en: 'Binge Kraken', zh: '追劇八爪魚' },
+  { en: 'Excuse Golem', zh: '藉口魔像' },
   { en: 'Couch King', zh: '梳化王' },
   { en: 'Midnight Hydra', zh: '宵夜九頭蛇' }
 ];
@@ -567,98 +567,105 @@ export function drawBoss(canvas, idx, frame = 0, state = 'idle') {
       r(8, y + 14, 5, 3, '#2b2b30'); r(35, y + 14, 5, 3, '#2b2b30');   // grabby arms
       break;
     }
-    case 6: { // kettlebell pup
-      const y = 10 + base + b;
-      r(17, y - 2, 14, 3, '#3a3d44'); r(15, y, 3, 7, '#3a3d44'); r(30, y, 3, 7, '#3a3d44');   // handle
-      r(10, y + 6, 28, 22, '#2b2b30'); r(12, y + 4, 24, 2, '#2b2b30'); r(12, y + 28, 24, 2, '#2b2b30'); r(12, y + 7, 6, 3, '#55585f');   // bell + shine
-      r(6, y + 8, 5, 10, '#8a5a3c'); r(37, y + 8, 5, 10, '#8a5a3c');   // floppy ears
-      eyes(16, 27, y + 12);
-      if (!ko) { r(21, y + 19, 6, 2, '#1a1a1a'); r(22, y + 21, 4, 4 - frame, '#e66fab'); }   // nose + tongue
-      r(14, y + 29, 5, 3, '#8a5a3c'); r(29, y + 29, 5, 3, '#8a5a3c');
-      break;
-    }
-    case 7: { // treadmill turtle
-      const y = 12 + base;
-      r(36, y + 8 + b, 9, 8, '#6fbf5a'); r(41, y + 10 + b, 2, 2, ko ? OUT : '#fff'); r(42, y + 11 + b, 1, 1, OUT);   // head
-      r(8, y + 4, 30, 16, '#5d6470'); r(10, y + 2, 26, 2, '#5d6470');   // shell = treadmill
-      for (let i = 0; i < 6; i++) r(10 + ((i * 5 + frame * 2) % 26), y + 6, 2, 12, '#3a3d44');   // the belt moving
-      r(8, y + 18, 30, 3, '#2b2b30'); r(6, y + 10, 3, 6, '#f2d245');
-      r(10, y + 21, 6, 6, '#6fbf5a'); r(30, y + 21, 6, 6, '#6fbf5a');
-      if (ko) r(38, y + 14, 5, 1, OUT);
-      break;
-    }
-    case 8: { // chalk bat
-      const y = 8 + base + b, up = !ko && frame;
-      r(18, y + 6, 12, 14, '#f3f1ea'); r(19, y + 2, 3, 5, '#f3f1ea'); r(26, y + 2, 3, 5, '#f3f1ea');   // body + ears
-      const wy = up ? y + 2 : y + 8;
-      r(4, wy, 14, 8, '#d9d4c7'); r(30, wy, 14, 8, '#d9d4c7'); r(4, wy + 8, 3, 3, '#d9d4c7'); r(10, wy + 8, 3, 3, '#d9d4c7'); r(35, wy + 8, 3, 3, '#d9d4c7'); r(41, wy + 8, 3, 3, '#d9d4c7');
-      eyes(19, 25, y + 9, '#e23b3b');
-      if (!ko) { r(22, y + 15, 4, 1, OUT); r(22, y + 16, 1, 2, '#fff'); r(25, y + 16, 1, 2, '#fff'); }
-      for (const [dx, dy] of [[8, 28], [16, 32], [32, 30], [38, 26]]) r(dx, y + dy - frame, 1, 1, '#ffffff');   // chalk dust
-      break;
-    }
-    case 9: { // foam roller worm
-      const y = 18 + base;
-      for (let i = 0; i < 4; i++) { const yy = y + (i % 2 ? b : 0); r(6 + i * 9, yy, 9, 14, i % 2 ? '#2e9fd6' : '#45b0e6'); for (let k = 0; k < 3; k++) r(8 + i * 9 + k * 3, yy + 2, 1, 10, '#1d6f9a'); }
-      r(39, y - 4 + b, 8, 14, '#45b0e6');   // head
-      if (ko) { r(41, y + 1, 3, 1, OUT); } else { r(41, y + b, 3, 3, '#fff'); r(42, y + 1 + b, 1, 2, OUT); r(41, y + 6 + b, 4, 1, OUT); }
-      break;
-    }
-    case 10: { // jump rope snake
+    case 6: { // takeaway goblin: a delivery box on its back
       const y = 8 + base + b;
-      r(12, y + 22, 24, 8, '#45b45a'); r(16, y + 16, 18, 6, '#3d9a4c'); r(20, y + 10, 10, 6, '#45b45a');   // coils
-      r(22, y + 2, 10, 9, '#45b45a'); r(23, y + 4, 2, 2, ko ? OUT : '#f2d245'); r(29, y + 4, 2, 2, ko ? OUT : '#f2d245');
-      if (!ko) { r(26, y + 11, 1, 3 + frame, '#e23b3b'); r(25, y + 14 + frame, 3, 1, '#e23b3b'); }   // tongue
-      for (let i = 0; i < 5; i++) r(14 + i * 5, y + 25, 2, 2, '#f2d245');   // stripes
-      r(4, y + 26, 8, 2, '#e8b923'); r(2, y + 24, 3, 6, '#e23b3b'); r(36, y + 26, 8, 2, '#e8b923'); r(43, y + 24, 3, 6, '#e23b3b');   // rope handles
+      r(26, y + 4, 16, 16, '#d8483b'); r(26, y + 4, 16, 3, '#b7392a'); r(30, y + 10, 8, 4, '#f3f1ea');   // insulated box
+      r(10, y + 8, 18, 18, '#6fbf5a'); r(8, y + 10, 3, 5, '#6fbf5a'); r(27, y + 10, 3, 5, '#6fbf5a');   // head + pointy ears
+      r(10, y + 5, 18, 4, '#f2d245'); r(26, y + 7, 5, 2, '#f2d245');   // cap
+      eyes(12, 20, y + 13);
+      if (!ko) { r(14, y + 20, 10, 2, OUT); r(15, y + 20, 2, 1, '#fff'); r(21, y + 20, 2, 1, '#fff'); }
+      r(12, y + 26, 14, 6, '#3c5bd9'); r(12, y + 32, 4, 3, '#2b2b30'); r(22, y + 32, 4, 3, '#2b2b30');   // jacket + feet
+      r(4, y + 22 - frame, 7, 5, '#f3f1ea'); r(5, y + 21 - frame, 5, 1, '#d9a14b');   // a takeaway box in hand
       break;
     }
-    case 11: { // shaker golem
+    case 7: { // duvet burrito: rolled up, refusing to get up
+      const y = 14 + base;
+      r(4, y + 2 + b, 40, 20, '#f3f1ea'); r(4, y + 2 + b, 40, 2, '#ffffff'); for (let i = 0; i < 4; i++) r(10 + i * 9, y + 4 + b, 2, 18, '#9ec9e8');   // duvet + stripes
+      r(4, y + 22, 40, 2, '#c8d6e2');
+      r(32, y - 4 + b, 12, 12, '#eebc94'); r(32, y - 6 + b, 12, 3, '#5b3a22');   // sleepy head poking out
+      if (ko) { r(34, y + 1 + b, 3, 1, OUT); r(40, y + 1 + b, 3, 1, OUT); } else { r(34, y + 1 + b, 3, 1, OUT); r(40, y + 1 + b, 3, 1, OUT); r(37, y + 5 + b, 2, 1, OUT); }
+      r(28, y - 10 - frame, 3, 1, '#fff'); r(29, y - 9 - frame, 1, 1, '#fff'); r(28, y - 8 - frame, 3, 1, '#fff');   // z
+      break;
+    }
+    case 8: { // rain cloud
       const y = 4 + base + b;
-      r(15, y, 18, 6, '#2b2b30'); r(22, y - 3, 4, 3, '#2b2b30');   // lid + spout
-      r(13, y + 6, 22, 28, '#dfe7ee'); r(13, y + 18, 22, 16, '#c79a6a'); r(15, y + 8, 3, 9, '#ffffff');   // bottle + protein shake
-      for (let i = 0; i < 3; i++) r(35, y + 10 + i * 6, 2, 1, '#8a8f98');   // ml marks
-      r(6, y + 14, 7, 5, '#8a8f98'); r(35 + 2, y + 14, 7, 5, '#8a8f98'); r(4, y + 18, 5, 5, '#5d6470'); r(39, y + 18, 5, 5, '#5d6470');   // stone arms
-      eyes(17, 27, y + 10);
-      if (!ko) r(19, y + 15, 10, 2, OUT);
+      r(8, y + 8, 32, 14, '#8a8f98'); r(12, y + 4, 12, 6, '#8a8f98'); r(24, y + 2, 12, 8, '#8a8f98'); r(8, y + 20, 32, 2, '#6a6f78');
+      r(14, y + 5, 6, 2, '#a4abb2');
+      eyes(16, 27, y + 12, '#fff');
+      if (!ko) r(20, y + 18, 8, 1, OUT);
+      for (let i = 0; i < 6; i++) r(10 + i * 6, y + 25 + ((i + frame) % 2) * 4, 1, 3, '#5fb8f3');   // rain
+      if (!ko && frame) { r(30, y + 22, 3, 2, '#f2d245'); r(29, y + 24, 2, 3, '#f2d245'); }   // a little lightning
       break;
     }
-    case 12: { // deadlift dragon: red, a loaded barbell over its head
+    case 9: { // DOMS jelly: sore all over, wobbling
+      const y = 12 + base;
+      const w = 32 + (ko ? 6 : frame * 2), x = 24 - w / 2;
+      r(x + 3, y + 2 - b, w - 6, 3, '#f59ab8'); r(x, y + 5 - b, w, 18 + b, '#e66fab'); r(x + 2, y + 23, w - 4, 2, '#c4508c');
+      r(x + 4, y + 7 - b, 4, 3, '#ffd0e0');
+      r(x + w - 12, y + 6 - b, 8, 3, '#f1d4a8'); r(x + w - 10, y + 6 - b, 1, 3, '#d9b48c'); r(x + w - 7, y + 6 - b, 1, 3, '#d9b48c');   // plaster
+      if (ko) r(16, y + 12, 16, 2, OUT);
+      else { eyes(16, 27, y + 10 - b); r(20, y + 17 - b, 8, 1, OUT); r(22, y + 18 - b, 4, 1, OUT); }   // wince
+      break;
+    }
+    case 10: { // overtime ghost: tie, laptop, dark rings
+      const y = 4 + base + b;
+      r(12, y + 4, 24, 26, '#eef0ea'); r(14, y + 2, 20, 2, '#eef0ea');
+      for (let i = 0; i < 4; i++) r(12 + i * 6 + (frame ? 3 : 0), y + 30, 3, 3, '#eef0ea');   // wavy tail
+      eyes(16, 26, y + 10, '#fff'); r(15, y + 14, 5, 1, '#8c5bd6'); r(25, y + 14, 5, 1, '#8c5bd6');   // eye bags
+      r(22, y + 17, 4, 2, '#3c5bd9'); r(23, y + 19, 2, 6, '#3c5bd9');   // tie
+      r(2, y + 18, 12, 8, '#5d6470'); r(3, y + 19, 10, 5, '#9fd3f0'); r(0, y + 26, 16, 2, '#3a3d44');   // laptop
+      break;
+    }
+    case 11: { // beer belly barrel
+      const y = 6 + base + b;
+      r(12, y + 2, 24, 4, '#f3f1ea'); r(10, y + 4, 4, 3, '#f3f1ea'); r(34, y + 4, 4, 3, '#f3f1ea'); if (frame && !ko) r(16, y, 4, 2, '#f3f1ea');   // foam
+      r(10, y + 6, 28, 28, '#a8743f'); r(10, y + 6, 2, 28, '#8a5a3c'); r(36, y + 6, 2, 28, '#8a5a3c');
+      r(10, y + 10, 28, 2, '#5d6470'); r(10, y + 28, 28, 2, '#5d6470');   // hoops
+      r(16, y + 18, 16, 10, '#c48a55');   // the belly
+      eyes(15, 27, y + 14);
+      if (!ko) r(21, y + 23, 6, 2, OUT);
+      r(4, y + 16, 6, 4, '#a8743f'); r(38, y + 16, 6, 4, '#a8743f');
+      break;
+    }
+    case 12: { // next-Monday dragon: holding a calendar stuck on MON
       const y = 10 + base + b;
       dragon(y, '#c8382c', '#e2564b', '#f1c27d');
-      const by = y - 6 - (ko ? -8 : frame);
-      r(2, by, 44, 2, '#8a8f98'); r(2, by - 4, 4, 10, '#2b2b30'); r(42, by - 4, 4, 10, '#2b2b30'); r(7, by - 3, 3, 8, '#e23b3b'); r(38, by - 3, 3, 8, '#e23b3b');
+      const cy = y - 8 - (ko ? -6 : frame);
+      r(29, cy, 19, 14, '#f3f1ea'); r(29, cy, 19, 4, '#e23b3b'); r(33, cy - 1, 1, 2, OUT); r(43, cy - 1, 1, 2, OUT);
+      const ty = cy + 6;   // "MON", 1-pixel letters
+      r(31, ty, 1, 5, OUT); r(35, ty, 1, 5, OUT); r(32, ty + 1, 1, 1, OUT); r(33, ty + 2, 1, 1, OUT); r(34, ty + 1, 1, 1, OUT);
+      r(37, ty, 4, 1, OUT); r(37, ty + 4, 4, 1, OUT); r(37, ty, 1, 5, OUT); r(40, ty, 1, 5, OUT);
+      r(42, ty, 1, 5, OUT); r(45, ty, 1, 5, OUT); r(43, ty + 1, 1, 1, OUT); r(44, ty + 2, 1, 2, OUT);
       break;
     }
-    case 13: { // marathon phoenix
+    case 13: { // tomorrow phoenix: rises again every day, with a little sunrise
       const y = 6 + base + b, up = !ko && frame;
-      r(16, y + 8, 16, 18, '#f19a33'); r(18, y + 2, 12, 8, '#f19a33'); r(20, y - 2, 2, 4, '#e23b3b'); r(24, y - 4, 2, 6, '#f2d245'); r(28, y - 2, 2, 4, '#e23b3b');   // body, head, crest
-      r(30, y + 5, 5, 2, '#f2d245');   // beak
+      r(16, y + 8, 16, 18, '#f19a33'); r(18, y + 2, 12, 8, '#f19a33'); r(20, y - 2, 2, 4, '#e23b3b'); r(24, y - 4, 2, 6, '#f2d245'); r(28, y - 2, 2, 4, '#e23b3b');
+      r(30, y + 5, 5, 2, '#f2d245');
       const wy = up ? y + 2 : y + 10;
       r(4, wy, 12, 6, '#e23b3b'); r(2, wy + 6, 8, 3, '#f2d245'); r(32, wy, 12, 6, '#e23b3b'); r(38, wy + 6, 8, 3, '#f2d245');
-      r(18, y + 14, 12, 8, '#ffffff'); r(20, y + 16, 8, 1, '#3c5bd9'); r(21, y + 18, 6, 2, '#2b2b30');   // race bib
+      r(18, y + 18, 12, 6, '#f2d245'); r(18, y + 24, 12, 1, '#e2563b'); for (let i = 0; i < 3; i++) r(19 + i * 4, y + 15, 2, 2, '#f2d245');   // sunrise on its chest
       r(18, y + 26, 2, 6, '#e8b923'); r(28, y + 26, 2, 6, '#e8b923');
       eyes(19, 26, y + 4);
       break;
     }
-    case 14: { // summit yeti
+    case 14: { // binge kraken: tentacles round a TV
       const y = 4 + base + b;
-      r(10, y + 4, 28, 30, '#f3f6fa'); r(8, y + 8, 2, 20, '#dde4ee'); r(38, y + 8, 2, 20, '#dde4ee');   // fur
-      r(15, y + 8, 18, 12, '#9ec9e8');   // face
-      eyes(17, 27, y + 11, '#fff');
-      if (!ko) { r(20, y + 16, 8, 2, OUT); r(21, y + 18, 2, 1, '#fff'); r(25, y + 18, 2, 1, '#fff'); }
-      r(4, y + 12 - frame * 2, 6, 6, '#f3f6fa'); r(38, y + 12 + frame * 2, 6, 6, '#f3f6fa');   // arms reaching
-      r(2, y + 8 - frame * 2, 4, 3, '#f19a33'); r(42, y + 8 + frame * 2, 4, 3, '#8c5bd6');   // climbing holds
-      r(12, y + 34, 9, 3, '#dde4ee'); r(27, y + 34, 9, 3, '#dde4ee');
+      r(12, y, 24, 18, '#8c5bd6'); r(14, y - 2, 20, 2, '#8c5bd6'); r(15, y + 2, 5, 3, '#b48ae8');   // head
+      eyes(16, 27, y + 6);
+      for (let i = 0; i < 5; i++) { const tx = 8 + i * 8; r(tx, y + 18, 4, 12 + ((i + frame) % 2) * 2, '#7c4fb6'); }   // tentacles
+      r(14, y + 22, 20, 14, '#2b2b30'); r(16, y + 24, 16, 9, frame ? '#5fd3f3' : '#9be8f8'); r(22, y + 36, 4, 2, '#2b2b30');   // TV
+      r(19, y + 27, 3, 4, '#fff'); r(22, y + 28, 2, 2, '#fff');   // play button
       break;
     }
-    case 15: { // iron golem: plates stacked into a body
+    case 15: { // excuse golem: a body of bricks
       const y = 4 + base + b;
-      r(14, y, 20, 10, '#6a6f78'); r(16, y + 2, 16, 6, '#8a8f98');   // head
-      eyes(18, 26, y + 3, '#f2d245');
-      r(8, y + 10, 32, 16, '#5d6470'); r(18, y + 13, 12, 10, '#2b2b30'); r(22, y + 17, 4, 2, '#8a8f98');   // chest = 20kg plate
-      r(2, y + 10, 6, 14, '#6a6f78'); r(40, y + 10, 6, 14, '#6a6f78'); r(1, y + 24, 8, 4, '#3a3d44'); r(39, y + 24, 8, 4, '#3a3d44');   // dumbbell fists
-      r(12, y + 26, 8, 8, '#5d6470'); r(28, y + 26, 8, 8, '#5d6470');
+      const brick = (x, yy, w, h) => { r(x, yy, w, h, '#b7563f'); for (let j = 0; j < h; j += 4) { r(x, yy + j, w, 1, '#8a3a2a'); for (let k = (j / 4) % 2 ? 2 : 6; k < w; k += 8) r(x + k, yy + j, 1, 4, '#8a3a2a'); } };
+      brick(14, y, 20, 10); eyes(18, 26, y + 3, '#f2d245');
+      brick(8, y + 10, 32, 16);
+      r(16, y + 14, 16, 8, '#f3f1ea'); r(18, y + 16, 12, 1, OUT); r(18, y + 18, 9, 1, OUT); r(18, y + 20, 11, 1, OUT);   // a sign full of excuses
+      brick(2, y + 10, 6, 14); brick(40, y + 10, 6, 14);
+      brick(12, y + 26, 8, 8); brick(28, y + 26, 8, 8);
       break;
     }
     case 17: { // midnight hydra: three hungry heads

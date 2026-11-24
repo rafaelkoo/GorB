@@ -1071,3 +1071,6 @@ button.danger { color: #f08a7a; border-color: #6b3a35; }
 .bag-head h3 { margin: 0; }
 .bag-row { display: grid; grid-template-columns: 1fr auto; gap: 6px; }
 .bag-buy { min-height: 0; padding: 4px 10px; font-size: .85rem; white-space: nowrap; }
+.lr-boss.locked { opacity: .55; } .lr-boss.locked canvas { filter: grayscale(1) brightness(.6); }
+.mv-slot.shop, .mv-pick.shop { border-style: dashed; border-color: #e8b923; }
+.mv-pick.shop.on { box-shadow: inset 0 0 0 1px #e8b923; }

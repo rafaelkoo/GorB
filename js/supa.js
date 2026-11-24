@@ -110,7 +110,7 @@ export const characterNext = userId => sb.rpc('character_next', { p_user: userId
 export const setCaption = (checkinId, groupId, note) => sb.rpc('set_caption', { p_checkin: checkinId, p_group: groupId, p_note: note }).then(must);
 export const groupBoss = groupId => sb.rpc('group_boss', { p_group: groupId }).then(must);
 // ---------- battles: moves, the Gym Tower, boss raids and friendly matches ----------
-export const allMoves = () => sb.from('moves').select('id, en, zh, type, stat, power, effect, effect_val, req_kind, req_cat, req_val, desc_en, desc_zh, sort, types, stats, uses, req_moves').neq('req_kind', 'monster').order('sort').then(must);
+export const allMoves = () => sb.from('moves').select('id, en, zh, type, stat, power, effect, effect_val, req_kind, req_cat, req_val, desc_en, desc_zh, sort, types, stats, uses, req_moves, price').neq('req_kind', 'monster').order('sort').then(must);
 export const characterMoves = userId => sb.rpc('character_moves', { p_user: userId }).then(must);
 export const setMoves = ids => sb.rpc('set_moves', { p_moves: ids }).then(must);
 export const myTower = () => sb.rpc('my_tower').then(must);
@@ -124,6 +124,7 @@ export const setTeam = ids => sb.rpc('set_team', { p_pets: ids }).then(must);
 export const petUpdate = (id, nickname, release = false) => sb.rpc('pet_update', { p_pet: id, p_nickname: nickname, p_release: release }).then(must);
 export const battleItem = (id, item) => sb.rpc('battle_item', { p_id: id, p_item: item }).then(must);
 export const battleSwitch = (id, to) => sb.rpc('battle_switch', { p_id: id, p_to: to }).then(must);
+export const buyMove = id => sb.rpc('buy_move', { p_move: id }).then(must);
 export const petFeed = (id, item) => sb.rpc('pet_feed', { p_pet: id, p_item: item }).then(must);
 export const petTeach = (id, move) => sb.rpc('pet_teach', { p_pet: id, p_move: move }).then(must);
 export const petTest = id => sb.rpc('pet_test', { p_pet: id }).then(must);

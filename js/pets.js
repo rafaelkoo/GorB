@@ -54,12 +54,14 @@ function sheet(html, label) {
 }
 
 // ---------------- the shop ----------------
-export async function shopScreen() {
+export async function shopScreen(user) {
   const el = render(`<header class="page-head"><div><h2>🏪 ${t('Shop', '商店')}</h2></div><a class="link" href="#/me">‹ ${t('Me', '我')}</a></header>
     ${advNav('shop')}<div id="shBody"><p class="muted">${t('Loading…', '載入緊…')}</p></div>`);
   wireAdvNav(el);
-  let items, mine;
-  try { [items, mine] = await Promise.all([api.shopItems(), api.myBag()]); } catch (err) { showError(err); return; }
+  let items, mine, moves = [], cm = null;
+  try { [items, mine, moves, cm] = await Promise.all([api.shopItems(), api.myBag(), api.allMoves().catch(() => []), api.characterMoves(user.id).catch(() => null)]); } catch (err) { showError(err); return; }
+  moves = moves.filter(m => m.req_kind === 'shop');
+  const owned = new Set(cm?.bought || []);
   const draw = () => {
     el.querySelector('#shBody').innerHTML = `
       <section class="card sh-wallet"><b>💧 ${mine.coins}</b><span class="muted small">${t('Coins come from going to the gym: chests, quests, the tower.', '金幣嚟自去 gym：寶箱、任務、塔。')}</span></section>
@@ -70,7 +72,20 @@ export async function shopScreen() {
           <div class="sh-buy"><button type="button" data-buy="${it.id}" data-q="1" ${mine.coins < it.price ? 'disabled' : ''}>💧 ${it.price}</button>
           <button type="button" class="ghost small-btn" data-buy="${it.id}" data-q="5" ${mine.coins < it.price * 5 ? 'disabled' : ''}>×5 · ${it.price * 5}</button></div></li>`;
       }).join('')}</ul></section>
+      ${moves.length ? `<section class="card"><div class="card-head"><h3>🏪 ${t('Moves', '招式')}</h3></div>
+        <p class="muted small">${t('Yours for good. Kept apart from the moves training teaches: you can take only one of these into a fight, alongside 3 trained ones.', '買咗就係你嘅。同訓練學返嚟嘅招分開：每場只可以帶 1 招商店招式，另外 3 招要係訓練學返嚟。')}</p>
+        <ul class="sh-list">${moves.map(m => { const ty = MOVE_TYPES[m.type] || MOVE_TYPES.normal;
+          return `<li class="sh-item sh-move" style="--c:${ty.col}"><span class="sh-ic" aria-hidden="true">📜</span>
+            <div class="sh-txt"><b>${esc(t(m.en, m.zh))}</b><span class="small">${typeChip(m.type)}${m.power ? ` ${t('Power', '威力')} ${m.power}` : ''}</span><span class="muted small">${esc(t(m.desc_en, m.desc_zh))}</span></div>
+            <div class="sh-buy">${owned.has(m.id) ? `<span class="small">✓ ${t('Yours', '已擁有')}</span>` : `<button type="button" data-move="${m.id}" ${mine.coins < m.price ? 'disabled' : ''}>💧 ${m.price}</button>`}</div></li>`; }).join('')}</ul></section>` : ''}
       <p class="muted small sh-note">${t('Balls catch monsters in the tower and the Boss Lair. Drinks heal whoever is fighting (2 per fight). Food levels up a pet: open it in Pets to feed it. Move scrolls are in Pets too.', '球用嚟喺塔同 Boss 巢穴捉怪。飲品幫上緊場嗰個回血（每場最多 2 件）。食物幫寵物升級：喺寵物頁撳隻寵物去餵。招式卷軸都喺寵物頁。')}</p>`;
+    el.querySelectorAll('[data-move]').forEach(b => b.onclick = async () => {
+      const m = moves.find(x => x.id === b.dataset.move);
+      if (!b.dataset.sure) { b.dataset.sure = '1'; b.textContent = t(`Sure? 💧 ${m.price}`, `確定？💧 ${m.price}`); return; }
+      b.disabled = true;
+      try { const r = await api.buyMove(m.id); mine.coins = r.coins; owned.add(m.id); toast(t(`${m.en} is yours. Equip it on the Me page.`, `${m.zh} 係你嘅喇。去「我」頁帶住佢出戰。`)); draw(); }
+      catch (err) { b.disabled = false; showError(err); }
+    });
     el.querySelectorAll('[data-buy]').forEach(b => b.onclick = async () => {
       b.disabled = true;
       try {
@@ -111,7 +126,7 @@ export async function petsScreen() {
           : `<p class="muted small">${pets.length ? t('Everyone is in your team.', '全部都喺隊入面。') : t('No pets yet. Knock a monster low in the tower, then throw a ball (buy them in the shop).', '仲未有寵物。喺塔將怪打到殘血，再掟個球（喺商店買）。')}</p>
           ${pets.length ? '' : `<a class="button" href="#/shop">🏪 ${t('Go to the shop', '去商店')}</a>`}`}</section>
       <details class="card cc-how"><summary>${t('How pets work', '寵物點運作')}</summary><ul>
-        <li>${t('A pet’s stats come from yours, shaped by its species: a Kettlebell Pup is all attack, a Treadmill Turtle is all HP and defence. Train and they get stronger too.', '寵物嘅能力由你嘅能力計，再按品種調整：鐵鈴狗全攻擊，跑步機龜就高 HP 同防禦。你練勁，佢哋都會勁。')}</li>
+        <li>${t('A pet’s stats come from yours, shaped by its species: a Takeaway Goblin is all attack, a Duvet Burrito is all HP and defence. Train and they get stronger too.', '寵物嘅能力由你嘅能力計，再按品種調整：外賣哥布林全攻擊，被竇卷就高 HP 同防禦。你練勁，佢哋都會勁。')}</li>
         <li>${t('Each one has its own IVs: −20% to +20% on every stat. Catch the same species again to find a better one (S is the best).', '每隻都有自己嘅 IV：每項能力 −20% 至 +20%。再捉同一品種可以搵更好嘅（S 最好）。')}</li>
         <li>${t('The lower a monster’s HP, the easier to catch. Boss species only at 30% HP or less.', '怪物血越少越易捉。Boss 品種要打到 30% 或以下先捉得。')}</li>
         <li>${t('Pets level up (to 10, +2% stats a level) from fights they’re in: +20 XP for a win, +5 for a loss. Food from the shop speeds it up.', '寵物喺有份打嘅戰鬥升級（最高 10 級，每級能力 +2%）：贏 +20 經驗，輸 +5。商店嘅食物可以加快。')}</li>
@@ -206,9 +221,12 @@ export async function lairScreen() {
     ${st.open ? `<section class="card lr-open"><b>${t('You’re in a boss fight.', '你打緊 Boss。')}</b><a class="button" href="#/battle/${st.open}">${t('Back to your fight', '返去繼續打')}</a></section>` : ''}
     <section class="card lr-wallet"><span>${st.free ? `✨ <b>${t('1 free try today', '今日有 1 次免費')}</b>` : `<span class="muted">${t('Free try used today', '今日免費機會用咗')}</span>`}</span>
       <span>🎟️ ${st.tickets}</span><span>💧 ${st.coins}</span></section>
-    <section class="card"><div class="lr-grid">${st.bosses.map(b => `<button type="button" class="lr-boss" data-sp="${b.idx}">
+    <section class="card"><div class="lr-grid">${st.bosses.map(b => b.unlocked === false
+        ? `<div class="lr-boss locked">${sprite(b.idx, 96)}<b>🔒 ${esc(speciesName(b.idx))}</b><span class="muted small">${t(`Beat it on tower floor ${b.floor}`, `喺塔第 ${b.floor} 層打贏佢先`)}</span></div>`
+        : `<button type="button" class="lr-boss" data-sp="${b.idx}">
         ${sprite(b.idx, 96)}<b>${esc(speciesName(b.idx))}</b><span class="pt-meta">${typeChip(b.type)}${b.caught ? `<span class="small">✓ ${b.caught}</span>` : ''}</span></button>`).join('')}</div></section>
     <details class="card cc-how"><summary>${t('How it works', '點樣玩')}</summary><ul>
+      <li>${t('Every 5th tower floor is a boss. Beat it there and it opens here, so you can come back to catch it.', '塔每 5 層有一隻 Boss。喺塔打贏咗，佢就會喺度開放，你可以返嚟捉佢。')}</li>
       <li>${t('Each boss is matched to your stats. Get it to 30% HP or less, then throw a ball.', '每隻 Boss 都按你嘅能力配對。打到佢 30% 或以下，就可以掟球。')}</li>
       <li>${t('Boss species are hard to catch: bring better balls, or keep coming back.', 'Boss 品種好難捉：帶好啲嘅球，或者不斷返嚟再試。')}</li>
       <li>${t('One free try a day. After that it’s 1 🎟️ or 40 💧 a try.', '每日一次免費。之後每次 1 🎟️ 或者 40 💧。')}</li>
