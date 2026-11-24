@@ -473,6 +473,8 @@ export async function battleScreen(user, id) {
       body = t('Friendly match: just for fun.', '友誼賽：純粹玩。');
     }
     if (bt.state.pet_xp) body += ' ' + t(`Your pets +${bt.state.pet_xp} XP.`, `你啲寵物 +${bt.state.pet_xp} 經驗。`);
+    const ready = bt.state.evo_ready || [];
+    if (ready.length) { body += ' ' + ready.map(x => t(`✨ ${x.name || speciesNm(x.species)} reached level ${x.level} and can evolve!`, `✨ ${x.name || speciesNm(x.species)} 升到 ${x.level} 級，可以進化！`)).join(' '); btns += `<a class="button" href="#/pets">✨ ${t('Decide in Pets', '去寵物頁決定')}</a>`; }
     el.querySelector('#btMoves').innerHTML = '';
     msg.textContent = head;
     f.innerHTML = `<div class="bt-result ${won ? 'won' : ''}"><b>${head}</b><span>${body}</span><div class="bt-btns">${btns}</div></div>`;

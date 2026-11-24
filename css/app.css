@@ -1096,3 +1096,8 @@ canvas.dex-shadow { filter: brightness(0) opacity(.45); }
 .pt-evo.done { border-style: solid; margin: 0; color: #f2d245; }
 .q-shield { display: grid; gap: 6px; padding: 10px; margin-bottom: 8px; border: 1px solid #4d8df0; border-radius: var(--r-ctl); background: rgba(77,141,240,.08); }
 .small-btn[disabled], button[disabled].small-btn { opacity: .45; }
+.evo-ask { grid-template-columns: 64px 1fr; align-items: start; border-color: #e8b923; }
+.evo-ask canvas { image-rendering: pixelated; width: 64px; height: 53px; }
+.evo-ask > div { display: grid; gap: 6px; }
+.evo-btns { display: flex; gap: 6px; flex-wrap: wrap; }
+.evo-btns button { min-height: 36px; padding: 4px 12px; }

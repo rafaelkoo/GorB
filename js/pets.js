@@ -106,8 +106,14 @@ export async function petsScreen(user) {
   const el = render(`<header class="page-head"><div><h2>🐾 ${t('Pets', '寵物')}</h2></div><a class="link" href="#/me">‹ ${t('Me', '我')}</a></header>
     ${advNav('pets')}<div id="ptBody"><p class="muted">${t('Loading…', '載入緊…')}</p></div>`);
   wireAdvNav(el);
-  let pets, prof = null;
-  const load = async () => { pets = await api.myPets(); };
+  let pets, prof = null, mv = {};
+  const load = async () => {
+    pets = await api.myPets();
+    const ids = [...new Set(pets.flatMap(x => [x.sig_move, x.ultimate]).filter(id => id && !mv[id]))];
+    if (ids.length) (await api.movesByIds(ids).catch(() => [])).forEach(m => { mv[m.id] = m; });
+  };
+  const mvName = id => (mv[id] ? t(mv[id].en, mv[id].zh) : id);
+  const mvLine = id => { const m = mv[id]; return m ? `${esc(t(m.en, m.zh))}${m.power ? ` · ${t('Power', '威力')} ${m.power}` : ''}` : esc(id); };
   try { [, prof] = await Promise.all([load(), user ? api.getProfile(user.id).catch(() => null) : null]); } catch (err) { showError(err); return; }
   const myAv = user ? cleanAvatar(prof?.avatar, user.id) : null;
   const teamIds = () => pets.filter(p => p.slot != null).sort((a, b) => a.slot - b.slot).map(p => p.id);
@@ -118,9 +124,15 @@ export async function petsScreen(user) {
   function draw() {
     const team = teamIds().map(id => pets.find(p => p.id === id));
     const box = pets.filter(p => p.slot == null);
+    const asks = pets.filter(x => x.evo_prompt);
     el.querySelector('#ptBody').innerHTML = `
+      ${asks.map(x => `<section class="card evo-ask" data-ask="${x.id}">${sprite(x.species, 64, petName(x))}<div>
+        <b>✨ ${t(`${esc(petName(x))} can evolve!`, `${esc(petName(x))} 可以進化！`)}</b>
+        <span class="small">${t(`Evolve into ${speciesName(x.species, true)}: +25% to every stat and its own move, ${mvName(x.sig_move)}.`, `進化做${speciesName(x.species, true)}：全部能力 +25%，仲有專屬招式「${mvName(x.sig_move)}」。`)}</span>
+        <span class="small muted">${t(`Or keep its form: at level 20 it learns ${mvName(x.ultimate)}, the strongest move there is.`, `或者保持原形：到 20 級會學識最強嘅招式「${mvName(x.ultimate)}」。`)}</span>
+        <div class="evo-btns"><button type="button" data-evo="go">✨ ${t('Evolve', '進化')}</button><button type="button" class="ghost" data-evo="later">${t('Not now', '遲啲先')}</button><button type="button" class="ghost" data-evo="keep">${t('Keep its form', '保持原形')}</button></div></div></section>`).join('')}
       <section class="card"><div class="card-head"><h3>${t('Your team', '你嘅隊伍')}</h3><span class="muted small">${team.length + 1} / 6</span></div>
-        <p class="muted small">${t('You fight first; your pets come in when you switch or go down. Tower, Boss Lair and the group boss (each pet there adds 10% to your damage).', '你先出場；換人或者你倒低咗，寵物就會上。塔、Boss 巢穴同 group 魔王都用得（打魔王每隻寵物多 10% 傷害）。')}</p>
+        <p class="muted small">${t('You fight first; your pets come in when you switch or go down. Tower, Boss Lair and the group boss (each pet there adds 10% to your damage, an evolved one 15%).', '你先出場；換人或者你倒低咗，寵物就會上。塔、Boss 巢穴同 group 魔王都用得（打魔王每隻寵物多 10% 傷害，進化咗嘅多 15%）。')}</p>
         <div class="pt-team"><div class="pt-card me">${myAv ? `<canvas id="ptMe" width="64" height="68" role="img" aria-label="${t('Your character', '你嘅角色')}"></canvas>` : `<span class="pt-you" aria-hidden="true">🙋</span>`}<b>${esc(prof?.display_name || t('You', '你'))}</b><span class="pt-meta muted small">${t('Leader', '隊長')}</span></div>
           ${team.map(card).join('')}${Array.from({ length: 5 - team.length }, () => `<div class="pt-card empty" aria-hidden="true">＋</div>`).join('')}</div></section>
       <section class="card"><div class="card-head"><h3>${t('Box', '寵物箱')}</h3><span class="muted small">${pets.length}</span></div>
@@ -131,9 +143,9 @@ export async function petsScreen(user) {
         <li>${t('A pet’s stats come from yours, shaped by its species: a Takeaway Goblin is all attack, a Duvet Burrito is all HP and defence. Train and they get stronger too.', '寵物嘅能力由你嘅能力計，再按品種調整：外賣哥布林全攻擊，被竇卷就高 HP 同防禦。你練勁，佢哋都會勁。')}</li>
         <li>${t('Each one has its own IVs: −20% to +20% on every stat. Catch the same species again to find a better one (S is the best).', '每隻都有自己嘅 IV：每項能力 −20% 至 +20%。再捉同一品種可以搵更好嘅（S 最好）。')}</li>
         <li>${t('Throw a ball any time on your turn. The lower its HP, the better the chance; bosses are harder to catch.', '你嘅回合隨時都可以掟球。佢血越少越易捉；Boss 比較難捉。')}</li>
-        <li>${t('Pets level up (to 10, +2% stats a level) from fights they’re in: +20 XP for a win, +5 for a loss. Food from the shop speeds it up.', '寵物喺有份打嘅戰鬥升級（最高 10 級，每級能力 +2%）：贏 +20 經驗，輸 +5。商店嘅食物可以加快。')}</li>
-        <li>${t('Evolution: at level 10, a pet that has been in your team on 20 of your gym days can evolve. The excuse becomes a motivation: +15% to every stat and a new look.', '進化：寵物到咗 10 級，又喺你隊入面陪你去咗 20 日 gym，就可以進化。藉口變動力：全部能力 +15%，仲有新樣。')}</li>
-        <li>${t('Releasing a pet gives coins back: more for a higher level and better IVs (5–38).', '放生寵物有金幣：等級越高、IV 越好就越多（5–38）。')}</li>
+        <li>${t('Pets level up (to 20, +2% stats a level) from fights they’re in: +20 XP for a win, +5 for a loss. Food from the shop speeds it up.', '寵物喺有份打嘅戰鬥升級（最高 20 級，每級能力 +2%）：贏 +20 經驗，輸 +5。商店嘅食物可以加快。')}</li>
+        <li>${t('Evolution is your choice. At level 10, after 20 of your gym days in your team, a pet can evolve: +25% to every stat, a new look and its own move. Or keep its form: at level 20 it learns its type’s strongest move. Until you decide, it asks again each level.', '進唔進化由你揀。寵物 10 級、喺隊入面陪你去咗 20 日 gym 之後就可以進化：全部能力 +25%、新樣、專屬招式。或者保持原形：到 20 級會學識該屬性最強嘅招式。未決定之前，佢每升一級都會問你。')}</li>
+        <li>${t('Releasing a pet gives coins back: more for a higher level and better IVs (5–58).', '放生寵物有金幣：等級越高、IV 越好就越多（5–58）。')}</li>
         <li>${t('Your first catch of each boss species is 1.5× easier.', '每種 Boss 第一次捉，捉中率 ×1.5。')}</li>
         <li>${t('A move scroll teaches a pet one extra move (its type or Normal). Teaching another replaces it.', '招式卷軸可以教寵物多一招（同屬性或者普通）。再教就會換走。')}</li>
         <li>${t('A bigger team makes the monsters tougher too, so it helps but doesn’t walk through everything.', '隊伍越大，怪物都會越強，所以有幫助，但唔會一路無敵。')}</li></ul></details>`;
@@ -141,21 +153,33 @@ export async function petsScreen(user) {
     const me = el.querySelector('#ptMe');
     if (me) { let f = 0; drawPortrait(me, myAv, 'stand', 0); const tk = setInterval(() => { if (!document.body.contains(me)) return clearInterval(tk); if (!reduced()) { f ^= 1; drawPortrait(me, myAv, 'stand', f); } }, 560); }
     el.querySelectorAll('[data-pet]').forEach(b => b.onclick = () => petSheet(pets.find(p => p.id === b.dataset.pet)));
+    el.querySelectorAll('[data-ask]').forEach(sec => sec.querySelectorAll('[data-evo]').forEach(b => b.onclick = async () => {
+      const x = pets.find(q => q.id === sec.dataset.ask); sec.querySelectorAll('button').forEach(y => y.disabled = true);
+      try {
+        if (b.dataset.evo === 'go') { await api.evolvePet(x.id); navigator.vibrate?.([40, 60, 40, 60, 80]); toast(t(`${speciesName(x.species)} evolved into ${speciesName(x.species, true)}! ✨`, `${speciesName(x.species)}進化咗做${speciesName(x.species, true)}！✨`)); }
+        else { await api.petEvoChoice(x.id, b.dataset.evo); toast(b.dataset.evo === 'keep' ? t(`${petName(x)} keeps its form. Level 20 brings ${mvName(x.ultimate)}.`, `${petName(x)} 保持原形。20 級會學識「${mvName(x.ultimate)}」。`) : t('Asking again at its next level.', '佢下次升級會再問你。')); }
+        await load(); draw();
+      } catch (err) { sec.querySelectorAll('button').forEach(y => y.disabled = false); showError(err); }
+    }));
   }
   let bag = null, moves = null;
   async function petSheet(p) {
     try { [bag, moves] = await Promise.all([bag || api.myBag(), moves || api.allMoves()]); } catch (err) { showError(err); return; }
     const foods = Object.entries(bag.items || {}).filter(([k, q]) => q > 0 && FOOD[k]);
-    const lv = p.level || 1, maxed = lv >= 10, span = maxed ? 1 : (p.xp_to ?? 50) - (p.xp_from ?? 0), into = maxed ? 1 : (p.xp ?? 0) - (p.xp_from ?? 0);
+    const lv = p.level || 1, maxed = lv >= 20, span = maxed ? 1 : (p.xp_to ?? 50) - (p.xp_from ?? 0), into = maxed ? 1 : (p.xp ?? 0) - (p.xp_from ?? 0);
     const inTeam = p.slot != null, full = teamIds().length >= 5, s = p.snap || {};
     const { box, close } = sheet(`
       <div class="pt-head">${sprite(p.species, 96, petName(p), p.evolved)}<div><h3>${esc(petName(p))}</h3>
         <span class="pt-meta">${typeChip(p.type)}${p.boss ? `<span class="pt-boss">👑 ${t('Boss', 'Boss')}</span>` : ''}<span class="pt-grade g-${ivGrade(p.iv)}">${ivGrade(p.iv)}</span></span>
         ${p.nickname || p.evolved ? `<span class="muted small">${esc(p.evolved ? t(`Evolved from ${speciesName(p.species)}`, `由${speciesName(p.species)}進化`) : speciesName(p.species))}</span>` : ''}</div></div>
-      ${p.evolved ? `<p class="pt-evo done">✨ ${t('Evolved: +15% to every stat', '已進化：全部能力 +15%')}</p>` : `<div class="pt-evo">
-        <b>✨ ${t(`Evolves into ${speciesName(p.species, true)}`, `會進化做${speciesName(p.species, true)}`)}</b>
-        <span class="small">${(p.level || 1) >= 10 ? '✓' : '○'} ${t(`Level 10 (now ${p.level || 1})`, `10 級（而家 ${p.level || 1}）`)}　${(p.gym_days || 0) >= 20 ? '✓' : '○'} ${t(`20 gym days in your team (${p.gym_days || 0})`, `喺隊入面陪你去 20 日 gym（${p.gym_days || 0}）`)}</span>
-        ${(p.level || 1) >= 10 && (p.gym_days || 0) >= 20 ? `<button type="button" data-act="evolve">✨ ${t('Evolve!', '進化！')}</button>` : ''}</div>`}
+      ${p.evolved ? `<p class="pt-evo done">✨ ${t(`Evolved: +25% to every stat, and its own move: ${mvLine(p.sig_move)}`, `已進化：全部能力 +25%，專屬招式「${mvLine(p.sig_move)}」`)}</p>` : `<div class="pt-evo">
+        <b>✨ ${t(`Path 1 · Evolve into ${speciesName(p.species, true)}`, `路線一 · 進化做${speciesName(p.species, true)}`)}</b>
+        <span class="small">${t(`+25% to every stat and its own move: ${mvLine(p.sig_move)}`, `全部能力 +25%，專屬招式「${mvLine(p.sig_move)}」`)}</span>
+        <span class="small">${lv >= 10 ? '✓' : '○'} ${t(`Level 10 (now ${lv})`, `10 級（而家 ${lv}）`)}　${(p.gym_days || 0) >= 20 ? '✓' : '○'} ${t(`20 gym days in your team (${p.gym_days || 0})`, `喺隊入面陪你去 20 日 gym（${p.gym_days || 0}）`)}</span>
+        <b>🌟 ${t('Path 2 · Keep its form', '路線二 · 保持原形')}</b>
+        <span class="small">${lv >= 20 ? `✓ ${t(`Learned the strongest move: ${mvLine(p.ultimate)}`, `已學識最強招式「${mvLine(p.ultimate)}」`)}` : t(`At level 20 (now ${lv}) it learns the strongest move: ${mvLine(p.ultimate)}`, `到 20 級（而家 ${lv}）會學識最強招式「${mvLine(p.ultimate)}」`)}</span>
+        ${p.evo_ready ? `<button type="button" data-act="evolve">✨ ${t('Evolve!', '進化！')}${lv >= 20 ? ` ${t(`(it forgets ${mvName(p.ultimate)})`, `（會唔記得「${mvName(p.ultimate)}」）`)}` : ''}</button>` : ''}
+        ${p.keep_form ? `<span class="small muted">${t('You chose to keep its form, so it won’t ask.', '你揀咗保持原形，所以唔會再問。')} <button type="button" class="link" data-act="unkeep">${t('Let it ask again', '再問我')}</button></span>` : ''}</div>`}
       <div class="pt-xp"><b>Lv ${lv}</b><span class="bt-hp"><i style="width:${Math.round(into / span * 100)}%"></i></span>
         <span class="muted small">${!maxed ? `${p.xp ?? 0} / ${p.xp_to ?? 50} XP` : t('Max level', '最高級')}</span></div>
       ${!maxed ? `<div class="pt-feed">${foods.length ? foods.map(([k, q]) => `<button type="button" class="ghost small-btn" data-feed="${k}">${FOOD[k].icon} ${t(`Feed ${FOOD[k].en}`, `餵${FOOD[k].zh}`)} ×${q}</button>`).join('')
@@ -188,6 +212,7 @@ export async function petsScreen(user) {
       } catch (err) { b.disabled = false; showError(err); }
     });
     box.querySelector('[data-act="teach"]').onclick = () => { close(); teachSheet(p); };
+    box.querySelector('[data-act="unkeep"]')?.addEventListener('click', async () => { try { await api.petEvoChoice(p.id, 'unkeep'); close(); await load(); draw(); } catch (err) { showError(err); } });
     box.querySelector('[data-act="evolve"]')?.addEventListener('click', async e => {
       e.target.disabled = true;
       try { await api.evolvePet(p.id); close(); navigator.vibrate?.([40, 60, 40, 60, 80]); toast(t(`${speciesName(p.species)} evolved into ${speciesName(p.species, true)}! ✨`, `${speciesName(p.species)}進化咗做${speciesName(p.species, true)}！✨`)); await load(); draw(); petSheet(pets.find(x => x.id === p.id)); }

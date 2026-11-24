@@ -128,6 +128,8 @@ export const buyMove = id => sb.rpc('buy_move', { p_move: id }).then(must);
 export const petFeed = (id, item) => sb.rpc('pet_feed', { p_pet: id, p_item: item }).then(must);
 export const petTeach = (id, move) => sb.rpc('pet_teach', { p_pet: id, p_move: move }).then(must);
 export const petTest = id => sb.rpc('pet_test', { p_pet: id }).then(must);
+export const petEvoChoice = (id, choice) => sb.rpc('pet_evo_choice', { p_pet: id, p_choice: choice }).then(must);
+export const movesByIds = ids => (ids.length ? sb.from('moves').select('id, en, zh, type, power, effect, effect_val, uses, desc_en, desc_zh').in('id', ids).then(must) : Promise.resolve([]));
 export const evolvePet = id => sb.rpc('evolve_pet', { p_pet: id }).then(must);
 export const myDex = () => sb.rpc('my_dex').then(must);
 export const claimDex = set => sb.rpc('claim_dex', { p_set: set }).then(must);
