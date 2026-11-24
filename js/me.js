@@ -45,7 +45,7 @@ function goalQuestionsHtml(b, profile) {
   return `<div class="goal-qs">${qs.map(q => q.type === 'choice'
     ? `<div class="gq"><span class="gq-q">${esc(t(q.en, q.zh))}</span><div class="chips wrap">${q.opts.map(o => `<button type="button" data-gq="${q.id}" data-gq-opt="${o.id}" class="${cur(q) === o.id ? 'on' : ''}" aria-pressed="${cur(q) === o.id}">${esc(t(o.en, o.zh))}</button>`).join('')}</div></div>`
     : `<label class="gq"><span class="gq-q">${esc(t(q.en, q.zh))}</span><input data-gq="${q.id}" inputmode="decimal" min="${q.min ?? ''}" max="${q.max ?? ''}" step="${q.step ?? 1}" value="${cur(q) ?? ''}" placeholder="${q.def ?? ''}"></label>`).join('')}
-    <p class="muted small">${t('Your answers tune the training guide: rep ranges, cardio minutes and gym days.', '你嘅答案會調整訓練指南：次數範圍、cardio 分鐘同去 gym 日數。')}</p></div>`;
+    <p class="muted small">${t('Your answers tune the training guide (rep ranges, sets for your focus area, cardio minutes, gym days) and your daily habits on the Log page.', '你嘅答案會調整訓練指南（次數範圍、重點部位嘅組數、cardio 分鐘、去 gym 日數）同「記錄」頁嘅每日習慣。')}</p></div>`;
 }
 
 // strength level against your body weight (FitTrack's standards: novice / intermediate / advanced)

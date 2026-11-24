@@ -74,7 +74,7 @@ export async function logScreen(user) {
   const weekStart = api.ukWeekStart();
   const [rows, savedPlan, body, ticks, wlog, clogs] = await Promise.all([api.liftHistory(user.id), api.getPlan(user.id), api.bodyProfile(user.id), api.habitTicks(user.id, api.ukToday()), api.weights(user.id), api.cardioLogs(user.id, weekStart)]);
   const cst = { logs: clogs, pick: null, mins: 30, target: schemeOf(body?.goal_id, body?.goal_answers)?.cardio || null, today, weekStart };
-  const habitsDone = new Set(ticks.map(x => x.habit)), habits = habitList(wlog.at(-1) ? +wlog.at(-1).weight_kg : null, schemeOf(body?.goal_id, body?.goal_answers)?.steps);
+  const habitsDone = new Set(ticks.map(x => x.habit)), habits = habitList(wlog.at(-1) ? +wlog.at(-1).weight_kg : null, schemeOf(body?.goal_id, body?.goal_answers)?.steps, body?.goal_id === 'wellness' ? body?.goal_answers?.focus : null);
   const restSec = body?.rest_sec || 90;
   const history = bySession(rows);
   const fullPlan = cleanPlan(savedPlan || {});

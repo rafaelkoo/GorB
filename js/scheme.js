@@ -30,11 +30,15 @@ export const schemeOf = (goalId, ans) => {
   if (goalId === 'lose_weight' && ans?.approach === 'cardio_only') sc.cardio += 60;
   if (goalId === 'lose_weight' && ans?.approach === 'weights_only') sc.cardio = Math.max(60, sc.cardio - 60);
   if (+ans?.weekly_mins > 0) sc.cardio = +ans.weekly_mins;
+  // building muscle with a focus area: one extra set on exercises for that half of the body
+  if (goalId === 'build_muscle' && (ans?.area === 'upper' || ans?.area === 'lower')) sc.focus = ans.area;
   return sc;
 };
+const UPPER = new Set(['chest', 'back', 'shoulders', 'arms']), LOWER = new Set(['legs']);
+export const inFocus = (sc, id) => (sc?.focus === 'upper' ? UPPER : sc?.focus === 'lower' ? LOWER : null)?.has(EX[id]?.cat) || false;
 
 // [sets, lo, hi] for one exercise under a scheme
-export const schemeFor = (sc, id) => (isCompound(id) ? sc.c : sc.i);
+export const schemeFor = (sc, id) => { const [s, lo, hi] = isCompound(id) ? sc.c : sc.i; return [s + (inFocus(sc, id) ? 1 : 0), lo, hi]; };
 
 // what applying the scheme would change in a plan; returns the count of exercises that change
 export function schemeChanges(plan, sc) {

@@ -64,12 +64,20 @@ export function coverageHtml(cov) {
 }
 
 // FitTrack's daily habits; amounts follow body weight
-export function habitList(weightKg, steps = 8000) {
+// focus: the General wellness answer (energy / stress / habits) adds one habit for it, and puts it first
+export function habitList(weightKg, steps = 8000, focus = null) {
   const w = weightKg || 75;
-  return [
+  const list = [
     { id: 'water', label: t(`Drink ${(w * 0.033).toFixed(1)} L water`, `飲水 ${(w * 0.033).toFixed(1)}L`) },
     { id: 'protein', label: t(`Hit ${Math.round(w * 1.8)} g protein`, `蛋白質 ${Math.round(w * 1.8)}g`) },
     { id: 'sleep', label: t('In bed by 10:30pm (7–9 h)', '10:30 前上床（7–9 小時）') },
     { id: 'steps', label: t(`Walk ${steps.toLocaleString('en-GB')} steps`, `行 ${steps.toLocaleString('en-GB')} 步`) }
   ];
+  const extra = {
+    energy: { id: 'daylight', label: t('10 minutes outside in the morning', '朝早出去行 10 分鐘曬吓太陽') },
+    stress: { id: 'breathe', label: t('5 minutes of slow breathing or stretching', '5 分鐘慢慢深呼吸或者伸展') },
+    habits: { id: 'plan_next', label: t('Decide when you’ll train next', '諗定下次幾時去 gym') }
+  }[focus];
+  if (focus === 'energy') list.unshift(list.splice(2, 1)[0]);   // sleep first
+  return extra ? [extra, ...list] : list;
 }
