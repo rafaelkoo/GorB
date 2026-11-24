@@ -57,7 +57,7 @@ export function todayStripHtml(rows, user) {
   const inn = ps.filter(p => p.inGym), out = ps.filter(p => !p.inGym && !p.me);
   return `<div class="today-strip">
     <span class="muted small">${t(`Today · ${inn.length} of ${ps.length} been`, `今日 · ${ps.length} 個人入面 ${inn.length} 個去咗`)}</span>
-    <div class="today-row">${inn.map(p => `<span class="today-chip" title="${esc(p.name)}"><span class="face in">${esc(p.name.slice(0, 1).toUpperCase())}</span>${esc(p.me ? t('You', '你') : p.what ? p.what.split(' · ')[0] : p.name)}</span>`).join('')}
+    <div class="today-row">${inn.map(p => `<span class="today-chip" title="${esc(p.what ? `${p.name} · ${p.what}` : p.name)}"><span class="face in">${esc(p.name.slice(0, 1).toUpperCase())}</span>${esc(p.me ? t('You', '你') : p.name)}${p.what ? `<small class="today-what">${esc(p.what.split(' · ')[0])}</small>` : ''}</span>`).join('')}
       ${out.length ? `<button type="button" class="summon-chip" id="summonOpen">📣 ${out.length === 1 ? t(`Summon ${esc(out[0].name)}`, `召喚 ${esc(out[0].name)}`) : t(`Summon (${out.length} not in yet)`, `召喚（${out.length} 個未嚟）`)}</button>` : ''}</div></div>`;
 }
 

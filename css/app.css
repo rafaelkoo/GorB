@@ -1148,3 +1148,4 @@ canvas.dex-shadow { filter: brightness(0) opacity(.45); }
 .fold[open] > .fold-sum { margin-bottom: 12px; }
 .fold[open] .fold-chev { transform: rotate(90deg); }
 @media (prefers-reduced-motion: reduce) { .fold-chev { transition: none; } }
+.today-what { margin-left: 6px; font-size: .75rem; color: var(--dust); font-weight: 500; }
