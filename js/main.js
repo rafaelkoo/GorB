@@ -121,6 +121,34 @@ initMotion(document.getElementById('app'));
 safeRoute();
 
 // every bottom sheet opens with transitions.dev's modal transition (06): t-modal, then is-open
+// The phone's back button closes whatever is open on top (a photo, a sheet, a menu) instead of leaving
+// the page: opening one adds a history entry, back pops it. Closing it yourself removes that entry again.
+const OVERLAY = '.sheet, .lightbox, .msg-menu-wrap, .chest-wrap';
+const isOverlay = n => n.nodeType === 1 && n.parentNode === document.body && n.matches?.(OVERLAY);
+let overlays = [], skipPop = 0, closingByBack = null;
+function closeOverlay(n) {
+  // use the overlay's own close (so it tidies up after itself), else click its backdrop, else just remove it
+  const btn = n.querySelector('[data-close], #close, .lb-close');
+  if (btn) btn.click(); else n.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+  if (document.body.contains(n)) { n.remove(); document.body.style.overflow = ''; }
+}
+new MutationObserver(list => {
+  for (const m of list) {
+    for (const n of m.addedNodes) if (isOverlay(n) && !overlays.includes(n)) { overlays.push(n); history.pushState({ gobOverlay: true }, ''); }
+    for (const n of m.removedNodes) {
+      const i = overlays.indexOf(n); if (i < 0) continue;
+      overlays.splice(i, 1);
+      if (closingByBack === n) { closingByBack = null; continue; }
+      // closed by a tap: drop its history entry, unless the page has already moved on (a link inside it)
+      if (history.state?.gobOverlay) { skipPop++; history.back(); }
+    }
+  }
+}).observe(document.body, { childList: true });
+window.addEventListener('popstate', () => {
+  if (skipPop) { skipPop--; return; }
+  const n = overlays.at(-1); if (!n) return;
+  closingByBack = n; closeOverlay(n);
+});
 new MutationObserver(list => {
   for (const m of list) for (const n of m.addedNodes) {
     const inner = n.nodeType === 1 && n.classList?.contains('sheet') ? n.querySelector('.sheet-in') : null;
