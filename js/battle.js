@@ -22,8 +22,8 @@ const monsterName = s => {
   const b = BOSSES[(s.monster ?? 0) % BOSSES.length], n = t(b.en, b.zh);
   return s.raid ? t(`Boss: ${n}`, `魔王：${n}`) : s.boss_floor ? `Boss ${n}` : s.elite ? t(`Elite ${n}`, `精英${n}`) : n;
 };
-const speciesNm = i => { const b = BOSSES[i % BOSSES.length]; return t(b.en, b.zh); };
-const fighterName = s => (s.pet ? (s.name || speciesNm(s.species)) : s.monster != null ? monsterName(s) : s.name || '?');
+const speciesNm = (i, evo) => { const b = BOSSES[i % BOSSES.length], n = evo && b.evo ? b.evo : b; return t(n.en, n.zh); };
+const fighterName = s => (s.pet ? (s.name || speciesNm(s.species, s.evolved)) : s.monster != null ? monsterName(s) : s.name || '?');
 export const towerReward = n => ({ xp: 20 + 4 * n + (n % 5 === 0 ? 30 : 0), coins: 5 + n + (n % 5 === 0 ? 15 : 0) });
 // replaying a floor you've cleared: 30% of its first-clear reward, every win
 export const replayReward = n => { const r = towerReward(n); return { xp: Math.round(r.xp * 0.3), coins: Math.max(1, Math.round(r.coins * 0.3)) }; };
@@ -246,7 +246,7 @@ export async function battleScreen(user, id) {
   const cv = el.querySelector('#btCv'), msg = el.querySelector('#btMsg');
   const view = side => {
     const s = snap[side];
-    return s.pet ? { monster: s.species } : s.monster != null ? { monster: s.monster, big: !!(s.elite || s.raid || s.boss_pet) } : { avatar: cleanAvatar(s.avatar, s.id) };
+    return s.pet ? { monster: s.species, evolved: !!s.evolved } : s.monster != null ? { monster: s.monster, big: !!(s.elite || s.raid || s.boss_pet) } : { avatar: cleanAvatar(s.avatar, s.id) };
   };
   const hp = { ...bt.state.hp }, max = { ...bt.state.max };
   // your team (tower and lair): HP of everyone, and who's out

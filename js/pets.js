@@ -8,8 +8,8 @@ import { MOVE_TYPES } from './battle.js';
 
 const reduced = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
 const STATS = [['hp', 'HP', 'HP'], ['atk', 'Attack', '攻擊'], ['def', 'Defence', '防禦'], ['spd', 'Speed', '速度'], ['tec', 'Technique', '技巧']];
-export const speciesName = i => { const b = BOSSES[i % BOSSES.length]; return t(b.en, b.zh); };
-export const petName = p => p.nickname || speciesName(p.species);
+export const speciesName = (i, evo = false) => { const b = BOSSES[i % BOSSES.length], n = evo && b.evo ? b.evo : b; return t(n.en, n.zh); };
+export const petName = p => p.nickname || speciesName(p.species, p.evolved);
 const typeChip = ty => { const m = MOVE_TYPES[ty] || MOVE_TYPES.normal; return `<span class="pt-type" style="--c:${m.col}">${t(m.en, m.zh)}</span>`; };
 // how good the IVs are overall (each stat is -20%..+20%)
 export function ivGrade(iv) {
@@ -19,7 +19,7 @@ export function ivGrade(iv) {
 const FOOD = { protein_bar: { icon: '🍫', en: 'Protein Bar', zh: '蛋白棒' }, steak: { icon: '🥩', en: 'Steak', zh: '牛扒' } };
 const pct = v => `${v >= 0 ? '+' : ''}${Math.round(v * 100)}%`;
 const ICON = { potion: '🧃', food: { protein_bar: '🍫', steak: '🥩' } };
-export const itemIcon = it => (it.kind === 'ball' ? '' : it.kind === 'food' ? (ICON.food[it.id] || '🍖') : ICON.potion);
+export const itemIcon = it => (it.kind === 'ball' ? '' : it.kind === 'food' ? (ICON.food[it.id] || '🍖') : it.kind === 'shield' ? '🛡️' : ICON.potion);
 // a move scroll: same type as the pet or Normal (Normal pets learn anything); no fusion or monster-only moves
 const TEACHABLE = ['always', 'lift', 'maxlift', 'sets', 'cardio', 'climb', 'climbs'];
 export const scrollPrice = m => 60 + Math.round(1.5 * (m.power || 0));
@@ -27,19 +27,20 @@ export const scrollPrice = m => 60 + Math.round(1.5 * (m.power || 0));
 // little animated sprites: every canvas with data-sp gets its species drawn
 function wireSprites(root) {
   const cvs = [...root.querySelectorAll('canvas[data-sp]')];
-  cvs.forEach(cv => drawBoss(cv, +cv.dataset.sp, 0, cv.dataset.ko ? 'ko' : 'idle'));
+  const st = cv => (cv.dataset.ko ? 'ko' : 'idle'), ev = cv => cv.dataset.evo === '1';
+  cvs.forEach(cv => drawBoss(cv, +cv.dataset.sp, 0, st(cv), ev(cv)));
   if (reduced() || !cvs.length) return;
   let f = 0;
   const tick = setInterval(() => {
     if (!document.body.contains(cvs[0])) return clearInterval(tick);
-    f ^= 1; cvs.forEach(cv => drawBoss(cv, +cv.dataset.sp, f, cv.dataset.ko ? 'ko' : 'idle'));
+    f ^= 1; cvs.forEach(cv => drawBoss(cv, +cv.dataset.sp, f, st(cv), ev(cv)));
   }, 600);
 }
-const sprite = (sp, size = 64, label = '') => `<canvas data-sp="${sp}" width="${size}" height="${Math.round(size * 40 / 48)}" role="img" aria-label="${esc(label || speciesName(sp))}"></canvas>`;
+const sprite = (sp, size = 64, label = '', evo = false, dark = false) => `<canvas data-sp="${sp}" ${evo ? 'data-evo="1"' : ''} ${dark ? 'class="dex-shadow"' : ''} width="${size}" height="${Math.round(size * 40 / 48)}" role="img" aria-label="${esc(label || speciesName(sp))}"></canvas>`;
 
 // the strip of links shared by the tower, pets, shop and lair
 export function advNav(on) {
-  const L = [['tower', '🗼', 'Tower', '塔'], ['pets', '🐾', 'Pets', '寵物'], ['lair', '👑', 'Boss Lair', 'Boss 巢穴'], ['shop', '🏪', 'Shop', '商店']];
+  const L = [['tower', '🗼', 'Tower', '塔'], ['pets', '🐾', 'Pets', '寵物'], ['dex', '📖', 'Dex', '圖鑑'], ['lair', '👑', 'Boss Lair', 'Boss 巢穴'], ['shop', '🏪', 'Shop', '商店']];
   return `<nav class="adv-nav grp-switch" aria-label="${t('Adventure', '冒險')}">${L.map(([k, i, en, zh]) => `<a href="#/${k}" class="${k === on ? 'on' : ''}" ${k === on ? 'aria-current="page"' : ''}>${i} ${t(en, zh)}</a>`).join('')}</nav>`;
 }
 export function wireAdvNav(el) { slideChips(el.querySelector('.adv-nav'), 'gob_chip_adv'); }
@@ -112,7 +113,7 @@ export async function petsScreen(user) {
   const teamIds = () => pets.filter(p => p.slot != null).sort((a, b) => a.slot - b.slot).map(p => p.id);
   const saveTeam = async ids => { try { await api.setTeam(ids); await load(); draw(); } catch (err) { showError(err); } };
 
-  const card = p => `<button type="button" class="pt-card" data-pet="${p.id}">${sprite(p.species, 64, petName(p))}
+  const card = p => `<button type="button" class="pt-card ${p.evolved ? 'evo' : ''}" data-pet="${p.id}">${sprite(p.species, 64, petName(p), p.evolved)}
       <b>${esc(petName(p))}</b><span class="pt-lv">Lv ${p.level || 1}</span><span class="pt-meta">${typeChip(p.type)}<span class="pt-grade g-${ivGrade(p.iv)}" title="${t('IV grade', 'IV 評級')}">${ivGrade(p.iv)}</span></span></button>`;
   function draw() {
     const team = teamIds().map(id => pets.find(p => p.id === id));
@@ -131,6 +132,7 @@ export async function petsScreen(user) {
         <li>${t('Each one has its own IVs: −20% to +20% on every stat. Catch the same species again to find a better one (S is the best).', '每隻都有自己嘅 IV：每項能力 −20% 至 +20%。再捉同一品種可以搵更好嘅（S 最好）。')}</li>
         <li>${t('Throw a ball any time on your turn. The lower its HP, the better the chance; bosses are harder to catch.', '你嘅回合隨時都可以掟球。佢血越少越易捉；Boss 比較難捉。')}</li>
         <li>${t('Pets level up (to 10, +2% stats a level) from fights they’re in: +20 XP for a win, +5 for a loss. Food from the shop speeds it up.', '寵物喺有份打嘅戰鬥升級（最高 10 級，每級能力 +2%）：贏 +20 經驗，輸 +5。商店嘅食物可以加快。')}</li>
+        <li>${t('Evolution: at level 10, a pet that has been in your team on 20 of your gym days can evolve. The excuse becomes a motivation: +15% to every stat and a new look.', '進化：寵物到咗 10 級，又喺你隊入面陪你去咗 20 日 gym，就可以進化。藉口變動力：全部能力 +15%，仲有新樣。')}</li>
         <li>${t('Releasing a pet gives coins back: more for a higher level and better IVs (5–38).', '放生寵物有金幣：等級越高、IV 越好就越多（5–38）。')}</li>
         <li>${t('Your first catch of each boss species is 1.5× easier.', '每種 Boss 第一次捉，捉中率 ×1.5。')}</li>
         <li>${t('A move scroll teaches a pet one extra move (its type or Normal). Teaching another replaces it.', '招式卷軸可以教寵物多一招（同屬性或者普通）。再教就會換走。')}</li>
@@ -147,9 +149,13 @@ export async function petsScreen(user) {
     const lv = p.level || 1, maxed = lv >= 10, span = maxed ? 1 : (p.xp_to ?? 50) - (p.xp_from ?? 0), into = maxed ? 1 : (p.xp ?? 0) - (p.xp_from ?? 0);
     const inTeam = p.slot != null, full = teamIds().length >= 5, s = p.snap || {};
     const { box, close } = sheet(`
-      <div class="pt-head">${sprite(p.species, 96, petName(p))}<div><h3>${esc(petName(p))}</h3>
+      <div class="pt-head">${sprite(p.species, 96, petName(p), p.evolved)}<div><h3>${esc(petName(p))}</h3>
         <span class="pt-meta">${typeChip(p.type)}${p.boss ? `<span class="pt-boss">👑 ${t('Boss', 'Boss')}</span>` : ''}<span class="pt-grade g-${ivGrade(p.iv)}">${ivGrade(p.iv)}</span></span>
-        ${p.nickname ? `<span class="muted small">${esc(speciesName(p.species))}</span>` : ''}</div></div>
+        ${p.nickname || p.evolved ? `<span class="muted small">${esc(p.evolved ? t(`Evolved from ${speciesName(p.species)}`, `由${speciesName(p.species)}進化`) : speciesName(p.species))}</span>` : ''}</div></div>
+      ${p.evolved ? `<p class="pt-evo done">✨ ${t('Evolved: +15% to every stat', '已進化：全部能力 +15%')}</p>` : `<div class="pt-evo">
+        <b>✨ ${t(`Evolves into ${speciesName(p.species, true)}`, `會進化做${speciesName(p.species, true)}`)}</b>
+        <span class="small">${(p.level || 1) >= 10 ? '✓' : '○'} ${t(`Level 10 (now ${p.level || 1})`, `10 級（而家 ${p.level || 1}）`)}　${(p.gym_days || 0) >= 20 ? '✓' : '○'} ${t(`20 gym days in your team (${p.gym_days || 0})`, `喺隊入面陪你去 20 日 gym（${p.gym_days || 0}）`)}</span>
+        ${(p.level || 1) >= 10 && (p.gym_days || 0) >= 20 ? `<button type="button" data-act="evolve">✨ ${t('Evolve!', '進化！')}</button>` : ''}</div>`}
       <div class="pt-xp"><b>Lv ${lv}</b><span class="bt-hp"><i style="width:${Math.round(into / span * 100)}%"></i></span>
         <span class="muted small">${!maxed ? `${p.xp ?? 0} / ${p.xp_to ?? 50} XP` : t('Max level', '最高級')}</span></div>
       ${!maxed ? `<div class="pt-feed">${foods.length ? foods.map(([k, q]) => `<button type="button" class="ghost small-btn" data-feed="${k}">${FOOD[k].icon} ${t(`Feed ${FOOD[k].en}`, `餵${FOOD[k].zh}`)} ×${q}</button>`).join('')
@@ -182,6 +188,11 @@ export async function petsScreen(user) {
       } catch (err) { b.disabled = false; showError(err); }
     });
     box.querySelector('[data-act="teach"]').onclick = () => { close(); teachSheet(p); };
+    box.querySelector('[data-act="evolve"]')?.addEventListener('click', async e => {
+      e.target.disabled = true;
+      try { await api.evolvePet(p.id); close(); navigator.vibrate?.([40, 60, 40, 60, 80]); toast(t(`${speciesName(p.species)} evolved into ${speciesName(p.species, true)}! ✨`, `${speciesName(p.species)}進化咗做${speciesName(p.species, true)}！✨`)); await load(); draw(); petSheet(pets.find(x => x.id === p.id)); }
+      catch (err) { e.target.disabled = false; showError(err); }
+    });
     box.querySelector('[data-act="name"]').onclick = async () => {
       const n = prompt(t('Name (up to 20 letters, empty for the species name)', '名（最多 20 個字，留空就用品種名）'), p.nickname || '');
       if (n == null) return;
@@ -212,6 +223,47 @@ export async function petsScreen(user) {
       catch (err) { b.disabled = false; showError(err); }
     });
   }
+  draw();
+}
+
+// ---------------- the dex ----------------
+const TOWER_FLOORS = (() => { const m = {}; for (let f = 1; f <= 30; f++) { const i = f % 5 === 0 ? 12 + ((f / 5 - 1) % 6) : [0, 2, 9, 1, 6, 4, 7, 3, 10, 8, 5, 11][(f - Math.floor(f / 5) - 1) % 12]; (m[i] ||= []).push(f); } return m; })();
+export async function dexScreen() {
+  const el = render(`<header class="page-head"><div><h2>📖 ${t('Dex', '圖鑑')}</h2></div><a class="link" href="#/me">‹ ${t('Me', '我')}</a></header>
+    ${advNav('dex')}<div id="dxBody"><p class="muted">${t('Loading…', '載入緊…')}</p></div>`);
+  wireAdvNav(el);
+  let dx;
+  const load = async () => { dx = await api.myDex(); };
+  try { await load(); } catch (err) { showError(err); return; }
+  const SET = { normal: ['Every tower monster', '全部塔怪物'], boss: ['Every boss', '全部 Boss'], evo: ['6 different evolutions', '6 種唔同嘅進化'] };
+  const draw = () => {
+    const sp = dx.species || [];
+    const tile = s => {
+      const where = (TOWER_FLOORS[s.idx] || []).slice(0, 3).join(', ');
+      if (!s.caught) return `<div class="dx-tile unknown">${sprite(s.idx, 64, t('Not caught yet', '未捉到'), false, true)}<b>？？？</b>
+        <span class="muted small">${s.boss ? t(`Boss · floor ${where}`, `Boss · 第 ${where} 層`) : t(`Tower floor ${where}…`, `塔第 ${where} 層…`)}</span></div>`;
+      const grade = s.best_iv != null ? ivGrade({ hp: s.best_iv, atk: s.best_iv, def: s.best_iv, spd: s.best_iv, tec: s.best_iv }) : null;
+      return `<div class="dx-tile ${s.evolved ? 'evo' : ''}">${sprite(s.idx, 64, speciesName(s.idx, s.evolved), s.evolved)}<b>${esc(speciesName(s.idx, s.evolved))}</b>
+        <span class="pt-meta">${typeChip(s.type)}${grade ? `<span class="pt-grade g-${grade}" title="${t('Best IV', '最好 IV')}">${grade}</span>` : ''}</span>
+        <span class="muted small">${s.have ? t(`You have ${s.have}`, `你有 ${s.have} 隻`) : t('Caught before', '捉過')}${s.evolved ? ' · ✨' : ''}</span></div>`;
+    };
+    const setRow = x => { const done = x.have >= x.need;
+      return `<li class="dx-set"><div><b>${t(...SET[x.id])}</b><span class="q-bar" aria-hidden="true"><i style="width:${Math.round(Math.min(1, x.have / x.need) * 100)}%"></i></span>
+        <span class="muted small">${x.have} / ${x.need} · +${x.coins} 💧 +${x.xp} ${t('XP', '經驗')}</span></div>
+        ${x.claimed ? `<span class="sm-done">✓ ${t('Claimed', '已領')}</span>` : `<button type="button" class="small-btn" data-set="${x.id}" ${done ? '' : 'disabled'}>${t('Claim', '領取')}</button>`}</li>`; };
+    el.querySelector('#dxBody').innerHTML = `
+      <section class="card"><div class="card-head"><h3>${t('Collections', '收集獎勵')}</h3><span class="muted small">${sp.filter(x => x.caught).length} / ${sp.length}</span></div>
+        <ul class="dx-sets">${(dx.sets || []).map(setRow).join('')}</ul>
+        <p class="muted small">${t('Anything you’ve ever caught counts, even if you released it.', '捉過就計，放生咗都計。')}</p></section>
+      <section class="card"><div class="card-head"><h3>🗼 ${t('Tower monsters', '塔怪物')}</h3></div><div class="dx-grid">${sp.filter(x => !x.boss).map(tile).join('')}</div></section>
+      <section class="card"><div class="card-head"><h3>👑 ${t('Bosses', 'Boss')}</h3></div><div class="dx-grid">${sp.filter(x => x.boss).map(tile).join('')}</div></section>`;
+    wireSprites(el);
+    el.querySelectorAll('[data-set]').forEach(b => b.onclick = async () => {
+      b.disabled = true;
+      try { const r = await api.claimDex(b.dataset.set); navigator.vibrate?.([30, 60, 30]); toast(t(`Collection done! +${r.coins} 💧 +${r.xp} XP`, `收集完成！+${r.coins} 💧 +${r.xp} 經驗`)); await load(); draw(); }
+      catch (err) { b.disabled = false; showError(err); }
+    });
+  };
   draw();
 }
 

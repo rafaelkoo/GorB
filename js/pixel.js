@@ -571,6 +571,27 @@ function drawBackSprite(r, i, base, b, frame, crown) {
   }
 }
 
+// The evolved look, drawn over any sprite: gold outline, a red sweatband near the top, sparkles
+function evolveLook(c, frame, back) {
+  const W = 48, H = 40, d = c.getImageData(0, 0, W, H), px = d.data;
+  const solid = (x, y) => x >= 0 && y >= 0 && x < W && y < H && px[(y * W + x) * 4 + 3] === 255;
+  let top = H, x0 = W, x1 = -1;
+  for (let y = 0; y < H - 3; y++) for (let x = 0; x < W; x++) if (solid(x, y)) { top = Math.min(top, y); x0 = Math.min(x0, x); x1 = Math.max(x1, x); }
+  if (x1 < 0) return;
+  const glow = [];
+  for (let y = 0; y < H - 3; y++) for (let x = 0; x < W; x++) if (!solid(x, y) && (solid(x + 1, y) || solid(x - 1, y) || solid(x, y + 1) || solid(x, y - 1))) glow.push([x, y]);
+  c.fillStyle = frame ? 'rgba(242,210,69,.9)' : 'rgba(232,185,35,.75)';
+  for (const [x, y] of glow) c.fillRect(x, y, 1, 1);
+  // sweatband: across the body a few pixels below the top
+  const by = top + 4;
+  for (let x = x0; x <= x1; x++) if (solid(x, by)) { c.fillStyle = '#e23b3b'; c.fillRect(x, by, 1, 2); }
+  if (!back) { c.fillStyle = '#ffffff'; for (let x = x0 + 2; x <= x1; x += 6) if (solid(x, by)) c.fillRect(x, by, 1, 1); }
+  c.fillStyle = '#fff3b0';
+  for (const [sx, sy] of frame ? [[x0 - 3, top + 2], [x1 + 2, top + 10], [x0 + 2, top - 3]] : [[x1 + 1, top + 1], [x0 - 2, top + 12], [x1 - 3, top - 3]]) {
+    c.fillRect(sx, sy, 1, 1); c.fillRect(sx - 1, sy + 1, 3, 1); c.fillRect(sx, sy + 2, 1, 1);
+  }
+}
+
 // From behind: paint over what's left of the face (mouths, teeth, pupils) with the body colour around it,
 // so the same sprite works as the back of your pet in a battle.
 const FACE_COLS = new Set(['255,255,255', '35,26,23', '42,31,24', '26,26,26', '242,59,59']);
@@ -599,29 +620,30 @@ function backView(c) {
 
 // ---------- weekly bosses: the things that keep you from the gym ----------
 export const BOSSES = [
-  { en: 'The Couch Monster', zh: '梳化怪' },
-  { en: 'Midnight Snack Dragon', zh: '宵夜龍' },
-  { en: 'Lazy Slime', zh: '懶惰史萊姆' },
-  { en: 'The Snooze Clock', zh: '貪睡鬧鐘' },
-  { en: 'Bubble Tea Beast', zh: '珍奶怪' },
-  { en: 'Doomscroll Demon', zh: '碌手機魔' },
+  { en: 'The Couch Monster', zh: '梳化怪', evo: { en: 'Yoga Mat Guardian', zh: '瑜伽墊守護者' } },
+  { en: 'Midnight Snack Dragon', zh: '宵夜龍', evo: { en: 'Meal-Prep Dragon', zh: '備餐龍' } },
+  { en: 'Lazy Slime', zh: '懶惰史萊姆', evo: { en: 'Hustle Slime', zh: '拼搏史萊姆' } },
+  { en: 'The Snooze Clock', zh: '貪睡鬧鐘', evo: { en: 'Early-Bird Clock', zh: '早起鬧鐘' } },
+  { en: 'Bubble Tea Beast', zh: '珍奶怪', evo: { en: 'Protein Shake Beast', zh: '蛋白奶昔獸' } },
+  { en: 'Doomscroll Demon', zh: '碌手機魔', evo: { en: 'Workout Tracker', zh: '運動紀錄機' } },
   // 6–11: more excuses not to go, in the tower; catch them as pets
-  { en: 'Takeaway Goblin', zh: '外賣哥布林' },
-  { en: 'Duvet Burrito', zh: '被竇卷' },
-  { en: 'Rain Cloud', zh: '落雨雲' },
-  { en: 'DOMS Jelly', zh: '肌肉痛啫喱' },
-  { en: 'Overtime Ghost', zh: '加班鬼' },
-  { en: 'Beer Belly Barrel', zh: '啤酒肚桶' },
+  { en: 'Takeaway Goblin', zh: '外賣哥布林', evo: { en: 'Meal-Prep Chef', zh: '備餐大廚' } },
+  { en: 'Duvet Burrito', zh: '被竇卷', evo: { en: 'Sunrise Runner', zh: '晨跑卷' } },
+  { en: 'Rain Cloud', zh: '落雨雲', evo: { en: 'Rain-or-Shine Cloud', zh: '風雨無阻雲' } },
+  { en: 'DOMS Jelly', zh: '肌肉痛啫喱', evo: { en: 'Recovery Jelly', zh: '恢復啫喱' } },
+  { en: 'Overtime Ghost', zh: '加班鬼', evo: { en: 'Lunch-Break Lifter', zh: '午休健身鬼' } },
+  { en: 'Beer Belly Barrel', zh: '啤酒肚桶', evo: { en: 'Six-Pack Barrel', zh: '六舊腹肌桶' } },
   // 12–17: boss species: every 5th tower floor, then the Boss Lair
-  { en: 'Next-Monday Dragon', zh: '下星期一龍' },
-  { en: 'Tomorrow Phoenix', zh: '聽日先鳳凰' },
-  { en: 'Binge Kraken', zh: '追劇八爪魚' },
-  { en: 'Excuse Golem', zh: '藉口魔像' },
-  { en: 'Couch King', zh: '梳化王' },
-  { en: 'Midnight Hydra', zh: '宵夜九頭蛇' }
+  { en: 'Next-Monday Dragon', zh: '下星期一龍', evo: { en: 'Do-It-Today Dragon', zh: '今日就做龍' } },
+  { en: 'Tomorrow Phoenix', zh: '聽日先鳳凰', evo: { en: 'Right-Now Phoenix', zh: '即刻鳳凰' } },
+  { en: 'Binge Kraken', zh: '追劇八爪魚', evo: { en: 'Workout-Video Kraken', zh: '跟片運動八爪魚' } },
+  { en: 'Excuse Golem', zh: '藉口魔像', evo: { en: 'Discipline Golem', zh: '自律魔像' } },
+  { en: 'Couch King', zh: '梳化王', evo: { en: 'Bench-Press King', zh: '臥推王' } },
+  { en: 'Midnight Hydra', zh: '宵夜九頭蛇', evo: { en: 'Macro Hydra', zh: '營養九頭蛇' } }
 ];
 // state: 'idle' | 'ko' | 'back' (seen from behind: your pet in a battle). 48×40 scene pixels.
-export function drawBoss(canvas, idx, frame = 0, state = 'idle') {
+// evolved: the excuse turned motivation: a sweatband, a gold glow and sparkles.
+export function drawBoss(canvas, idx, frame = 0, state = 'idle', evolved = false) {
   const lo = document.createElement('canvas'); lo.width = 48; lo.height = 40;
   const c = lo.getContext('2d');
   const r = (x, y, w, h, col) => { c.fillStyle = col; c.fillRect(x, y, w, h); };
@@ -820,6 +842,7 @@ export function drawBoss(canvas, idx, frame = 0, state = 'idle') {
   }
   if (ko) { r(18, 2, 2, 2, '#f2d245'); r(26, 0, 2, 2, '#f2d245'); r(32, 3, 2, 2, '#f2d245'); }   // stars
   if (back) backView(c);
+  if (evolved && !ko) evolveLook(c, frame, back);
   const ctx = canvas.getContext('2d'); ctx.imageSmoothingEnabled = false; ctx.clearRect(0, 0, canvas.width, canvas.height);
   const s = Math.floor(Math.min(canvas.width / 48, canvas.height / 40));
   ctx.drawImage(lo, (canvas.width - 48 * s) / 2, (canvas.height - 40 * s) / 2, 48 * s, 40 * s);
@@ -862,7 +885,7 @@ export function drawBattle(canvas, me, them, frame = 0, fx = null) {
   if (!blinkThem && !them.gone && !(fx && fx.ball >= 1)) {
     if (them.monster != null) {   // one of the boss sprites, bigger when it's an elite or a raid boss
       const t2 = canvas._bmon || (canvas._bmon = document.createElement('canvas')); t2.width = 48; t2.height = 40;
-      drawBoss(t2, them.monster, frame, them.fainted ? 'ko' : 'idle');
+      drawBoss(t2, them.monster, frame, them.fainted ? 'ko' : 'idle', !!them.evolved);
       const k = them.big ? 1.25 : 1;
       c.drawImage(t2, Math.round(tx - 24 * k), Math.round(ty - 38 * k), Math.round(48 * k), Math.round(40 * k));
     } else charInto(c, tx, ty, them.avatar, themPose, frame, 1);
@@ -870,7 +893,7 @@ export function drawBattle(canvas, me, them, frame = 0, fx = null) {
   if (!blinkMe && !me.gone) {
     if (me.monster != null) {   // one of your pets, facing the other way, a little bigger
       const t3 = canvas._bpet || (canvas._bpet = document.createElement('canvas')); t3.width = 48; t3.height = 40;
-      drawBoss(t3, me.monster, frame, me.fainted ? 'ko' : 'back');   // from behind, like you
+      drawBoss(t3, me.monster, frame, me.fainted ? 'ko' : 'back', !!me.evolved);   // from behind, like you
       c.drawImage(t3, Math.round(mx - 36), Math.round(my - 54), 72, 60);
     } else charInto(c, mx, my, me.avatar, me.fainted ? 'sit' : 'back', frame, 2);
   }
