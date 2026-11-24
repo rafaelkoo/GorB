@@ -469,7 +469,21 @@ export const BOSSES = [
   { en: 'Lazy Slime', zh: '懶惰史萊姆' },
   { en: 'The Snooze Clock', zh: '貪睡鬧鐘' },
   { en: 'Bubble Tea Beast', zh: '珍奶怪' },
-  { en: 'Doomscroll Demon', zh: '碌手機魔' }
+  { en: 'Doomscroll Demon', zh: '碌手機魔' },
+  // 6–11: more tower monsters you can catch as pets
+  { en: 'Kettlebell Pup', zh: '鐵鈴狗' },
+  { en: 'Treadmill Turtle', zh: '跑步機龜' },
+  { en: 'Chalk Bat', zh: '粉筆蝠' },
+  { en: 'Foam Roller Worm', zh: '滾筒蟲' },
+  { en: 'Jump Rope Snake', zh: '跳繩蛇' },
+  { en: 'Shaker Golem', zh: '搖搖杯魔像' },
+  // 12–17: boss species, only in the Boss Lair
+  { en: 'Deadlift Dragon', zh: '硬拉龍' },
+  { en: 'Marathon Phoenix', zh: '馬拉松鳳凰' },
+  { en: 'Summit Yeti', zh: '攀頂雪人' },
+  { en: 'Iron Golem', zh: '鐵人魔像' },
+  { en: 'Couch King', zh: '梳化王' },
+  { en: 'Midnight Hydra', zh: '宵夜九頭蛇' }
 ];
 // state: 'idle' | 'ko'. 48×40 scene pixels.
 export function drawBoss(canvas, idx, frame = 0, state = 'idle') {
@@ -484,14 +498,24 @@ export function drawBoss(canvas, idx, frame = 0, state = 'idle') {
   };
   r(6, 37, 36, 2, 'rgba(0,0,0,.28)');
   const base = ko ? 4 : 0;   // KO'd bosses slump down
-  switch (idx % 6) {
-    case 0: { // couch
+  const crown = (x, y) => { r(x, y + 2, 12, 3, '#f2d245'); r(x, y, 2, 2, '#f2d245'); r(x + 5, y - 1, 2, 3, '#f2d245'); r(x + 10, y, 2, 2, '#f2d245'); r(x + 5, y + 3, 2, 1, '#d8483b'); };
+  const dragon = (y, body, light, belly) => {
+    r(10, y + 6, 28, 22, body); r(10, y + 6, 28, 2, light); r(14, y + 18, 20, 9, belly);
+    r(8, y, 10, 10, body); r(30, y, 10, 10, body); r(9, y - 3, 2, 3, '#f2d245'); r(37, y - 3, 2, 3, '#f2d245');
+    r(4, y + 12, 6, 4, body); r(38, y + 12, 6, 4, body);
+    eyes(14, 29, y + 8);
+    if (!ko) { r(16, y + 14, 16, 3, '#2a1f18'); r(17, y + 14, 2, 1, '#fff'); r(29, y + 14, 2, 1, '#fff'); }
+  };
+  switch (idx % 18) {
+    case 0: case 16: { // couch (16: the Couch King, bigger cushions and a crown)
+      const king = idx % 18 === 16;
       const y = 14 + base + b;
       r(6, y, 36, 10, '#8a5a3c'); r(6, y, 36, 2, '#a87450');           // back
       r(4, y + 8, 6, 14, '#7a4c30'); r(38, y + 8, 6, 14, '#7a4c30');   // arms
       r(9, y + 10, 30, 8, '#9c6644'); r(9, y + 10, 30, 1, '#b98058'); r(23, y + 10, 1, 8, '#7a4c30');   // cushions
       r(8, y + 18, 32, 4, '#6b4128'); r(8, 36 - (ko ? 0 : 0), 3, 2, '#3a2416'); r(37, 36, 3, 2, '#3a2416');
       eyes(15, 28, y + 3); if (!ko) { r(17, y + 7, 14, 2, OUT); for (let i = 0; i < 4; i++) r(18 + i * 3, y + 7, 2, 1, '#fff'); }
+      if (king) { r(6, y, 36, 2, '#7c2c8c'); r(9, y + 10, 30, 1, '#c95aa0'); crown(18, y - 6); }
       break;
     }
     case 1: { // snack dragon
@@ -534,14 +558,121 @@ export function drawBoss(canvas, idx, frame = 0, state = 'idle') {
       if (!ko) { r(19, y + 17, 10, 3, '#3a2416'); r(20, y + 17, 2, 1, '#fff'); r(26, y + 17, 2, 1, '#fff'); }
       break;
     }
-    default: { // doomscroll phone
+    case 5: { // doomscroll phone
       const y = 4 + base + b;
       r(13, y, 22, 34, '#2b2b30'); r(15, y + 3, 18, 26, '#5fd3f3'); r(22, y + 31, 4, 2, '#5d6470');
       for (let i = 0; i < 4; i++) r(17, y + 16 + i * 3 + (frame ? 1 : 0), 14, 1, '#9be8f8');   // endless feed
       eyes(17, 26, y + 6, '#f23b3b');
       if (!ko) r(19, y + 12, 10, 2, OUT);
       r(8, y + 14, 5, 3, '#2b2b30'); r(35, y + 14, 5, 3, '#2b2b30');   // grabby arms
+      break;
     }
+    case 6: { // kettlebell pup
+      const y = 10 + base + b;
+      r(17, y - 2, 14, 3, '#3a3d44'); r(15, y, 3, 7, '#3a3d44'); r(30, y, 3, 7, '#3a3d44');   // handle
+      r(10, y + 6, 28, 22, '#2b2b30'); r(12, y + 4, 24, 2, '#2b2b30'); r(12, y + 28, 24, 2, '#2b2b30'); r(12, y + 7, 6, 3, '#55585f');   // bell + shine
+      r(6, y + 8, 5, 10, '#8a5a3c'); r(37, y + 8, 5, 10, '#8a5a3c');   // floppy ears
+      eyes(16, 27, y + 12);
+      if (!ko) { r(21, y + 19, 6, 2, '#1a1a1a'); r(22, y + 21, 4, 4 - frame, '#e66fab'); }   // nose + tongue
+      r(14, y + 29, 5, 3, '#8a5a3c'); r(29, y + 29, 5, 3, '#8a5a3c');
+      break;
+    }
+    case 7: { // treadmill turtle
+      const y = 12 + base;
+      r(36, y + 8 + b, 9, 8, '#6fbf5a'); r(41, y + 10 + b, 2, 2, ko ? OUT : '#fff'); r(42, y + 11 + b, 1, 1, OUT);   // head
+      r(8, y + 4, 30, 16, '#5d6470'); r(10, y + 2, 26, 2, '#5d6470');   // shell = treadmill
+      for (let i = 0; i < 6; i++) r(10 + ((i * 5 + frame * 2) % 26), y + 6, 2, 12, '#3a3d44');   // the belt moving
+      r(8, y + 18, 30, 3, '#2b2b30'); r(6, y + 10, 3, 6, '#f2d245');
+      r(10, y + 21, 6, 6, '#6fbf5a'); r(30, y + 21, 6, 6, '#6fbf5a');
+      if (ko) r(38, y + 14, 5, 1, OUT);
+      break;
+    }
+    case 8: { // chalk bat
+      const y = 8 + base + b, up = !ko && frame;
+      r(18, y + 6, 12, 14, '#f3f1ea'); r(19, y + 2, 3, 5, '#f3f1ea'); r(26, y + 2, 3, 5, '#f3f1ea');   // body + ears
+      const wy = up ? y + 2 : y + 8;
+      r(4, wy, 14, 8, '#d9d4c7'); r(30, wy, 14, 8, '#d9d4c7'); r(4, wy + 8, 3, 3, '#d9d4c7'); r(10, wy + 8, 3, 3, '#d9d4c7'); r(35, wy + 8, 3, 3, '#d9d4c7'); r(41, wy + 8, 3, 3, '#d9d4c7');
+      eyes(19, 25, y + 9, '#e23b3b');
+      if (!ko) { r(22, y + 15, 4, 1, OUT); r(22, y + 16, 1, 2, '#fff'); r(25, y + 16, 1, 2, '#fff'); }
+      for (const [dx, dy] of [[8, 28], [16, 32], [32, 30], [38, 26]]) r(dx, y + dy - frame, 1, 1, '#ffffff');   // chalk dust
+      break;
+    }
+    case 9: { // foam roller worm
+      const y = 18 + base;
+      for (let i = 0; i < 4; i++) { const yy = y + (i % 2 ? b : 0); r(6 + i * 9, yy, 9, 14, i % 2 ? '#2e9fd6' : '#45b0e6'); for (let k = 0; k < 3; k++) r(8 + i * 9 + k * 3, yy + 2, 1, 10, '#1d6f9a'); }
+      r(39, y - 4 + b, 8, 14, '#45b0e6');   // head
+      if (ko) { r(41, y + 1, 3, 1, OUT); } else { r(41, y + b, 3, 3, '#fff'); r(42, y + 1 + b, 1, 2, OUT); r(41, y + 6 + b, 4, 1, OUT); }
+      break;
+    }
+    case 10: { // jump rope snake
+      const y = 8 + base + b;
+      r(12, y + 22, 24, 8, '#45b45a'); r(16, y + 16, 18, 6, '#3d9a4c'); r(20, y + 10, 10, 6, '#45b45a');   // coils
+      r(22, y + 2, 10, 9, '#45b45a'); r(23, y + 4, 2, 2, ko ? OUT : '#f2d245'); r(29, y + 4, 2, 2, ko ? OUT : '#f2d245');
+      if (!ko) { r(26, y + 11, 1, 3 + frame, '#e23b3b'); r(25, y + 14 + frame, 3, 1, '#e23b3b'); }   // tongue
+      for (let i = 0; i < 5; i++) r(14 + i * 5, y + 25, 2, 2, '#f2d245');   // stripes
+      r(4, y + 26, 8, 2, '#e8b923'); r(2, y + 24, 3, 6, '#e23b3b'); r(36, y + 26, 8, 2, '#e8b923'); r(43, y + 24, 3, 6, '#e23b3b');   // rope handles
+      break;
+    }
+    case 11: { // shaker golem
+      const y = 4 + base + b;
+      r(15, y, 18, 6, '#2b2b30'); r(22, y - 3, 4, 3, '#2b2b30');   // lid + spout
+      r(13, y + 6, 22, 28, '#dfe7ee'); r(13, y + 18, 22, 16, '#c79a6a'); r(15, y + 8, 3, 9, '#ffffff');   // bottle + protein shake
+      for (let i = 0; i < 3; i++) r(35, y + 10 + i * 6, 2, 1, '#8a8f98');   // ml marks
+      r(6, y + 14, 7, 5, '#8a8f98'); r(35 + 2, y + 14, 7, 5, '#8a8f98'); r(4, y + 18, 5, 5, '#5d6470'); r(39, y + 18, 5, 5, '#5d6470');   // stone arms
+      eyes(17, 27, y + 10);
+      if (!ko) r(19, y + 15, 10, 2, OUT);
+      break;
+    }
+    case 12: { // deadlift dragon: red, a loaded barbell over its head
+      const y = 10 + base + b;
+      dragon(y, '#c8382c', '#e2564b', '#f1c27d');
+      const by = y - 6 - (ko ? -8 : frame);
+      r(2, by, 44, 2, '#8a8f98'); r(2, by - 4, 4, 10, '#2b2b30'); r(42, by - 4, 4, 10, '#2b2b30'); r(7, by - 3, 3, 8, '#e23b3b'); r(38, by - 3, 3, 8, '#e23b3b');
+      break;
+    }
+    case 13: { // marathon phoenix
+      const y = 6 + base + b, up = !ko && frame;
+      r(16, y + 8, 16, 18, '#f19a33'); r(18, y + 2, 12, 8, '#f19a33'); r(20, y - 2, 2, 4, '#e23b3b'); r(24, y - 4, 2, 6, '#f2d245'); r(28, y - 2, 2, 4, '#e23b3b');   // body, head, crest
+      r(30, y + 5, 5, 2, '#f2d245');   // beak
+      const wy = up ? y + 2 : y + 10;
+      r(4, wy, 12, 6, '#e23b3b'); r(2, wy + 6, 8, 3, '#f2d245'); r(32, wy, 12, 6, '#e23b3b'); r(38, wy + 6, 8, 3, '#f2d245');
+      r(18, y + 14, 12, 8, '#ffffff'); r(20, y + 16, 8, 1, '#3c5bd9'); r(21, y + 18, 6, 2, '#2b2b30');   // race bib
+      r(18, y + 26, 2, 6, '#e8b923'); r(28, y + 26, 2, 6, '#e8b923');
+      eyes(19, 26, y + 4);
+      break;
+    }
+    case 14: { // summit yeti
+      const y = 4 + base + b;
+      r(10, y + 4, 28, 30, '#f3f6fa'); r(8, y + 8, 2, 20, '#dde4ee'); r(38, y + 8, 2, 20, '#dde4ee');   // fur
+      r(15, y + 8, 18, 12, '#9ec9e8');   // face
+      eyes(17, 27, y + 11, '#fff');
+      if (!ko) { r(20, y + 16, 8, 2, OUT); r(21, y + 18, 2, 1, '#fff'); r(25, y + 18, 2, 1, '#fff'); }
+      r(4, y + 12 - frame * 2, 6, 6, '#f3f6fa'); r(38, y + 12 + frame * 2, 6, 6, '#f3f6fa');   // arms reaching
+      r(2, y + 8 - frame * 2, 4, 3, '#f19a33'); r(42, y + 8 + frame * 2, 4, 3, '#8c5bd6');   // climbing holds
+      r(12, y + 34, 9, 3, '#dde4ee'); r(27, y + 34, 9, 3, '#dde4ee');
+      break;
+    }
+    case 15: { // iron golem: plates stacked into a body
+      const y = 4 + base + b;
+      r(14, y, 20, 10, '#6a6f78'); r(16, y + 2, 16, 6, '#8a8f98');   // head
+      eyes(18, 26, y + 3, '#f2d245');
+      r(8, y + 10, 32, 16, '#5d6470'); r(18, y + 13, 12, 10, '#2b2b30'); r(22, y + 17, 4, 2, '#8a8f98');   // chest = 20kg plate
+      r(2, y + 10, 6, 14, '#6a6f78'); r(40, y + 10, 6, 14, '#6a6f78'); r(1, y + 24, 8, 4, '#3a3d44'); r(39, y + 24, 8, 4, '#3a3d44');   // dumbbell fists
+      r(12, y + 26, 8, 8, '#5d6470'); r(28, y + 26, 8, 8, '#5d6470');
+      break;
+    }
+    case 17: { // midnight hydra: three hungry heads
+      const y = 12 + base;
+      r(10, y + 10, 28, 18, '#6b3fa0'); r(14, y + 18, 20, 9, '#c9b6e8');   // body
+      for (const [hx, off] of [[4, b], [19, -b], [34, b]]) {
+        const hy = y + (hx === 19 ? -4 : 0) + off;
+        r(hx + 3, hy + 8, 4, 6, '#6b3fa0'); r(hx, hy, 10, 9, '#7c4fb6');
+        if (ko) { r(hx + 2, hy + 3, 2, 1, OUT); r(hx + 6, hy + 3, 2, 1, OUT); } else { r(hx + 2, hy + 2, 2, 2, '#f2d245'); r(hx + 6, hy + 2, 2, 2, '#f2d245'); r(hx + 2, hy + 6, 6, 1, '#2a1f18'); }
+      }
+      r(34, y + 24, 8, 3, '#d9a14b'); r(34, y + 27, 8, 2, '#6b3a1f');   // a midnight burger
+      break;
+    }
+    default: break;
   }
   if (ko) { r(18, 2, 2, 2, '#f2d245'); r(26, 0, 2, 2, '#f2d245'); r(32, 3, 2, 2, '#f2d245'); }   // stars
   const ctx = canvas.getContext('2d'); ctx.imageSmoothingEnabled = false; ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -583,7 +714,7 @@ export function drawBattle(canvas, me, them, frame = 0, fx = null) {
   const themPose = fx?.attacker === 'them' ? (MOVE_POSE[fx.move] || 'stand') : (them.fainted ? 'sit' : 'stand');
   const blinkThem = fx?.hit === 'them' && fx.t > 0.45 && Math.floor(fx.t * 16) % 2;
   const blinkMe = fx?.hit === 'me' && fx.t > 0.45 && Math.floor(fx.t * 16) % 2;
-  if (!blinkThem && !them.gone) {
+  if (!blinkThem && !them.gone && !(fx && fx.ball >= 1)) {
     if (them.monster != null) {   // one of the boss sprites, bigger when it's an elite or a raid boss
       const t2 = canvas._bmon || (canvas._bmon = document.createElement('canvas')); t2.width = 48; t2.height = 40;
       drawBoss(t2, them.monster, frame, them.fainted ? 'ko' : 'idle');
@@ -591,7 +722,22 @@ export function drawBattle(canvas, me, them, frame = 0, fx = null) {
       c.drawImage(t2, Math.round(tx - 24 * k), Math.round(ty - 38 * k), Math.round(48 * k), Math.round(40 * k));
     } else charInto(c, tx, ty, them.avatar, themPose, frame, 1);
   }
-  if (!blinkMe && !me.gone) charInto(c, mx, my, me.avatar, me.fainted ? 'sit' : 'back', frame, 2);
+  if (!blinkMe && !me.gone) {
+    if (me.monster != null) {   // one of your pets, facing the other way, a little bigger
+      const t3 = canvas._bpet || (canvas._bpet = document.createElement('canvas')); t3.width = 48; t3.height = 40;
+      drawBoss(t3, me.monster, frame, me.fainted ? 'ko' : 'idle');
+      c.save(); c.translate(Math.round(mx + 36), Math.round(my - 54)); c.scale(-1.5, 1.5); c.drawImage(t3, 0, 0); c.restore();
+    } else charInto(c, mx, my, me.avatar, me.fainted ? 'sit' : 'back', frame, 2);
+  }
+  // a ball thrown at them: arcs over, then wobbles (fx.ball: 0..1 throw, fx.wobble: count, fx.caught)
+  if (fx && fx.ball != null) {
+    const k = Math.min(1, fx.ball), bx = mx + (tx - mx) * k, by = (my - 40) + (ty - 20 - (my - 40)) * k - Math.sin(k * Math.PI) * 30;
+    const wob = fx.ball >= 1 ? Math.round(Math.sin((fx.wobble || 0) * Math.PI * 2) * 2) : 0;
+    c.fillStyle = OUT; c.fillRect(bx - 4 + wob, by - 4, 8, 8);
+    c.fillStyle = fx.col || '#e23b3b'; c.fillRect(bx - 3 + wob, by - 3, 6, 3);
+    c.fillStyle = '#f3f1ea'; c.fillRect(bx - 3 + wob, by, 6, 3); c.fillStyle = OUT; c.fillRect(bx - 3 + wob, by - 1, 6, 1); c.fillStyle = '#fff'; c.fillRect(bx - 1 + wob, by - 1, 2, 2);
+    if (fx.caught) { c.fillStyle = '#f2d245'; for (const [dx, dy] of [[-8, -8], [8, -9], [0, -12]]) c.fillRect(bx + dx, by + dy, 2, 2); }
+  }
   // impact sparks
   if (fx && fx.hit && fx.t > 0.4 && fx.t < 0.8) {
     const [hx, hy] = fx.hit === 'them' ? [tx, ty - 14] : [mx, my - 30];

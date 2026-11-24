@@ -4,6 +4,7 @@ import * as api from './supa.js';
 import { t } from './i18n.js';
 import { esc, render, toast, showError } from './ui.js';
 import { drawBattle, drawBoss, BOSSES, cleanAvatar, BW, BH } from './pixel.js';
+import { advNav, wireAdvNav, ivGrade } from './pets.js';
 
 const reduced = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
 const sleep = ms => new Promise(r => setTimeout(r, reduced() ? Math.min(ms, 150) : ms));
@@ -21,7 +22,8 @@ const monsterName = s => {
   const b = BOSSES[(s.monster ?? 0) % BOSSES.length], n = t(b.en, b.zh);
   return s.raid ? t(`Boss: ${n}`, `魔王：${n}`) : s.elite ? t(`Elite ${n}`, `精英${n}`) : n;
 };
-const fighterName = s => (s.monster != null ? monsterName(s) : s.name || '?');
+const speciesNm = i => { const b = BOSSES[i % BOSSES.length]; return t(b.en, b.zh); };
+const fighterName = s => (s.pet ? (s.name || speciesNm(s.species)) : s.monster != null ? monsterName(s) : s.name || '?');
 export const towerReward = n => ({ xp: 20 + 4 * n + (n % 5 === 0 ? 30 : 0), coins: 5 + n + (n % 5 === 0 ? 15 : 0) });
 
 // ---------------- what a move needs (for the locked ones) ----------------
@@ -68,7 +70,7 @@ const typeLine = m => typesOf(m).map(x => { const ty = MOVE_TYPES[x] || MOVE_TYP
 // ---------------- Me page: moves card ----------------
 export function movesCardHtml() {
   return `<section class="card moves-card" id="movesCard"><div class="card-head"><h3>${t('Moves', '招式')}</h3>
-    <a class="link" href="#/tower">🗼 ${t('Gym Tower', 'Gym 塔')} ›</a></div><div id="mvBody"><p class="muted small">${t('Loading…', '載入緊…')}</p></div></section>`;
+    <span class="mv-links"><a class="link" href="#/pets">🐾 ${t('Pets', '寵物')}</a><a class="link" href="#/tower">🗼 ${t('Gym Tower', 'Gym 塔')} ›</a></span></div><div id="mvBody"><p class="muted small">${t('Loading…', '載入緊…')}</p></div></section>`;
 }
 
 export async function mountMoves(el, user) {
@@ -135,7 +137,8 @@ export async function mountMoves(el, user) {
 // ---------------- Gym Tower ----------------
 export async function towerScreen() {
   const el = render(`<header class="page-head"><div><h2>🗼 ${t('Gym Tower', 'Gym 塔')}</h2></div><a class="link" href="#/me">‹ ${t('Me', '我')}</a></header>
-    <div id="twBody"><p class="muted">${t('Loading…', '載入緊…')}</p></div>`);
+    ${advNav('tower')}<div id="twBody"><p class="muted">${t('Loading…', '載入緊…')}</p></div>`);
+  wireAdvNav(el);
   let tw;
   try { tw = await api.myTower(); } catch (err) { showError(err); return; }
   const n = tw.next, rw = towerReward(n), mi = tw.monster, mb = BOSSES[mi % BOSSES.length];
@@ -158,6 +161,7 @@ export async function towerScreen() {
       <li>${t('Each floor has a bad-habit monster. Every 5th floor is a tougher elite.', '每層有一隻壞習慣怪物，每 5 層有隻精英，特別難打。')}</li>
       <li>${t('Your stats and moves come from your real training, so the way up is going to the gym.', '你嘅能力同招式嚟自真實訓練，想爬高就要去 gym。')}</li>
       <li>${t('A fight costs 1 ticket. Win or lose, it’s used.', '每場用 1 張券，贏定輸都會用咗。')}</li>
+      <li>${t('Bring your pet team, use drinks, and throw a ball when a monster is low to catch it.', '可以帶寵物隊伍、用飲品，怪物殘血時掟球就捉得到佢。')}</li>
       <li>${t('Strength beats Climbing, Climbing beats Endurance, Endurance beats Strength.', '力量剋攀石，攀石剋耐力，耐力剋力量。')}</li></ul></details>`;
   const cv = el.querySelector('#twMon');
   if (cv) { let f = 0; drawBoss(cv, mi, 0); const tick = setInterval(() => { if (!document.body.contains(cv)) return clearInterval(tick); if (!reduced()) { f ^= 1; drawBoss(cv, mi, f); } }, 600); }
@@ -176,6 +180,10 @@ function eventLines(ev, snap, me) {
   const other = s => (s === 'a' ? 'b' : 'a');
   if (ev.t === 'start') return [t(`${nm(ev.first)} goes first!`, `${nm(ev.first)} 先出招！`)];
   if (ev.t === 'flee') return [t('You walked away.', '你走咗。')];
+  if (ev.t === 'switch') { const n = esc(fighterName(snap.party?.[ev.to] || snap.a)); return [t(`Go, ${n}!`, `上啦，${n}！`)]; }
+  if (ev.t === 'item') return [t(`You used a drink: +${ev.heal} HP.`, `你用咗飲品：+${ev.heal} HP。`)];
+  if (ev.t === 'catch') return ev.ok ? [t('You threw a ball…', '你掟咗個球…'), t(`Caught ${nm('b')}! 🎉`, `捉到 ${nm('b')}！🎉`)]
+    : [t('You threw a ball…', '你掟咗個球…'), t('Oh no! It broke free.', '哎呀！佢走甩咗。')];
   if (ev.t === 'timeout') return [t(`${nm(ev.who)} took too long. The win goes to the other side.`, `${nm(ev.who)} 太耐冇出招，對手贏。`)];
   const mv = (snap[ev.who].moves || []).find(m => m.id === ev.move) || { en: ev.move, zh: ev.move };
   const L = [t(`${nm(ev.who)} used ${esc(moveName(mv))}!`, `${nm(ev.who)} 用咗 ${esc(moveName(mv))}！`)];
@@ -191,6 +199,7 @@ function eventLines(ev, snap, me) {
   if (ev.flinch) L.push(t(`${nm(other(ev.who))} flinched!`, `${nm(other(ev.who))} 嚇親，出唔到招！`));
   if (ev.grit) L.push(t(`${nm(ev.grit)} hung on with Grit!`, `${nm(ev.grit)} 靠毅力撐住咗！`));
   if (ev.ko) L.push(t(`${nm(ev.ko)} is down!`, `${nm(ev.ko)} 倒下！`));
+  if (ev.next != null) L.push(t(`Go, ${esc(fighterName(snap.party[ev.next]))}!`, `上啦，${esc(fighterName(snap.party[ev.next]))}！`));
   return L;
 }
 
@@ -201,13 +210,14 @@ export async function battleScreen(user, id) {
   const me = bt.a === user.id ? 'a' : 'b', th = me === 'a' ? 'b' : 'a';
   if (bt.status === 'pending') { location.hash = bt.group_id ? `#/g/${bt.group_id}` : '#/me'; return; }
   const snap = bt.snap;
-  const back = bt.kind === 'tower' ? '#/tower' : bt.group_id ? `#/g/${bt.group_id}` : '#/me';
+  const back = bt.kind === 'tower' ? '#/tower' : bt.kind === 'lair' ? '#/lair' : bt.kind === 'test' ? '#/pets' : bt.group_id ? `#/g/${bt.group_id}` : '#/me';
   const el = render(`
     <section class="bt-screen">
       <div class="bt-stage">
         <canvas id="btCv" width="${BW * 2}" height="${BH * 2}" role="img" aria-label="${t('Battle', '對戰')}"></canvas>
         <div class="bt-hud them"><div class="bt-nm"><b>${esc(fighterName(snap[th]))}</b><span>Lv ${snap[th].level}</span></div><div class="bt-hp"><i id="hpThem"></i></div></div>
-        <div class="bt-hud me"><div class="bt-nm"><b>${esc(fighterName(snap[me]))}</b><span>Lv ${snap[me].level}</span></div><div class="bt-hp"><i id="hpMe"></i></div><span class="bt-num" id="hpNum"></span></div>
+        <div class="bt-hud me"><div class="bt-nm"><b id="nmMe">${esc(fighterName(snap[me]))}</b><span>Lv ${snap[me].level}</span></div><div class="bt-hp"><i id="hpMe"></i></div><span class="bt-num" id="hpNum"></span>
+          ${snap.party ? `<span class="bt-party" id="btParty" aria-label="${t('Your team', '你嘅隊伍')}"></span>` : ''}</div>
       </div>
       <div class="bt-box" id="btMsg" aria-live="polite"></div>
       <div class="bt-moves" id="btMoves"></div>
@@ -216,22 +226,44 @@ export async function battleScreen(user, id) {
   const cv = el.querySelector('#btCv'), msg = el.querySelector('#btMsg');
   const view = side => {
     const s = snap[side];
-    return s.monster != null ? { monster: s.monster, big: !!(s.elite || s.raid) } : { avatar: cleanAvatar(s.avatar, s.id) };
+    return s.pet ? { monster: s.species } : s.monster != null ? { monster: s.monster, big: !!(s.elite || s.raid || s.boss_pet) } : { avatar: cleanAvatar(s.avatar, s.id) };
   };
-  const hp = { ...bt.state.hp }, max = bt.state.max;
+  const hp = { ...bt.state.hp }, max = { ...bt.state.max };
+  // your team (tower and lair): HP of everyone, and who's out
+  let party = (bt.state.party || []).map(x => ({ ...x })), active = bt.state.active || 0;
+  const bringIn = to => {
+    if (!party.length) return;
+    if (party[active]) party[active].hp = Math.max(0, hp.a);
+    active = to; snap.a = snap.party[to]; hp.a = party[to].hp; max.a = party[to].max;
+    const n = el.querySelector('#nmMe'); if (n) n.textContent = fighterName(snap.a);
+  };
+  const dots = () => { const d = document.body.contains(cv) && el.querySelector('#btParty'); if (!d) return;
+    d.innerHTML = party.map((x, i) => `<i class="${(i === active ? hp.a : x.hp) <= 0 ? 'out' : ''} ${i === active ? 'on' : ''}"></i>`).join(''); };
   let frame = 0, fx = null, busyAnim = false, shownLog = bt.log.length, wasReady = false;
   const fainted = side => hp[side] <= 0;
   const paint = () => drawBattle(cv, { ...view(me), fainted: fainted(me) }, { ...view(th), fainted: fainted(th) }, frame, fx);
   const bars = () => {
+    if (!document.body.contains(cv)) return;   // left the page mid-animation
     for (const [side, elId] of [[th, 'hpThem'], [me, 'hpMe']]) {
       const p = Math.max(0, hp[side]) / max[side], bar = el.querySelector(`#${elId}`);
       bar.style.width = `${Math.round(p * 100)}%`; bar.className = p > 0.5 ? '' : p > 0.2 ? 'mid' : 'low';
     }
     el.querySelector('#hpNum').textContent = `${Math.max(0, hp[me])} / ${max[me]}`;
+    dots();
   };
   const idle = setInterval(() => { if (!document.body.contains(cv)) { clearInterval(idle); return; } if (!fx && !reduced()) { frame ^= 1; paint(); } }, 600);
   paint(); bars();
 
+  // a ball: thrown, wobbles three times, then caught or broken out
+  async function throwBall(ev) {
+    const col = { great_ball: '#3c5bd9', ultra_ball: '#e8b923' }[ev.item] || '#e23b3b';
+    if (reduced()) { fx = { ball: 1, col, caught: ev.ok }; paint(); await sleep(400); fx = null; return; }
+    const run = (ms, f) => new Promise(res => { const t0 = performance.now(); const step = now => { const k = Math.min(1, (now - t0) / ms); fx = f(k); paint(); k < 1 ? requestAnimationFrame(step) : res(); }; requestAnimationFrame(step); });
+    await run(500, k => ({ ball: k, col }));
+    await run(ev.ok ? 1500 : 900, k => ({ ball: 1, col, wobble: k * (ev.ok ? 3 : 2) }));
+    if (ev.ok) { fx = { ball: 1, col, caught: true }; paint(); navigator.vibrate?.([30, 60, 30]); await sleep(600); }
+    else fx = null;
+  }
   async function animate(ev) {
     const attacker = ev.who === me ? 'me' : 'them';
     const hits = ev.dmg?.length ? (ev.who === me ? 'them' : 'me') : null;
@@ -256,6 +288,18 @@ export async function battleScreen(user, id) {
         bars(); paint();
         await sleep(500);
         for (const l of lines.slice(1)) { msg.textContent = l; await sleep(750); }
+        if (ev.next != null) { bringIn(ev.next); bars(); paint(); }
+      } else if (ev.t === 'catch') {
+        msg.textContent = lines[0];
+        await throwBall(ev);
+        msg.textContent = lines[1]; await sleep(800);
+        if (ev.ok) hp.b = Math.max(1, hp.b);
+      } else if (ev.t === 'item') {
+        hp.a = Math.min(max.a, hp.a + (ev.heal || 0)); fx = { heal: true, attacker: 'me', t: 0.6 }; bars(); paint();
+        msg.textContent = lines[0]; await sleep(700); fx = null; paint();
+      } else if (ev.t === 'switch') {
+        bringIn(ev.to); bars(); paint();
+        msg.textContent = lines[0]; await sleep(700);
       } else { msg.textContent = lines[0]; await sleep(600); }
     }
     busyAnim = false;
@@ -265,7 +309,9 @@ export async function battleScreen(user, id) {
     const extra = fresh.log.slice(shownLog);
     shownLog = fresh.log.length; bt = fresh;
     if (extra.length) await play(extra);
-    Object.assign(hp, fresh.state.hp); bars(); paint();
+    Object.assign(hp, fresh.state.hp); Object.assign(max, fresh.state.max);
+    if (fresh.state.party) { party = fresh.state.party.map(x => ({ ...x })); active = fresh.state.active || 0; snap.a = fresh.snap.a; el.querySelector('#nmMe').textContent = fighterName(snap.a); }
+    bars(); paint();
     drawMoves(); foot();
   }
   function drawMoves() {
@@ -281,7 +327,11 @@ export async function battleScreen(user, id) {
       return `<button type="button" class="bt-mv ${fu ? 'fusion' : ''}" data-mv="${m.id}" style="--c:${moveCol(m)}" ${!myTurn || busyAnim || left === 0 ? 'disabled' : ''}>
         <b>${fu ? '✦ ' : ''}${esc(moveName(m))}</b><span>${typeLine(m)}${m.power > 0 ? ` · ${t('Power', '威力')} ${m.power}` : ''}${left != null ? ` · ${left}/${cap}` : ''}</span>
         <small class="bt-desc">${esc(shortDesc(m))}</small></button>`;
-    }).join('');
+    }).join('') + (bt.kind === 'tower' || bt.kind === 'lair' ? `<div class="bt-acts">
+        <button type="button" class="ghost" id="btBag" ${!myTurn || busyAnim ? 'disabled' : ''}>🎒 ${t('Bag', '背包')}</button>
+        ${party.length > 1 ? `<button type="button" class="ghost" id="btTeam" ${!myTurn || busyAnim ? 'disabled' : ''}>🔁 ${t('Team', '隊伍')}</button>` : ''}</div>` : '');
+    box.querySelector('#btBag')?.addEventListener('click', bagSheet);
+    box.querySelector('#btTeam')?.addEventListener('click', teamSheet);
     // pop the buttons in when it becomes your turn (not on every redraw)
     const ready = myTurn && !busyAnim;
     if (ready && !wasReady) { box.classList.remove('ready'); void box.offsetWidth; box.classList.add('ready'); }
@@ -296,6 +346,43 @@ export async function battleScreen(user, id) {
       await sync();
     });
   }
+  // after an item or switch: play what the server sent back
+  async function act(call) {
+    box().querySelectorAll('button').forEach(x => x.disabled = true);
+    try { const evs = await call(); shownLog += evs.length; await play(evs); } catch (err) { showError(err); }
+    await sync();
+  }
+  const box = () => el.querySelector('#btMoves');
+  function sheetOf(html, label) {
+    const s = document.createElement('div'); s.className = 'sheet';
+    s.innerHTML = `<div class="sheet-in" role="dialog" aria-label="${esc(label)}">${html}<button type="button" class="ghost" data-close>${t('Cancel', '取消')}</button></div>`;
+    s.addEventListener('click', e => { if (e.target === s || e.target.closest('[data-close]')) s.remove(); });
+    document.body.append(s); return s;
+  }
+  async function bagSheet() {
+    let mine, shop;
+    try { [mine, shop] = await Promise.all([api.myBag(), api.shopItems()]); } catch (err) { showError(err); return; }
+    const usedDrinks = bt.state.items || 0, frac = hp.b / max.b, boss = !!snap.b.boss_pet;
+    const have = shop.filter(it => (mine.items?.[it.id] || 0) > 0);
+    const s = sheetOf(`<h3>🎒 ${t('Bag', '背包')}</h3>
+      ${have.length ? `<div class="bag-list">${have.map(it => {
+        const no = it.kind === 'potion' ? (usedDrinks >= 2 ? t('2 drinks used this fight', '今場用咗 2 件') : hp.a >= max.a ? t('Full HP', '血滿') : '')
+          : boss && frac > 0.3 ? t('Get it to 30% HP first', '要打到 30% 以下先') : '';
+        return `<button type="button" class="bag-it" data-it="${it.id}" ${no ? 'disabled' : ''}><span class="sh-ic ${it.kind}" data-b="${it.id}" aria-hidden="true">${it.kind === 'ball' ? '' : '🧃'}</span>
+          <b>${esc(t(it.en, it.zh))} ×${mine.items[it.id]}</b><span class="muted small">${esc(no || t(it.desc_en, it.desc_zh))}</span></button>`; }).join('')}</div>`
+        : `<p class="muted">${t('Your bag is empty. Buy balls and drinks in the shop.', '背包空嘅。去商店買球同飲品。')}</p>`}
+      <p class="muted small">${t('Using an item uses your turn.', '用嘢會用咗你呢一回合。')}</p>`, t('Bag', '背包'));
+    s.querySelectorAll('[data-it]').forEach(b => b.onclick = () => { s.remove(); act(() => api.battleItem(id, b.dataset.it)); });
+  }
+  function teamSheet() {
+    const s = sheetOf(`<h3>🔁 ${t('Switch to…', '換邊個上？')}</h3><div class="bag-list">${party.map((x, i) => {
+      const h = i === active ? hp.a : x.hp, f = snap.party[i];
+      return `<button type="button" class="bag-it" data-to="${i}" ${i === active || h <= 0 ? 'disabled' : ''}><b>${esc(fighterName(f))}</b>
+        <span class="bt-hp mini"><i style="width:${Math.round(Math.max(0, h) / x.max * 100)}%" class="${h / x.max > 0.5 ? '' : h / x.max > 0.2 ? 'mid' : 'low'}"></i></span>
+        <span class="muted small">${i === active ? t('Fighting now', '上緊場') : h <= 0 ? t('Out', '倒咗') : `${h} / ${x.max} HP`}</span></button>`; }).join('')}</div>
+      <p class="muted small">${t('Switching uses your turn.', '換人會用咗你呢一回合。')}</p>`, t('Team', '隊伍'));
+    s.querySelectorAll('[data-to]').forEach(b => b.onclick = () => { s.remove(); act(() => api.battleSwitch(id, +b.dataset.to)); });
+  }
   function foot() {
     const f = el.querySelector('#btFoot');
     if (bt.status === 'active') {
@@ -307,7 +394,7 @@ export async function battleScreen(user, id) {
         f.innerHTML = `<button type="button" class="ghost" id="btFlee">${t('Walk away', '走人')}</button>`;
         const b = f.querySelector('#btFlee');
         b.onclick = async () => {
-          if (!b.dataset.sure) { b.dataset.sure = '1'; b.textContent = bt.kind === 'raid' ? t('Sure? Your damage so far still counts', '確定？已打嘅傷害照計') : t('Sure? The ticket is used', '確定？張券會用咗'); return; }
+          if (!b.dataset.sure && bt.kind !== 'test') { b.dataset.sure = '1'; b.textContent = bt.kind === 'raid' ? t('Sure? Your damage so far still counts', '確定？已打嘅傷害照計') : bt.kind === 'lair' ? t('Sure? This try is used', '確定？今次機會會用咗') : t('Sure? The ticket is used', '確定？張券會用咗'); return; }
           try { await api.battleFlee(id); await sync(); } catch (err) { showError(err); }
         };
       }
@@ -316,7 +403,21 @@ export async function battleScreen(user, id) {
     // finished
     const won = bt.winner_side === me;
     let head, body = '', btns = `<a class="button ghost" href="${back}">${t('Back', '返去')}</a>`;
-    if (bt.kind === 'tower') {
+    const caught = bt.state.caught ? (bt.log || []).find(e => e.t === 'catch' && e.ok) : null;
+    if (caught) {
+      head = t(`Caught ${fighterName(snap.b)}! 🎉`, `捉到 ${fighterName(snap.b)}！🎉`);
+      body = t(`IV grade ${ivGrade(caught.iv)}. It’s in your box.`, `IV 評級 ${ivGrade(caught.iv)}。已經放咗入寵物箱。`)
+        + (bt.kind === 'tower' ? ' ' + t(`Floor ${bt.floor} counts as cleared.`, `第 ${bt.floor} 層當過咗。`) : '');
+      btns += `<a class="button" href="#/pets">🐾 ${t('See your pets', '睇寵物')}</a>`;
+    } else if (bt.kind === 'lair') {
+      head = won ? t('Boss beaten!', '打贏 Boss！') : t('The boss won this time', '今次 Boss 贏');
+      body = won ? t('It got away, but you earned +15 💧 +20 XP. Catch it next time: throw a ball at 30% HP.', '佢走咗，但你攞到 +15 💧 +20 經驗。下次喺 30% 以下掟球捉佢。') : t('Train, bring a team, try again.', '練勁啲、帶埋隊伍，再嚟。');
+      btns += `<a class="button" href="#/lair">👑 ${t('Boss Lair', 'Boss 巢穴')}</a>`;
+    } else if (bt.kind === 'test') {
+      head = won ? t('Test fight won', '試打贏咗') : t('Test fight over', '試打完');
+      body = t('Just a test: no rewards, nothing used.', '純粹試打：冇獎勵，乜都冇用到。');
+      btns += snap.a.pet ? `<button type="button" id="btRetest">${t('Again', '再試')}</button>` : '';
+    } else if (bt.kind === 'tower') {
       const r = towerReward(bt.floor);
       head = won ? t(`Floor ${bt.floor} cleared! 🎉`, `第 ${bt.floor} 層過咗！🎉`) : t(`Floor ${bt.floor}: not this time`, `第 ${bt.floor} 層：今次輸咗`);
       body = won ? t(`+${r.xp} XP +${r.coins} 💧`, `+${r.xp} 經驗 +${r.coins} 💧`) : t('Train, get stronger, come back.', '去 gym 練勁啲再嚟。');
@@ -331,6 +432,10 @@ export async function battleScreen(user, id) {
     el.querySelector('#btMoves').innerHTML = '';
     msg.textContent = head;
     f.innerHTML = `<div class="bt-result ${won ? 'won' : ''}"><b>${head}</b><span>${body}</span><div class="bt-btns">${btns}</div></div>`;
+    f.querySelector('#btRetest')?.addEventListener('click', async e => {
+      e.target.disabled = true;
+      try { const nid = await api.petTest(snap.a.pet); location.hash = `#/battle/${nid}`; } catch (err) { e.target.disabled = false; showError(err); }
+    });
     f.querySelector('#btNext')?.addEventListener('click', async e => {
       e.target.disabled = true;
       try { const nid = await api.towerFight(); location.hash = `#/battle/${nid}`; } catch (err) { e.target.disabled = false; showError(err); }
