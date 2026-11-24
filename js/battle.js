@@ -101,7 +101,15 @@ export async function mountMoves(el, user) {
       ${locked.length ? `<h4 class="q-h">${t('Still to learn', '未學到')}</h4>
       <ul class="mv-list">${locked.map(({ m, need }) => `<li class="mv-locked"><span class="mv-top"><b>🔒 ${esc(moveName(m))}</b>${moveTag(m)}</span>
         <span class="small">${esc(need[0])}</span><span class="q-bar" aria-hidden="true"><i style="width:${Math.round(Math.min(1, need[1]) * 100)}%"></i></span></li>`).join('')}</ul>` : ''}`;
-    const save = async next => { try { mine = await api.setMoves(next); slot = null; draw(); toast(t('Moves updated', '招式已經換好')); } catch (err) { showError(err); } };
+    const save = async next => {
+      const changed = next.findIndex((x, i) => x !== eq[i]);
+      try {
+        mine = await api.setMoves(next); slot = null; draw();
+        card.querySelector(`[data-slot="${changed}"]`)?.classList.add('mv-new');
+        card.querySelector(`[data-mv="${next[changed]}"]`)?.classList.add('mv-new');
+        toast(t('Moves updated', '招式已經換好'));
+      } catch (err) { showError(err); }
+    };
     // tap a slot first to choose which one to replace
     card.querySelectorAll('[data-slot]').forEach(b => b.onclick = () => { const i = +b.dataset.slot; slot = slot === i ? null : i; draw(); });
     card.querySelectorAll('[data-mv]').forEach(b => b.onclick = () => {
@@ -211,7 +219,7 @@ export async function battleScreen(user, id) {
     return s.monster != null ? { monster: s.monster, big: !!(s.elite || s.raid) } : { avatar: cleanAvatar(s.avatar, s.id) };
   };
   const hp = { ...bt.state.hp }, max = bt.state.max;
-  let frame = 0, fx = null, busyAnim = false, shownLog = bt.log.length;
+  let frame = 0, fx = null, busyAnim = false, shownLog = bt.log.length, wasReady = false;
   const fainted = side => hp[side] <= 0;
   const paint = () => drawBattle(cv, { ...view(me), fainted: fainted(me) }, { ...view(th), fainted: fainted(th) }, frame, fx);
   const bars = () => {
@@ -274,8 +282,15 @@ export async function battleScreen(user, id) {
         <b>${fu ? '✦ ' : ''}${esc(moveName(m))}</b><span>${typeLine(m)}${m.power > 0 ? ` · ${t('Power', '威力')} ${m.power}` : ''}${left != null ? ` · ${left}/${cap}` : ''}</span>
         <small class="bt-desc">${esc(shortDesc(m))}</small></button>`;
     }).join('');
+    // pop the buttons in when it becomes your turn (not on every redraw)
+    const ready = myTurn && !busyAnim;
+    if (ready && !wasReady) { box.classList.remove('ready'); void box.offsetWidth; box.classList.add('ready'); }
+    if (!ready) box.classList.remove('ready');
+    wasReady = ready;
     box.querySelectorAll('[data-mv]').forEach(b => b.onclick = async () => {
+      b.classList.add('chosen');
       box.querySelectorAll('button').forEach(x => x.disabled = true);
+      await sleep(260);
       try { const evs = await api.battleMove(id, b.dataset.mv); shownLog += evs.length; await play(evs); }
       catch (err) { showError(err); }
       await sync();

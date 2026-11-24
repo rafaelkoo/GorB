@@ -25,6 +25,29 @@ export function showError(err) {
   box.textContent = err?.message || String(err);
 }
 // a short message floating above the tabs, wherever you've scrolled to
+// transitions.dev 16 tabs sliding, for a row of chips that are links (each tap renders a new page):
+// the pill starts on the chip you came from and slides to the one you're on now
+export function slideChips(nav, key) {
+  if (!nav) return;
+  const tabs = [...nav.querySelectorAll('a')].filter(a => !a.classList.contains('grp-add'));
+  const cur = tabs.findIndex(a => a.classList.contains('on'));
+  if (cur < 0 || tabs.length < 2) return;
+  nav.classList.add('t-tabs');
+  const pill = document.createElement('span'); pill.className = 't-tabs-pill'; pill.setAttribute('aria-hidden', 'true'); nav.prepend(pill);
+  tabs.forEach((a, i) => { a.classList.add('t-tab'); a.setAttribute('aria-selected', String(i === cur)); a.classList.remove('on'); a.dataset.i = i; });
+  const place = (tab, animate) => {
+    if (!animate) pill.style.transition = 'none';
+    pill.style.transform = `translateX(${tab.offsetLeft}px)`;
+    pill.style.width = `${tab.offsetWidth}px`;
+    if (!animate) { void pill.offsetWidth; pill.style.transition = ''; }
+  };
+  let prev = +sessionStorage.getItem(key);
+  if (!(prev >= 0 && prev < tabs.length)) prev = cur;
+  requestAnimationFrame(() => { place(tabs[prev], false); requestAnimationFrame(() => place(tabs[cur], true)); });
+  tabs.forEach((a, i) => a.addEventListener('click', () => { sessionStorage.setItem(key, String(cur)); tabs.forEach(t => t.setAttribute('aria-selected', String(t === a))); place(a, true); }));
+  sessionStorage.setItem(key, String(cur));
+}
+
 export function toast(text) {
   document.querySelector('.toast')?.remove();
   const box = document.createElement('p'); box.className = 'toast'; box.setAttribute('role', 'status'); box.textContent = text;
@@ -274,6 +297,7 @@ export async function group(user, groupId, limit = FEED_PAGE) {
 
   mountGym(el, gymRows, user, groupId, dogs);
   wireTodayStrip(el, groupId);
+  slideChips(el.querySelector('.grp-switch'), 'gob_chip_g');
   mountBoss(el, boss, groupId);
   mountMatches(el, user, groupId, board);
   // right after a check-in, offer notifications once

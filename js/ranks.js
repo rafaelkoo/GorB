@@ -5,7 +5,7 @@ import * as api from './supa.js';
 import { t, monthName, fmtDay } from './i18n.js';
 import { EX, vGrade } from './exercises.js';
 import { exName } from './tracker.js';
-import { esc, render } from './ui.js';
+import { esc, render, slideChips } from './ui.js';
 
 const MEDAL = ['🥇', '🥈', '🥉'];
 const CAT_ZH = { chest: '胸', back: '背', legs: '腿', shoulders: '肩', arms: '手臂', core: '核心', other: '其他' };
@@ -103,6 +103,7 @@ export async function ranksScreen(user, groupId, measureId = 'days') {
       <div class="chips scroll" role="tablist" aria-label="${t('Exercises', '動作')}">${exIds.map(id => chip(id, exName(id), id === measureId)).join('')}</div></div>`
       : `<p class="muted small">${t('Exercise rankings show up once someone logs a workout.', '有人記錄訓練之後，就會有每個動作嘅排名。')}</p>`}
     <section class="card">${body}</section>`);
+  slideChips(el.querySelector('.grp-switch'), 'gob_chip_r');
   // under each name: which of your groups they're in
   if (all) el.querySelectorAll('.rank .who > a[href^="#/p/"]').forEach(a => {
     const gs = inGroups[a.getAttribute('href').slice(4)]; if (!gs) return;

@@ -114,3 +114,13 @@ window.addEventListener('langchange', safeRoute);
 if (sb) sb.auth.onAuthStateChange(ev => { if (ev === 'SIGNED_OUT') safeRoute(); });
 initMotion(document.getElementById('app'));
 safeRoute();
+
+// every bottom sheet opens with transitions.dev's modal transition (06): t-modal, then is-open
+new MutationObserver(list => {
+  for (const m of list) for (const n of m.addedNodes) {
+    const inner = n.nodeType === 1 && n.classList?.contains('sheet') ? n.querySelector('.sheet-in') : null;
+    if (!inner) continue;
+    inner.classList.add('t-modal');
+    requestAnimationFrame(() => requestAnimationFrame(() => inner.classList.add('is-open')));
+  }
+}).observe(document.body, { childList: true });
