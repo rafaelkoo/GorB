@@ -124,11 +124,62 @@ export async function petsScreen(user) {
   };
   // the line as shown: pet ids with 'me' slotted in
   const order = () => { const ids = teamIds(), o = [...ids]; o.splice(Math.min(mePos, ids.length), 0, 'me'); return o; };
-  const moveIn = (key, dir) => {
+  const saveOrder = o => saveTeam(o.filter(x => x !== 'me'), o.indexOf('me'));
+  const moveIn = (key, dir) => {   // keyboard: arrow keys on a focused card
     const o = order(), i = o.indexOf(key), j = i + dir; if (j < 0 || j >= o.length) return;
-    [o[i], o[j]] = [o[j], o[i]];
-    saveTeam(o.filter(x => x !== 'me'), o.indexOf('me'));
+    [o[i], o[j]] = [o[j], o[i]]; saveOrder(o);
   };
+  // hold a card, drag it, drop it where it should go
+  function wireDrag(grid) {
+    const slots = () => [...grid.querySelectorAll('.pt-slot[data-key]')];
+    let hold = null, drag = null, swallowClick = false;
+    const cancelHold = () => { clearTimeout(hold?.timer); hold = null; };
+    grid.addEventListener('pointerdown', e => {
+      const slot = e.target.closest('.pt-slot[data-key]'); if (!slot || slots().length < 2 || e.button > 0) return;
+      cancelHold();
+      hold = { slot, x: e.clientX, y: e.clientY, id: e.pointerId, timer: setTimeout(() => start(e), e.pointerType === 'mouse' ? 150 : 280) };
+    });
+    function start(e) {
+      const slot = hold.slot, r = slot.getBoundingClientRect();
+      drag = { slot, dx: hold.x - r.left, dy: hold.y - r.top, w: r.width, h: r.height, from: slots().indexOf(slot) };
+      const ph = document.createElement('div'); ph.className = 'pt-slot pt-ph'; ph.style.height = r.height + 'px';
+      slot.after(ph); drag.ph = ph;
+      Object.assign(slot.style, { position: 'fixed', left: r.left + 'px', top: r.top + 'px', width: r.width + 'px', zIndex: 50, pointerEvents: 'none' });
+      slot.classList.add('lifted'); navigator.vibrate?.(15);
+      try { grid.setPointerCapture(hold.id); } catch {}
+      hold = null;
+    }
+    grid.addEventListener('pointermove', e => {
+      if (hold && Math.hypot(e.clientX - hold.x, e.clientY - hold.y) > 8) cancelHold();   // that was a scroll
+      if (!drag) return;
+      drag.slot.style.left = e.clientX - drag.dx + 'px'; drag.slot.style.top = e.clientY - drag.dy + 'px';
+      // the closest card to the finger takes the placeholder's spot
+      const others = [...grid.querySelectorAll('.pt-slot[data-key]:not(.lifted), .pt-ph')];
+      let best = null, bd = Infinity;
+      for (const o of others) { const r = o.getBoundingClientRect(), d = Math.hypot(e.clientX - (r.left + r.width / 2), e.clientY - (r.top + r.height / 2)); if (d < bd) { bd = d; best = o; } }
+      if (best && best !== drag.ph) {
+        const list = [...grid.children], a = list.indexOf(drag.ph), c = list.indexOf(best);
+        if (c > a) best.after(drag.ph); else best.before(drag.ph);
+      }
+    });
+    // stop the page scrolling under the finger while dragging
+    grid.addEventListener('touchmove', e => { if (drag) e.preventDefault(); }, { passive: false });
+    const end = () => {
+      cancelHold(); if (!drag) return;
+      const { slot, ph } = drag; drag = null;
+      slot.removeAttribute('style'); slot.classList.remove('lifted'); ph.replaceWith(slot);
+      swallowClick = true; setTimeout(() => { swallowClick = false; }, 50);
+      const now = slots().map(s => s.dataset.key);
+      if (now.join() !== order().join()) saveOrder(now);
+    };
+    grid.addEventListener('pointerup', end); grid.addEventListener('pointercancel', end);
+    grid.addEventListener('click', e => { if (swallowClick) { e.stopPropagation(); e.preventDefault(); } }, true);
+    grid.addEventListener('contextmenu', e => { if (e.target.closest('.pt-slot[data-key]')) e.preventDefault(); });
+    grid.addEventListener('keydown', e => {
+      const slot = e.target.closest('.pt-slot[data-key]'); if (!slot || !['ArrowLeft', 'ArrowRight'].includes(e.key)) return;
+      e.preventDefault(); moveIn(slot.dataset.key, e.key === 'ArrowLeft' ? -1 : 1);
+    });
+  }
 
   const card = p => `<button type="button" class="pt-card ${p.evolved ? 'evo' : ''} ${p.legend ? 'legend' : ''}" data-pet="${p.id}">${sprite(p.species, 64, petName(p), p.evolved)}
       <b>${esc(petName(p))}</b><span class="pt-lv">Lv ${p.level || 1}</span><span class="pt-meta">${typeChip(p.type)}<span class="pt-grade g-${ivGrade(p.iv)}" title="${t('IV grade', 'IV 評級')}">${ivGrade(p.iv)}</span></span></button>`;
@@ -143,13 +194,13 @@ export async function petsScreen(user) {
         <span class="small muted">${t(`Or keep its form: at level 20 it learns ${mvName(x.ultimate)}, the strongest move there is.`, `或者保持原形：到 20 級會學識最強嘅招式「${mvName(x.ultimate)}」。`)}</span>
         <div class="evo-btns"><button type="button" data-evo="go">✨ ${t('Evolve', '進化')}</button><button type="button" class="ghost" data-evo="later">${t('Not now', '遲啲先')}</button><button type="button" class="ghost" data-evo="keep">${t('Keep its form', '保持原形')}</button></div></div></section>`).join('')}
       <section class="card"><div class="card-head"><h3>${t('Your team', '你嘅隊伍')}</h3><span class="muted small">${team.length + 1} / 6</span></div>
-        <p class="muted small">${t('You’re always in your team; put yourself and your pets in any order with the arrows. The first one starts the fight, the next comes in when one goes down, or switch any time. Tower, Boss Lair and the group boss (each pet there adds 10% to your damage, an evolved one 15%).', '你一定喺隊入面；用箭咀排你同寵物嘅次序。排第一嗰個先出場，有人倒低就輪下一個，亦可以隨時換人。塔、Boss 巢穴同 group 魔王都用得（打魔王每隻寵物多 10% 傷害，進化咗嘅多 15%）。')}</p>
-        <div class="pt-team">${order().map((k, i, all) => {
-          const arrows = all.length > 1 ? `<span class="pt-ord"><button type="button" class="ghost" data-mv-ord="${k}" data-dir="-1" ${i === 0 ? 'disabled' : ''} aria-label="${t('Move earlier', '排前啲')}">◀</button><b>${i + 1}</b><button type="button" class="ghost" data-mv-ord="${k}" data-dir="1" ${i === all.length - 1 ? 'disabled' : ''} aria-label="${t('Move later', '排後啲')}">▶</button></span>` : '';
-          if (k === 'me') return `<div class="pt-slot"><div class="pt-card me">${myAv ? `<canvas id="ptMe" width="64" height="68" role="img" aria-label="${t('Your character', '你嘅角色')}"></canvas>` : `<span class="pt-you" aria-hidden="true">🙋</span>`}<b>${esc(prof?.display_name || t('You', '你'))}</b><span class="pt-meta muted small">${i === 0 ? t('Goes first', '打頭陣') : t('You', '你')}</span></div>${arrows}</div>`;
-          return `<div class="pt-slot">${card(pets.find(p => p.id === k))}${arrows}</div>`;
-        }).join('')}${Array.from({ length: 5 - team.length }, () => `<div class="pt-slot"><div class="pt-card empty" aria-hidden="true">＋</div></div>`).join('')}</div></section>
-      <section class="card"><div class="card-head"><h3>${t('Box', '寵物箱')}</h3><span class="muted small">${pets.length}</span></div>
+        <p class="muted small">${order().length > 1 ? t('Hold a card and drag it to change the order. The first one starts the fight.', '撳住張卡拖去排次序。排第一嗰個先出場。') : t('Add pets from your box below. You’re always in the team.', '喺下面寵物箱加寵物入隊。你一定喺隊入面。')}</p>
+        <div class="pt-team">${order().map((k, i) => {
+          const num = `<span class="pt-num" aria-hidden="true">${i + 1}</span>`;
+          if (k === 'me') return `<div class="pt-slot" data-key="me" tabindex="0" aria-label="${esc(t(`${prof?.display_name || 'You'}, number ${i + 1}. Arrow keys move.`, `${prof?.display_name || '你'}，第 ${i + 1}。方向鍵可以移動。`))}"><div class="pt-card me">${num}${myAv ? `<canvas id="ptMe" width="64" height="68" role="img" aria-label="${t('Your character', '你嘅角色')}"></canvas>` : `<span class="pt-you" aria-hidden="true">🙋</span>`}<b>${esc(prof?.display_name || t('You', '你'))}</b><span class="pt-meta muted small">${t('You', '你')}</span></div></div>`;
+          return `<div class="pt-slot" data-key="${k}">${card(pets.find(p => p.id === k)).replace('<button type="button" class="pt-card', `<button type="button" aria-keyshortcuts="ArrowLeft ArrowRight" class="pt-card`).replace('">', `">${num}`)}</div>`;
+        }).join('')}${team.length < 5 ? `<a class="pt-slot pt-add" href="#ptBox"><span aria-hidden="true">＋</span><span class="small">${t(`Add from box (${5 - team.length} free)`, `由寵物箱加（仲有 ${5 - team.length} 個位）`)}</span></a>` : ''}</div></section>
+      <section class="card" id="ptBox"><div class="card-head"><h3>${t('Box', '寵物箱')}</h3><span class="muted small">${pets.length}</span></div>
         ${box.length ? `<div class="pt-box">${box.map(card).join('')}</div>`
           : `<p class="muted small">${pets.length ? t('Everyone is in your team.', '全部都喺隊入面。') : t('No pets yet. Knock a monster low in the tower, then throw a ball (buy them in the shop).', '仲未有寵物。喺塔將怪打到殘血，再掟個球（喺商店買）。')}</p>
           ${pets.length ? '' : `<a class="button" href="#/shop">🏪 ${t('Go to the shop', '去商店')}</a>`}`}</section>
@@ -167,7 +218,8 @@ export async function petsScreen(user) {
     const me = el.querySelector('#ptMe');
     if (me) { let f = 0; drawPortrait(me, myAv, 'stand', 0); const tk = setInterval(() => { if (!document.body.contains(me)) return clearInterval(tk); if (!reduced()) { f ^= 1; drawPortrait(me, myAv, 'stand', f); } }, 560); }
     el.querySelectorAll('[data-pet]').forEach(b => b.onclick = () => petSheet(pets.find(p => p.id === b.dataset.pet)));
-    el.querySelectorAll('[data-mv-ord]').forEach(b => b.onclick = () => { el.querySelectorAll('[data-mv-ord]').forEach(x => x.disabled = true); moveIn(b.dataset.mvOrd, +b.dataset.dir); });
+    wireDrag(el.querySelector('.pt-team'));
+    el.querySelector('.pt-add')?.addEventListener('click', e => { e.preventDefault(); el.querySelector('#ptBox').scrollIntoView({ behavior: 'smooth' }); });
     el.querySelectorAll('[data-ask]').forEach(sec => sec.querySelectorAll('[data-evo]').forEach(b => b.onclick = async () => {
       const x = pets.find(q => q.id === sec.dataset.ask); sec.querySelectorAll('button').forEach(y => y.disabled = true);
       try {
