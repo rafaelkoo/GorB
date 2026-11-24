@@ -272,7 +272,7 @@ export async function group(user, groupId, limit = FEED_PAGE) {
 `);
 
   mountGym(el, gymRows, user, groupId, dogs);
-  wireTodayStrip(el, groupId);
+  wireTodayStrip(el, groupId, gymRows, user);
   slideChips(el.querySelector('.grp-switch'), 'gob_chip_g');
   mountBoss(el, boss, groupId);
   mountMatches(el, user, groupId, board);

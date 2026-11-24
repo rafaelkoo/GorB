@@ -3,7 +3,7 @@
 // dozing on the rest bench. Plus the avatar editor for the Me page.
 import * as api from './supa.js';
 import { t, getLang } from './i18n.js';
-import { esc, showError } from './ui.js';
+import { esc, showError, toast } from './ui.js';
 import { EX, CATS } from './exercises.js';
 import { cardioName } from './cardio.js';
 import { drawGym, drawPortrait, stationFor, cleanAvatar, W, H, SKINS, SKIN_ORDER, HAIR_COLORS, TOPS, SHORTS, SHOES, GEAR, HAIRS, BUILDS, TOP_STYLES, BOTTOMS, HATS, FACES, LOCKED, ITEM_DAYS } from './pixel.js';
@@ -58,18 +58,55 @@ export function todayStripHtml(rows, user) {
   return `<div class="today-strip">
     <span class="muted small">${t(`Today · ${inn.length} of ${ps.length} been`, `今日 · ${ps.length} 個人入面 ${inn.length} 個去咗`)}</span>
     <div class="today-row">${inn.map(p => `<span class="today-chip" title="${esc(p.name)}"><span class="face in">${esc(p.name.slice(0, 1).toUpperCase())}</span>${esc(p.me ? t('You', '你') : p.what ? p.what.split(' · ')[0] : p.name)}</span>`).join('')}
-      ${out.length ? `<button type="button" class="summon-chip" data-summon="${out[0].id}" data-name="${esc(out[0].name)}">${t(`Summon ${esc(out[0].name)}`, `召喚 ${esc(out[0].name)}`)}</button>` : ''}</div></div>`;
+      ${out.length ? `<button type="button" class="summon-chip" id="summonOpen">📣 ${out.length === 1 ? t(`Summon ${esc(out[0].name)}`, `召喚 ${esc(out[0].name)}`) : t(`Summon (${out.length} not in yet)`, `召喚（${out.length} 個未嚟）`)}</button>` : ''}</div></div>`;
 }
-export function wireTodayStrip(el, groupId) {
-  const b = el.querySelector('[data-summon]'); if (!b) return;
+
+// who you've already summoned today: remembered so tapping someone else doesn't lose it
+const londonDay = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/London' }).format(new Date());
+let sent = { day: null, ids: new Set(), loading: null };
+async function sentToday(userId) {
+  const d = londonDay();
+  if (sent.day !== d) { sent = { day: d, ids: new Set(), loading: api.summonsSent(userId, d).then(ids => { ids.forEach(i => sent.ids.add(i)); }).catch(() => {}) }; }
+  await sent.loading; return sent.ids;
+}
+async function doSummon(p, groupId) {
+  const r = await api.summon(p.id, groupId);
+  if (r === 'sent' || r === 'already_sent') sent.ids.add(p.id);
+  return r;
+}
+const summonedText = name => t(`✓ ${name} summoned today. If they come within 24 h, you both get 15 💧`, `✓ 今日已經召喚咗 ${name}。佢 24 個鐘內嚟，你哋兩個都有 15 💧`);
+
+export function wireTodayStrip(el, groupId, rows = [], user = null) {
+  const b = el.querySelector('#summonOpen'); if (!b) return;
+  const out = people(rows, user).filter(p => !p.inGym && !p.me);
   b.onclick = async () => {
-    b.disabled = true; const name = b.dataset.name;
-    try {
-      const r = await api.summon(b.dataset.summon, groupId);
-      b.textContent = r === 'sent' ? t(`Summoned! Both get 15 💧 if ${name} comes in 24 h`, `召喚咗！${name} 24 個鐘內嚟，你哋都有 15 💧`)
-        : r === 'already_sent' ? t('Already summoned today', '今日已經召喚過') : r === 'already_in' ? t(`${name} is already here`, `${name} 已經嚟咗`) : t('Couldn’t summon', '召喚唔到');
-    } catch (err) { b.disabled = false; showError(err); }
+    const ids = user ? await sentToday(user.id) : new Set();
+    const box = document.createElement('div'); box.className = 'sheet';
+    const row = p => `<li class="sm-row"><span class="face">${esc(p.name.slice(0, 1).toUpperCase())}</span><b>${esc(p.name)}</b>
+      ${ids.has(p.id) ? `<span class="sm-done">✓ ${t('Summoned', '已召喚')}</span>` : `<button type="button" class="small-btn" data-sm="${p.id}">📣 ${t('Summon', '召喚')}</button>`}</li>`;
+    const draw = () => { box.querySelector('.sm-list').innerHTML = out.map(row).join(''); wire(); };
+    box.innerHTML = `<div class="sheet-in" role="dialog" aria-label="${t('Summon to the gym', '召喚去 gym')}">
+      <h3>📣 ${t('Summon to the gym', '召喚去 gym')}</h3>
+      <p class="muted small">${t('Summon as many as you like, once each a day. Anyone who comes within 24 hours gets you both 15 💧.', '想召喚幾多個都得，每人每日一次。邊個 24 個鐘內嚟，你哋兩個都有 15 💧。')}</p>
+      <ul class="sm-list"></ul><button type="button" class="ghost" data-close>${t('Done', '完成')}</button></div>`;
+    const wire = () => box.querySelectorAll('[data-sm]').forEach(x => x.onclick = async () => {
+      const p = out.find(q => q.id === x.dataset.sm); x.disabled = true;
+      try {
+        const r = await doSummon(p, groupId);
+        if (r === 'already_in') toast(t(`${p.name} is already here`, `${p.name} 已經嚟咗`));
+        else if (r === 'no') toast(t('Couldn’t summon', '召喚唔到'));
+        draw();
+      } catch (err) { x.disabled = false; showError(err); }
+    });
+    box.addEventListener('click', e => { if (e.target === box || e.target.closest('[data-close]')) { box.remove(); refresh(); } });
+    document.body.append(box); draw();
   };
+  const refresh = async () => {
+    if (!user) return;
+    const ids = await sentToday(user.id), left = out.filter(p => !ids.has(p.id)).length;
+    if (!left) b.textContent = t(`📣 All ${out.length} summoned`, `📣 ${out.length} 個都召喚咗`);
+  };
+  refresh();
 }
 
 export function gymCardHtml() {
@@ -122,14 +159,18 @@ export function mountGym(el, rows, user, groupId, dogs = []) {
     // someone resting who isn't you: offer to summon them
     const sb = card.querySelector('#summonBtn');
     if (hit && !hit.p.inGym && !hit.p.me) {
-      const p = hit.p; sb.hidden = false; sb.disabled = false;
-      sb.textContent = t(`📣 Summon ${p.name} to the gym`, `📣 召喚 ${p.name} 去 gym`);
+      const p = hit.p; sb.hidden = false; sb.disabled = true; sb.textContent = '…';
+      // each person's own button: tapping someone else and back shows what you already did
+      sentToday(user.id).then(ids => {
+        if (cap.dataset.who !== p.id) return;
+        if (ids.has(p.id)) { sb.disabled = true; sb.textContent = summonedText(p.name); return; }
+        sb.disabled = false; sb.textContent = t(`📣 Summon ${p.name} to the gym`, `📣 召喚 ${p.name} 去 gym`);
+      });
       sb.onclick = async () => {
         sb.disabled = true;
         try {
-          const r = await api.summon(p.id, groupId);
-          sb.textContent = r === 'sent' ? t(`📣 Summoned! If ${p.name} comes within 24 h, you both get 15 💧`, `📣 召喚咗！${p.name} 24 個鐘內嚟，你哋兩個都有 15 💧`)
-            : r === 'already_sent' ? t(`You already summoned ${p.name} today`, `你今日已經召喚過 ${p.name}`)
+          const r = await doSummon(p, groupId);
+          sb.textContent = r === 'sent' || r === 'already_sent' ? summonedText(p.name)
             : r === 'already_in' ? t(`${p.name} is already here today`, `${p.name} 今日已經嚟咗`) : t('Couldn’t summon', '召喚唔到');
         } catch (err) { sb.disabled = false; showError(err); }
       };

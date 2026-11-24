@@ -147,6 +147,8 @@ export function battleLive(id, onRow) {
   return () => { try { sb.removeChannel(ch); } catch { /* already gone */ } };
 }
 export const claimBoss = (groupId, week = null) => sb.rpc('claim_boss', { p_group: groupId, ...(week ? { p_week: week } : {}) }).then(must);
+// who you've summoned today (you can summon each person once a day, as many people as you like)
+export const summonsSent = (fromUser, day) => sb.from('summons').select('to_user').eq('from_user', fromUser).eq('day', day).then(must).then(rows => rows.map(r => r.to_user));
 export const summon = (toUser, groupId) => sb.rpc('summon', { p_to: toUser, p_group: groupId }).then(must);
 export const characterCard = userId => sb.rpc('character_card', { p_user: userId }).then(must);
 // what you're ticking in the Log today, for the pixel gym (see migration 023)
