@@ -335,8 +335,8 @@ export async function battleScreen(user, id) {
       return `<button type="button" class="bt-mv ${fu ? 'fusion' : ''}" data-mv="${m.id}" style="--c:${moveCol(m)}" ${!myTurn || busyAnim || left === 0 ? 'disabled' : ''}>
         <b>${fu ? '✦ ' : ''}${esc(moveName(m))}</b><span>${typeLine(m)}${m.power > 0 ? ` · ${t('Power', '威力')} ${m.power}` : ''}${left != null ? ` · ${left}/${cap}` : ''}</span>
         <small class="bt-desc">${esc(shortDesc(m))}</small></button>`;
-    }).join('') + (bt.kind === 'tower' || bt.kind === 'lair' ? `<div class="bt-acts">
-        <button type="button" class="ghost" id="btBag" ${!myTurn || busyAnim ? 'disabled' : ''}>🎒 ${t('Bag', '背包')}</button>
+    }).join('') + (bt.kind === 'tower' || bt.kind === 'lair' || (bt.kind === 'raid' && party.length > 1) ? `<div class="bt-acts">
+        ${bt.kind !== 'raid' ? `<button type="button" class="ghost" id="btBag" ${!myTurn || busyAnim ? 'disabled' : ''}>🎒 ${t('Bag', '背包')}</button>` : ''}
         ${party.length > 1 ? `<button type="button" class="ghost" id="btTeam" ${!myTurn || busyAnim ? 'disabled' : ''}>🔁 ${t('Team', '隊伍')}</button>` : ''}</div>` : '');
     box.querySelector('#btBag')?.addEventListener('click', bagSheet);
     box.querySelector('#btTeam')?.addEventListener('click', teamSheet);
@@ -447,7 +447,8 @@ export async function battleScreen(user, id) {
       btns += `<button type="button" id="btNext">${won ? t('Next floor · 1 🎟️', '下一層 · 1 🎟️') : t('Try again · 1 🎟️', '再試 · 1 🎟️')}</button>`;
     } else if (bt.kind === 'raid') {
       head = t('Attack done!', '攻擊完成！');
-      body = t(`It counts for ${bt.state.counts ?? 0} damage on the group boss${bt.state.mult > 1 ? ` (underdog ×${bt.state.mult})` : ''}. +10 XP`, `你為 group 打咗魔王 ${bt.state.counts ?? 0} 點傷害${bt.state.mult > 1 ? `（以弱勝強 ×${bt.state.mult}）` : ''}。+10 經驗`);
+      const tb = bt.state.pets ? t(` (your ${bt.state.pets} pet${bt.state.pets > 1 ? 's' : ''} +${bt.state.pets * 10}%)`, `（${bt.state.pets} 隻寵物 +${bt.state.pets * 10}%）`) : '';
+      body = t(`It counts for ${bt.state.counts ?? 0} damage on the group boss${tb}${bt.state.mult > 1 ? ` (underdog ×${bt.state.mult})` : ''}. +10 XP`, `你為 group 打咗魔王 ${bt.state.counts ?? 0} 點傷害${tb}${bt.state.mult > 1 ? `（以弱勝強 ×${bt.state.mult}）` : ''}。+10 經驗`);
     } else {
       head = won ? t('You won! 🏆', '你贏咗！🏆') : t('You lost', '你輸咗');
       body = t('Friendly match: just for fun.', '友誼賽：純粹玩。');

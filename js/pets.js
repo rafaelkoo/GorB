@@ -119,7 +119,7 @@ export async function petsScreen(user) {
     const box = pets.filter(p => p.slot == null);
     el.querySelector('#ptBody').innerHTML = `
       <section class="card"><div class="card-head"><h3>${t('Your team', '你嘅隊伍')}</h3><span class="muted small">${team.length + 1} / 6</span></div>
-        <p class="muted small">${t('You fight first; your pets come in when you switch or go down. Tower and Boss Lair only.', '你先出場；換人或者你倒低咗，寵物就會上。只限塔同 Boss 巢穴。')}</p>
+        <p class="muted small">${t('You fight first; your pets come in when you switch or go down. Tower, Boss Lair and the group boss (each pet there adds 10% to your damage).', '你先出場；換人或者你倒低咗，寵物就會上。塔、Boss 巢穴同 group 魔王都用得（打魔王每隻寵物多 10% 傷害）。')}</p>
         <div class="pt-team"><div class="pt-card me">${myAv ? `<canvas id="ptMe" width="64" height="68" role="img" aria-label="${t('Your character', '你嘅角色')}"></canvas>` : `<span class="pt-you" aria-hidden="true">🙋</span>`}<b>${esc(prof?.display_name || t('You', '你'))}</b><span class="pt-meta muted small">${t('Leader', '隊長')}</span></div>
           ${team.map(card).join('')}${Array.from({ length: 5 - team.length }, () => `<div class="pt-card empty" aria-hidden="true">＋</div>`).join('')}</div></section>
       <section class="card"><div class="card-head"><h3>${t('Box', '寵物箱')}</h3><span class="muted small">${pets.length}</span></div>

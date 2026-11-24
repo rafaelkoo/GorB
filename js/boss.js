@@ -35,6 +35,7 @@ export function bossCardHtml(b) {
     <ul class="boss-how">
       <li>${t('A new boss every Monday. Its HP is 100 for every day of everyone’s weekly target.', '每個星期一有新魔王。血量 = 大家每星期目標日數加埋 × 100。')}</li>
       <li>${t('Each gym day you get one attack: up to 8 moves against the boss. Showing up is worth 70, fighting well up to 60 more.', '每個 gym 日有一次攻擊機會，同魔王打最多 8 招。出席已經值 70，打得好再加最多 60。')}</li>
+      <li>${t('Bring your pet team: each pet adds 10% (up to +50% with 5).', '可以帶寵物隊伍：每隻寵物加 10%（5 隻最多 +50%）。')}</li>
       <li>${t('The boss is matched to you, so newcomers count as much as big lifters.', '魔王會跟你嘅實力調整，新手同大隻佬一樣有份。')}</li>
       <li>${t('Lower level than the group average? Your attack counts up to 50% more (⚡).', '等級低過 group 平均？攻擊最多多計 50%（⚡）。')}</li>
       <li>${t('Beat it by Sunday and everyone gets 60 💧 and 80 XP.', '星期日之前打低佢，全部人都有 60 💧 同 80 經驗。')}</li>
