@@ -129,7 +129,7 @@ export async function petsScreen(user) {
       <details class="card cc-how"><summary>${t('How pets work', '寵物點運作')}</summary><ul>
         <li>${t('A pet’s stats come from yours, shaped by its species: a Takeaway Goblin is all attack, a Duvet Burrito is all HP and defence. Train and they get stronger too.', '寵物嘅能力由你嘅能力計，再按品種調整：外賣哥布林全攻擊，被竇卷就高 HP 同防禦。你練勁，佢哋都會勁。')}</li>
         <li>${t('Each one has its own IVs: −20% to +20% on every stat. Catch the same species again to find a better one (S is the best).', '每隻都有自己嘅 IV：每項能力 −20% 至 +20%。再捉同一品種可以搵更好嘅（S 最好）。')}</li>
-        <li>${t('The lower a monster’s HP, the easier to catch. Boss species only at 30% HP or less.', '怪物血越少越易捉。Boss 品種要打到 30% 或以下先捉得。')}</li>
+        <li>${t('Throw a ball any time on your turn. The lower its HP, the better the chance; bosses are harder to catch.', '你嘅回合隨時都可以掟球。佢血越少越易捉；Boss 比較難捉。')}</li>
         <li>${t('Pets level up (to 10, +2% stats a level) from fights they’re in: +20 XP for a win, +5 for a loss. Food from the shop speeds it up.', '寵物喺有份打嘅戰鬥升級（最高 10 級，每級能力 +2%）：贏 +20 經驗，輸 +5。商店嘅食物可以加快。')}</li>
         <li>${t('Releasing a pet gives coins back: more for a higher level and better IVs (5–38).', '放生寵物有金幣：等級越高、IV 越好就越多（5–38）。')}</li>
         <li>${t('Your first catch of each boss species is 1.5× easier.', '每種 Boss 第一次捉，捉中率 ×1.5。')}</li>
@@ -232,7 +232,7 @@ export async function lairScreen() {
         ${sprite(b.idx, 96)}<b>${esc(speciesName(b.idx))}</b><span class="pt-meta">${typeChip(b.type)}${b.caught ? `<span class="small">✓ ${b.caught}</span>` : ''}</span></button>`).join('')}</div></section>
     <details class="card cc-how"><summary>${t('How it works', '點樣玩')}</summary><ul>
       <li>${t('Every 5th tower floor is a boss. Beat it there and it opens here, so you can come back to catch it.', '塔每 5 層有一隻 Boss。喺塔打贏咗，佢就會喺度開放，你可以返嚟捉佢。')}</li>
-      <li>${t('Each boss is matched to your stats. Get it to 30% HP or less, then throw a ball.', '每隻 Boss 都按你嘅能力配對。打到佢 30% 或以下，就可以掟球。')}</li>
+      <li>${t('Each boss is matched to your stats. Throw a ball whenever you like: the lower its HP, the better the chance.', '每隻 Boss 都按你嘅能力配對。隨時都可以掟球：佢血越少就越易捉。')}</li>
       <li>${t('Boss species are hard to catch: bring better balls, or keep coming back.', 'Boss 品種好難捉：帶好啲嘅球，或者不斷返嚟再試。')}</li>
       <li>${t('One free try a day. After that it’s 1 🎟️ or 40 💧 a try.', '每日一次免費。之後每次 1 🎟️ 或者 40 💧。')}</li>
       <li>${t('Beat it without catching: +15 💧 +20 XP.', '打贏但冇捉到：+15 💧 +20 經驗。')}</li></ul></details>`;

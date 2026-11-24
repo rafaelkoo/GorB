@@ -382,13 +382,14 @@ export async function battleScreen(user, id) {
   async function bagSheet() {
     let mine, shop;
     try { [mine, shop] = await Promise.all([api.myBag(), api.shopItems()]); } catch (err) { showError(err); return; }
-    const usedDrinks = bt.state.items || 0, frac = hp.b / max.b, boss = !!snap.b.boss_pet;
+    const usedDrinks = bt.state.items || 0, frac = Math.max(0, hp.b) / max.b;
     const list = shop.filter(it => it.kind === 'ball' || it.kind === 'potion');
     const row = it => {
       const n = mine.items?.[it.id] || 0;
       const no = !n ? t('None left', '冇喇') : it.kind === 'potion' ? (usedDrinks >= 2 ? t('2 drinks used this fight', '今場用咗 2 件') : hp.a >= max.a ? t('Full HP', '血滿') : '')
-        : boss && frac > 0.3 ? t('Get it to 30% HP first', '要打到 30% 以下先') : '';
-      return `<div class="bag-row"><button type="button" class="bag-it" data-it="${it.id}" ${no ? 'disabled' : ''}><span class="sh-ic ${it.kind}" data-b="${it.id}" aria-hidden="true">${itemIcon(it)}</span>
+        : t(`Their HP is ${Math.round(frac * 100)}%: the lower, the better the chance`, `佢仲有 ${Math.round(frac * 100)}% 血：越少越易捉`);
+      const blocked = !n || (it.kind === 'potion' && no);
+      return `<div class="bag-row"><button type="button" class="bag-it" data-it="${it.id}" ${blocked ? 'disabled' : ''}><span class="sh-ic ${it.kind}" data-b="${it.id}" aria-hidden="true">${itemIcon(it)}</span>
           <b>${esc(t(it.en, it.zh))} ×${n}</b><span class="muted small">${esc(no || t(it.desc_en, it.desc_zh))}</span></button>
         <button type="button" class="ghost bag-buy" data-buy="${it.id}" ${mine.coins < it.price ? 'disabled' : ''} aria-label="${esc(t(`Buy 1 ${it.en} for ${it.price} coins`, `用 ${it.price} 金幣買 1 個${it.zh}`))}">＋💧${it.price}</button></div>`;
     };
@@ -444,7 +445,7 @@ export async function battleScreen(user, id) {
       btns += `<a class="button" href="#/pets">🐾 ${t('See your pets', '睇寵物')}</a>`;
     } else if (bt.kind === 'lair') {
       head = won ? t('Boss beaten!', '打贏 Boss！') : t('The boss won this time', '今次 Boss 贏');
-      body = won ? t('It got away, but you earned +15 💧 +20 XP. Catch it next time: throw a ball at 30% HP.', '佢走咗，但你攞到 +15 💧 +20 經驗。下次喺 30% 以下掟球捉佢。') : t('Train, bring a team, try again.', '練勁啲、帶埋隊伍，再嚟。');
+      body = won ? t('It got away, but you earned +15 💧 +20 XP. Catch it next time: the lower its HP, the better a ball works.', '佢走咗，但你攞到 +15 💧 +20 經驗。下次佢血越少，掟球就越易捉到。') : t('Train, bring a team, try again.', '練勁啲、帶埋隊伍，再嚟。');
       btns += `<a class="button" href="#/lair">👑 ${t('Boss Lair', 'Boss 巢穴')}</a>`;
 
     } else if (bt.kind === 'test') {
