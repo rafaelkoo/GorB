@@ -347,8 +347,8 @@ export async function battleScreen(user, id) {
       return `<button type="button" class="bt-mv ${fu ? 'fusion' : ''}" data-mv="${m.id}" style="--c:${moveCol(m)}" ${!myTurn || busyAnim || left === 0 ? 'disabled' : ''}>
         <b>${fu ? '✦ ' : ''}${esc(moveName(m))}</b><span>${typeLine(m)}${m.power > 0 ? ` · ${t('Power', '威力')} ${m.power}` : ''}${left != null ? ` · ${left}/${cap}` : ''}</span>
         <small class="bt-desc">${esc(shortDesc(m))}</small></button>`;
-    }).join('') + (bt.kind === 'tower' || bt.kind === 'lair' || (bt.kind === 'raid' && party.length > 1) ? `<div class="bt-acts">
-        ${bt.kind !== 'raid' ? `<button type="button" class="ghost" id="btBag" ${!myTurn || busyAnim ? 'disabled' : ''}>🎒 ${t('Bag', '背包')}</button>` : ''}
+    }).join('') + (bt.kind === 'tower' || bt.kind === 'lair' || bt.kind === 'raid' ? `<div class="bt-acts">
+        ${bt.kind !== 'raid' || !bt.state.threw ? `<button type="button" class="ghost" id="btBag" ${!myTurn || busyAnim ? 'disabled' : ''}>🎒 ${t('Bag', '背包')}</button>` : ''}
         ${party.length > 1 ? `<button type="button" class="ghost" id="btTeam" ${!myTurn || busyAnim ? 'disabled' : ''}>🔁 ${t('Team', '隊伍')}</button>` : ''}</div>` : '');
     box.querySelector('#btBag')?.addEventListener('click', bagSheet);
     box.querySelector('#btTeam')?.addEventListener('click', teamSheet);
@@ -383,10 +383,12 @@ export async function battleScreen(user, id) {
     let mine, shop;
     try { [mine, shop] = await Promise.all([api.myBag(), api.shopItems()]); } catch (err) { showError(err); return; }
     const usedDrinks = bt.state.items || 0, frac = Math.max(0, hp.b) / max.b;
-    const list = shop.filter(it => it.kind === 'ball' || it.kind === 'potion');
+    const raid = bt.kind === 'raid';
+    const list = shop.filter(it => it.kind === 'ball' || (!raid && it.kind === 'potion'));
     const row = it => {
       const n = mine.items?.[it.id] || 0;
       const no = !n ? t('None left', '冇喇') : it.kind === 'potion' ? (usedDrinks >= 2 ? t('2 drinks used this fight', '今場用咗 2 件') : hp.a >= max.a ? t('Full HP', '血滿') : '')
+        : raid ? t(`A legend: about ${(0.5 * it.val).toFixed(1)}–${(3 * it.val).toFixed(1)}%, better as the group wears it down. One ball per attack.`, `傳說級：大約 ${(0.5 * it.val).toFixed(1)}–${(3 * it.val).toFixed(1)}%，group 打得越殘越易。每次攻擊只可以掟一個。`)
         : t(`Their HP is ${Math.round(frac * 100)}%: the lower, the better the chance`, `佢仲有 ${Math.round(frac * 100)}% 血：越少越易捉`);
       const blocked = !n || (it.kind === 'potion' && no);
       return `<div class="bag-row"><button type="button" class="bag-it" data-it="${it.id}" ${blocked ? 'disabled' : ''}><span class="sh-ic ${it.kind}" data-b="${it.id}" aria-hidden="true">${itemIcon(it)}</span>
@@ -441,7 +443,9 @@ export async function battleScreen(user, id) {
     if (caught) {
       head = t(`Caught ${fighterName(snap.b)}! 🎉`, `捉到 ${fighterName(snap.b)}！🎉`);
       body = t(`IV grade ${ivGrade(caught.iv)}. It’s in your box.`, `IV 評級 ${ivGrade(caught.iv)}。已經放咗入寵物箱。`)
-        + (bt.kind === 'tower' ? ' ' + t(`Floor ${bt.floor} counts as cleared.`, `第 ${bt.floor} 層當過咗。`) : '');
+        + (bt.kind === 'tower' ? ' ' + t(`Floor ${bt.floor} counts as cleared.`, `第 ${bt.floor} 層當過咗。`) : '')
+        + (bt.kind === 'raid' ? ' ' + t(`A legend! Your attack still counts for ${bt.state.counts ?? 0} damage.`, `傳說級！你今次攻擊照計 ${bt.state.counts ?? 0} 點傷害。`) : '');
+      if (bt.kind === 'raid') head = '👑 ' + head;
       btns += `<a class="button" href="#/pets">🐾 ${t('See your pets', '睇寵物')}</a>`;
     } else if (bt.kind === 'lair') {
       head = won ? t('Boss beaten!', '打贏 Boss！') : t('The boss won this time', '今次 Boss 贏');

@@ -119,7 +119,7 @@ export async function petsScreen(user) {
   const teamIds = () => pets.filter(p => p.slot != null).sort((a, b) => a.slot - b.slot).map(p => p.id);
   const saveTeam = async ids => { try { await api.setTeam(ids); await load(); draw(); } catch (err) { showError(err); } };
 
-  const card = p => `<button type="button" class="pt-card ${p.evolved ? 'evo' : ''}" data-pet="${p.id}">${sprite(p.species, 64, petName(p), p.evolved)}
+  const card = p => `<button type="button" class="pt-card ${p.evolved ? 'evo' : ''} ${p.legend ? 'legend' : ''}" data-pet="${p.id}">${sprite(p.species, 64, petName(p), p.evolved)}
       <b>${esc(petName(p))}</b><span class="pt-lv">Lv ${p.level || 1}</span><span class="pt-meta">${typeChip(p.type)}<span class="pt-grade g-${ivGrade(p.iv)}" title="${t('IV grade', 'IV 評級')}">${ivGrade(p.iv)}</span></span></button>`;
   function draw() {
     const team = teamIds().map(id => pets.find(p => p.id === id));
@@ -172,7 +172,9 @@ export async function petsScreen(user) {
       <div class="pt-head">${sprite(p.species, 96, petName(p), p.evolved)}<div><h3>${esc(petName(p))}</h3>
         <span class="pt-meta">${typeChip(p.type)}${p.boss ? `<span class="pt-boss">👑 ${t('Boss', 'Boss')}</span>` : ''}<span class="pt-grade g-${ivGrade(p.iv)}">${ivGrade(p.iv)}</span></span>
         ${p.nickname || p.evolved ? `<span class="muted small">${esc(p.evolved ? t(`Evolved from ${speciesName(p.species)}`, `由${speciesName(p.species)}進化`) : speciesName(p.species))}</span>` : ''}</div></div>
-      ${p.evolved ? `<p class="pt-evo done">✨ ${t(`Evolved: +25% to every stat, and its own move: ${mvLine(p.sig_move)}`, `已進化：全部能力 +25%，專屬招式「${mvLine(p.sig_move)}」`)}</p>` : `<div class="pt-evo">
+      ${p.legend ? `<div class="pt-evo legend"><b>👑 ${t('Legendary: caught from a group boss', '傳說級：由 group 魔王度捉返嚟')}</b>
+        <span class="small">${t('Legends don’t evolve.', '傳說級唔會進化。')} ${lv >= 20 ? `✓ ${t(`Learned the strongest move: ${mvLine(p.ultimate)}`, `已學識最強招式「${mvLine(p.ultimate)}」`)}` : t(`At level 20 (now ${lv}) it learns the strongest move: ${mvLine(p.ultimate)}`, `到 20 級（而家 ${lv}）會學識最強招式「${mvLine(p.ultimate)}」`)}</span></div>`
+      : p.evolved ? `<p class="pt-evo done">✨ ${t(`Evolved: +25% to every stat, and its own move: ${mvLine(p.sig_move)}`, `已進化：全部能力 +25%，專屬招式「${mvLine(p.sig_move)}」`)}</p>` : `<div class="pt-evo">
         <b>✨ ${t(`Path 1 · Evolve into ${speciesName(p.species, true)}`, `路線一 · 進化做${speciesName(p.species, true)}`)}</b>
         <span class="small">${t(`+25% to every stat and its own move: ${mvLine(p.sig_move)}`, `全部能力 +25%，專屬招式「${mvLine(p.sig_move)}」`)}</span>
         <span class="small">${lv >= 10 ? '✓' : '○'} ${t(`Level 10 (now ${lv})`, `10 級（而家 ${lv}）`)}　${(p.gym_days || 0) >= 20 ? '✓' : '○'} ${t(`20 gym days in your team (${p.gym_days || 0})`, `喺隊入面陪你去 20 日 gym（${p.gym_days || 0}）`)}</span>
@@ -312,7 +314,12 @@ export async function dexScreen() {
         <ul class="dx-sets">${(dx.sets || []).map(setRow).join('')}</ul>
         <p class="muted small">${t('Anything you’ve ever caught counts, even if you released it.', '捉過就計，放生咗都計。')}</p></section>
       <section class="card"><div class="card-head"><h3>🗼 ${t('Tower monsters', '塔怪物')}</h3></div><div class="dx-grid">${sp.filter(x => !x.boss).map(tile).join('')}</div></section>
-      <section class="card"><div class="card-head"><h3>👑 ${t('Bosses', 'Boss')}</h3></div><div class="dx-grid">${sp.filter(x => x.boss).map(tile).join('')}</div></section>`;
+      <section class="card"><div class="card-head"><h3>👑 ${t('Bosses', 'Boss')}</h3></div><div class="dx-grid">${sp.filter(x => x.boss).map(tile).join('')}</div></section>
+      <section class="card"><div class="card-head"><h3>🌟 ${t('Legends', '傳說')}</h3><span class="muted small">${(dx.legend || []).filter(x => x.caught).length} / ${(dx.legend || []).length}</span></div>
+        <p class="muted small">${t('The weekly group bosses. One ball per attack, and the odds are tiny (better as your group wears it down).', '每週 group 魔王。每次攻擊只可以掟一個球，機會極低（group 打得越殘越易）。')}</p>
+        <div class="dx-grid">${(dx.legend || []).map(s => s.caught
+          ? `<div class="dx-tile legend">${sprite(s.idx, 64, speciesName(s.idx))}<b>${esc(speciesName(s.idx))}</b><span class="pt-meta">${typeChip(s.type)}</span><span class="muted small">${s.have ? t(`You have ${s.have}`, `你有 ${s.have} 隻`) : t('Caught before', '捉過')}</span></div>`
+          : `<div class="dx-tile unknown">${sprite(s.idx, 64, t('Not caught yet', '未捉到'), false, true)}<b>？？？</b><span class="muted small">${t('Group boss', 'Group 魔王')}</span></div>`).join('')}</div></section>`;
     wireSprites(el);
     el.querySelectorAll('[data-set]').forEach(b => b.onclick = async () => {
       b.disabled = true;
