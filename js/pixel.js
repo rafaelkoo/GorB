@@ -842,7 +842,14 @@ export const BOSSES = [
   { en: 'Binge Kraken', zh: '追劇八爪魚', evo: { en: 'Workout-Video Kraken', zh: '跟片運動八爪魚' } },
   { en: 'Excuse Golem', zh: '藉口魔像', evo: { en: 'Discipline Golem', zh: '自律魔像' } },
   { en: 'Couch King', zh: '梳化王', evo: { en: 'Bench-Press King', zh: '臥推王' } },
-  { en: 'Midnight Hydra', zh: '宵夜九頭蛇', evo: { en: 'Macro Hydra', zh: '營養九頭蛇' } }
+  { en: 'Midnight Hydra', zh: '宵夜九頭蛇', evo: { en: 'Macro Hydra', zh: '營養九頭蛇' } },
+  // 18–23: the weekly group bosses (raid only)
+  { en: 'Holiday Feast Titan', zh: '節日大餐巨人' },
+  { en: 'Deadline Storm', zh: '死線風暴' },
+  { en: 'Winter Night Wraith', zh: '冬夜幽靈' },
+  { en: 'Hangover Ogre', zh: '宿醉食人魔' },
+  { en: 'Gym-Closed Gargoyle', zh: '休館石像鬼' },
+  { en: 'Flake Fox', zh: '放飛機狐' }
 ];
 // state: 'idle' | 'ko' | 'back' (seen from behind: your pet in a battle). 48×40 scene pixels.
 // evolved: the excuse turned motivation: a sweatband, a gold glow and sparkles.
@@ -869,7 +876,7 @@ export function drawBoss(canvas, idx, frame = 0, state = 'idle', evolved = false
   };
   const evoDone = evolved && drawEvo(r, idx % 18, base, b, frame, ko, back, eyes, crown);
   const backDone = !evoDone && back && drawBackSprite(r, idx % 18, base, b, frame, crown);
-  switch (evoDone || backDone ? -1 : idx % 18) {
+  switch (evoDone || backDone ? -1 : idx % BOSSES.length) {
     case 0: case 16: { // couch (16: the Couch King, bigger cushions and a crown)
       const king = idx % 18 === 16;
       const y = 14 + base + b;
@@ -1029,6 +1036,74 @@ export function drawBoss(canvas, idx, frame = 0, state = 'idle', evolved = false
       r(16, y + 14, 16, 8, '#f3f1ea'); r(18, y + 16, 12, 1, OUT); r(18, y + 18, 9, 1, OUT); r(18, y + 20, 11, 1, OUT);   // a sign full of excuses
       brick(2, y + 10, 6, 14); brick(40, y + 10, 6, 14);
       brick(12, y + 26, 8, 8); brick(28, y + 26, 8, 8);
+      break;
+    }
+    // ----- 18–23: the weekly group bosses (raid only) -----
+    case 18: { // Holiday Feast Titan: paper crown, Christmas jumper, a roast on a platter
+      const y = 2 + base + b;
+      r(10, y + 8, 28, 28, '#7a2c2c'); for (let k = 0; k < 4; k++) { r(12 + k * 7, y + 22, 3, 3, '#f3f1ea'); r(14 + k * 7, y + 26, 2, 2, '#45b45a'); }   // jumper
+      r(14, y, 20, 12, '#eebc94'); r(14, y - 3, 20, 3, '#f2c230'); for (let k = 0; k < 4; k++) r(14 + k * 6, y - 5, 3, 2, '#f2c230');   // head + paper crown
+      eyes(17, 27, y + 3); r(15, y + 7, 3, 2, '#f59ab8'); r(30, y + 7, 3, 2, '#f59ab8');
+      if (!ko) { r(20, y + 8, 8, 3, OUT); r(21, y + 8, 6, 1, '#fff'); }
+      r(2, y + 18 - frame, 14, 3, '#dfe3dc'); r(4, y + 13 - frame, 10, 5, '#b7672f'); r(6, y + 12 - frame, 6, 2, '#d9884a'); r(13, y + 12 - frame, 2, 3, '#f3f1ea');   // the roast
+      r(38, y + 14, 6, 8, '#7a2c2c'); r(12, y + 36, 8, 2, '#3a2416'); r(28, y + 36, 8, 2, '#3a2416');
+      break;
+    }
+    case 19: { // Deadline Storm: a black cloud, lightning, a calendar page and papers flying
+      const y = 4 + base + b;
+      r(6, y + 6, 36, 16, '#3a3d44'); r(10, y + 2, 14, 6, '#3a3d44'); r(24, y, 14, 8, '#3a3d44'); r(6, y + 20, 36, 2, '#2b2b30');
+      eyes(15, 28, y + 9, '#f2d245');
+      if (!ko) { r(14, y + 8, 6, 1, OUT); r(28, y + 8, 6, 1, OUT); r(19, y + 16, 10, 2, OUT); }   // angry brows + mouth
+      r(30 + frame * 2, y + 22, 3, 5, '#f2d245'); r(28 + frame * 2, y + 26, 3, 5, '#f2d245'); r(26 + frame * 2, y + 30, 3, 3, '#f2d245');   // lightning
+      r(8, y + 24, 12, 12, '#f8f8f2'); r(8, y + 24, 12, 3, '#e23b3b'); r(11, y + 29, 6, 1, OUT); r(11, y + 31, 4, 1, OUT);   // calendar page
+      for (const [px, py] of frame ? [[40, 26], [2, 10]] : [[42, 30], [0, 14]]) { r(px, y + py, 5, 6, '#eef0ea'); r(px + 1, y + py + 2, 3, 1, '#8a8f98'); }   // papers
+      break;
+    }
+    case 20: { // Winter Night Wraith: a hooded dark shape, a crescent moon, snow
+      const y = 4 + base + b;
+      r(30, y - 2, 8, 8, '#f2e7a6'); r(33, y - 2, 6, 6, '#1d2340');   // crescent moon
+      r(14, y + 4, 20, 30, '#1d2340'); r(12, y + 10, 24, 22, '#1d2340'); r(16, y + 2, 16, 4, '#28305a');   // hooded cloak
+      for (let k = 0; k < 4; k++) r(12 + k * 6 + (frame ? 3 : 0), y + 34, 3, 3, '#1d2340');
+      r(18, y + 8, 12, 10, '#0b0f22');   // dark face
+      if (ko) { r(20, y + 12, 3, 1, '#9fd3f0'); r(25, y + 12, 3, 1, '#9fd3f0'); } else { r(20, y + 11, 3, 3, '#9fd3f0'); r(25, y + 11, 3, 3, '#9fd3f0'); }   // icy eyes
+      r(6, y + 14 - frame, 6, 4, '#28305a'); r(36, y + 14 + frame, 6, 4, '#28305a');
+      for (const [sx, sy] of [[4, 4], [42, 12], [8, 28], [40, 30], [24, 0]]) r(sx, y + sy + frame, 1, 1, '#ffffff');   // snow
+      break;
+    }
+    case 21: { // Hangover Ogre: green, bandaged, dizzy, bottles at its feet
+      const y = 4 + base + b;
+      r(10, y + 4, 28, 30, '#7aa05a'); r(8, y + 12, 4, 14, '#7aa05a'); r(36, y + 12, 4, 14, '#7aa05a'); r(12, y + 2, 24, 4, '#7aa05a');
+      r(10, y + 4, 28, 3, '#f3f1ea'); r(30, y + 2, 3, 3, '#f3f1ea');   // head bandage
+      if (ko) { r(15, y + 12, 5, 1, OUT); r(27, y + 12, 5, 1, OUT); }
+      else { r(15, y + 10, 5, 5, '#fff'); r(16, y + 11, 3, 3, OUT); r(17, y + 12, 1, 1, '#fff'); r(27, y + 10, 5, 5, '#fff'); r(28, y + 11, 3, 3, OUT); r(29, y + 12, 1, 1, '#fff'); }   // swirly eyes
+      if (!ko) { r(18, y + 20, 12, 2, OUT); r(20, y + 22, 2, 2, '#f3f1ea'); }
+      r(12, y + 34, 9, 3, '#5a7a40'); r(27, y + 34, 9, 3, '#5a7a40');
+      r(2, y + 28, 3, 8, '#45a060'); r(3, y + 26, 1, 2, '#45a060'); r(43, y + 30, 3, 6, '#a8743f'); r(44, y + 28, 1, 2, '#a8743f');   // bottles
+      for (const [sx, sy] of frame ? [[12, -2], [34, 0]] : [[16, -1], [30, -2]]) { r(sx, y + sy, 2, 2, '#f2d245'); }   // dizzy stars
+      break;
+    }
+    case 22: { // Gym-Closed Gargoyle: stone wings, a CLOSED sign, a chain and padlock
+      const y = 4 + base + b;
+      r(2, y + 4 - frame, 10, 14, '#6a6f78'); r(36, y + 4 - frame, 10, 14, '#6a6f78'); r(2, y + 18 - frame, 4, 4, '#6a6f78'); r(42, y + 18 - frame, 4, 4, '#6a6f78');   // wings
+      r(12, y + 6, 24, 28, '#8a8f98'); r(14, y + 2, 6, 5, '#8a8f98'); r(28, y + 2, 6, 5, '#8a8f98');   // body + horns
+      eyes(16, 27, y + 9, '#e23b3b');
+      if (!ko) { r(19, y + 15, 10, 2, OUT); r(20, y + 15, 1, 2, '#fff'); r(27, y + 15, 1, 2, '#fff'); }
+      r(10, y + 20, 28, 10, '#e23b3b'); r(11, y + 21, 26, 8, '#f8f8f2');   // CLOSED sign
+      for (let k = 0; k < 5; k++) r(13 + k * 5, y + 23, 3, 4, '#e23b3b');
+      r(6, y + 24, 4, 1, '#a4abb2'); r(38, y + 24, 4, 1, '#a4abb2'); r(22, y + 30, 5, 5, '#f2c230'); r(23, y + 28, 3, 2, '#a4abb2');   // chain + padlock
+      r(14, y + 34, 8, 3, '#6a6f78'); r(26, y + 34, 8, 3, '#6a6f78');
+      break;
+    }
+    case 23: { // Flake Fox: orange, looking at its phone ("can't make it"), already half turned to run
+      const y = 8 + base + b;
+      r(8, y + 14, 26, 14, '#f19a33'); r(14, y + 22, 12, 6, '#f8f8f2');   // body + white belly
+      r(26, y + 2, 14, 14, '#f19a33'); r(26, y - 2, 4, 5, '#f19a33'); r(36, y - 2, 4, 5, '#f19a33'); r(27, y - 1, 2, 2, '#2b2b30'); r(37, y - 1, 2, 2, '#2b2b30');   // head + ears
+      r(34, y + 10, 8, 5, '#f8f8f2'); r(41, y + 10, 2, 2, OUT);   // snout
+      eyes(29, 35, y + 5);
+      r(0, y + 12 - frame, 10, 5, '#f19a33'); r(0, y + 12 - frame, 3, 5, '#f8f8f2');   // tail
+      r(10, y + 28, 4, 6, '#d9781f'); r(28, y + 28, 4, 6, '#d9781f'); r(16 + frame * 2, y + 28, 4, 6, '#d9781f');
+      r(42, y + 16, 5, 9, '#2b2b30'); r(43, y + 17, 3, 6, '#9fd3f0');   // phone
+      r(32, y - 10, 14, 7, '#f8f8f2'); r(36, y - 3, 3, 2, '#f8f8f2'); for (let k = 0; k < 3; k++) r(35 + k * 3, y - 7, 2, 2, '#8a8f98');   // "…" bubble
       break;
     }
     case 17: { // midnight hydra: three hungry heads
