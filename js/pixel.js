@@ -462,6 +462,32 @@ export function drawChest(canvas, state = 'shut', frame = 0, big = false) {
   ctx.drawImage(lo, (canvas.width - 40 * s) / 2, (canvas.height - 36 * s) / 2, 40 * s, 36 * s);
 }
 
+// From behind: paint over what's left of the face (mouths, teeth, pupils) with the body colour around it,
+// so the same sprite works as the back of your pet in a battle.
+const FACE_COLS = new Set(['255,255,255', '35,26,23', '42,31,24', '26,26,26', '242,59,59']);
+function backView(c) {
+  const W = 48, H = 40, d = c.getImageData(0, 0, W, H), px = d.data;
+  const key = i => `${px[i]},${px[i + 1]},${px[i + 2]}`;
+  const isFace = i => px[i + 3] === 255 && FACE_COLS.has(key(i));
+  for (let pass = 0; pass < 6; pass++) {
+    const fix = [];
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+      const i = (y * W + x) * 4; if (!isFace(i)) continue;
+      const votes = {};
+      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [-1, -1], [1, -1], [-1, 1]]) {
+        const nx = x + dx, ny = y + dy; if (nx < 0 || ny < 0 || nx >= W || ny >= H) continue;
+        const j = (ny * W + nx) * 4; if (px[j + 3] !== 255 || isFace(j)) continue;
+        const k = key(j); votes[k] = (votes[k] || 0) + 1;
+      }
+      const best = Object.entries(votes).sort((a, b) => b[1] - a[1])[0];
+      if (best) fix.push([i, best[0].split(',').map(Number)]);
+    }
+    if (!fix.length) break;
+    for (const [i, [r, g, b]] of fix) { px[i] = r; px[i + 1] = g; px[i + 2] = b; }
+  }
+  c.putImageData(d, 0, 0);
+}
+
 // ---------- weekly bosses: the things that keep you from the gym ----------
 export const BOSSES = [
   { en: 'The Couch Monster', zh: '梳化怪' },
@@ -485,13 +511,14 @@ export const BOSSES = [
   { en: 'Couch King', zh: '梳化王' },
   { en: 'Midnight Hydra', zh: '宵夜九頭蛇' }
 ];
-// state: 'idle' | 'ko'. 48×40 scene pixels.
+// state: 'idle' | 'ko' | 'back' (seen from behind: your pet in a battle). 48×40 scene pixels.
 export function drawBoss(canvas, idx, frame = 0, state = 'idle') {
   const lo = document.createElement('canvas'); lo.width = 48; lo.height = 40;
   const c = lo.getContext('2d');
   const r = (x, y, w, h, col) => { c.fillStyle = col; c.fillRect(x, y, w, h); };
-  const ko = state === 'ko', b = ko ? 0 : frame;            // breathing bob
+  const ko = state === 'ko', back = state === 'back', b = ko ? 0 : frame;            // breathing bob
   const eyes = (x1, x2, y, col = '#fff') => {
+    if (back) return;   // no face from behind
     if (ko) { for (const x of [x1, x2]) { r(x, y, 1, 1, OUT); r(x + 2, y, 1, 1, OUT); r(x + 1, y + 1, 1, 1, OUT); r(x, y + 2, 1, 1, OUT); r(x + 2, y + 2, 1, 1, OUT); } return; }
     for (const x of [x1, x2]) { r(x, y, 3, 3, col); r(x + 1 + frame, y + 1, 1, 2, OUT); }
     r(x1 - 1, y - 2, 4, 1, OUT); r(x2, y - 2, 4, 1, OUT);   // angry brows
@@ -682,6 +709,7 @@ export function drawBoss(canvas, idx, frame = 0, state = 'idle') {
     default: break;
   }
   if (ko) { r(18, 2, 2, 2, '#f2d245'); r(26, 0, 2, 2, '#f2d245'); r(32, 3, 2, 2, '#f2d245'); }   // stars
+  if (back) backView(c);
   const ctx = canvas.getContext('2d'); ctx.imageSmoothingEnabled = false; ctx.clearRect(0, 0, canvas.width, canvas.height);
   const s = Math.floor(Math.min(canvas.width / 48, canvas.height / 40));
   ctx.drawImage(lo, (canvas.width - 48 * s) / 2, (canvas.height - 40 * s) / 2, 48 * s, 40 * s);
@@ -732,8 +760,8 @@ export function drawBattle(canvas, me, them, frame = 0, fx = null) {
   if (!blinkMe && !me.gone) {
     if (me.monster != null) {   // one of your pets, facing the other way, a little bigger
       const t3 = canvas._bpet || (canvas._bpet = document.createElement('canvas')); t3.width = 48; t3.height = 40;
-      drawBoss(t3, me.monster, frame, me.fainted ? 'ko' : 'idle');
-      c.save(); c.translate(Math.round(mx + 36), Math.round(my - 54)); c.scale(-1.5, 1.5); c.drawImage(t3, 0, 0); c.restore();
+      drawBoss(t3, me.monster, frame, me.fainted ? 'ko' : 'back');   // from behind, like you
+      c.drawImage(t3, Math.round(mx - 36), Math.round(my - 54), 72, 60);
     } else charInto(c, mx, my, me.avatar, me.fainted ? 'sit' : 'back', frame, 2);
   }
   // a ball thrown at them: arcs over, then wobbles (fx.ball: 0..1 throw, fx.wobble: count, fx.caught)

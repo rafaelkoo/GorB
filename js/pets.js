@@ -3,7 +3,7 @@
 import * as api from './supa.js';
 import { t } from './i18n.js';
 import { esc, render, toast, showError, slideChips } from './ui.js';
-import { drawBoss, BOSSES } from './pixel.js';
+import { drawBoss, BOSSES, drawPortrait, cleanAvatar } from './pixel.js';
 import { MOVE_TYPES } from './battle.js';
 
 const reduced = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -101,13 +101,14 @@ export async function shopScreen(user) {
 }
 
 // ---------------- your pets: the team and the box ----------------
-export async function petsScreen() {
+export async function petsScreen(user) {
   const el = render(`<header class="page-head"><div><h2>🐾 ${t('Pets', '寵物')}</h2></div><a class="link" href="#/me">‹ ${t('Me', '我')}</a></header>
     ${advNav('pets')}<div id="ptBody"><p class="muted">${t('Loading…', '載入緊…')}</p></div>`);
   wireAdvNav(el);
-  let pets;
+  let pets, prof = null;
   const load = async () => { pets = await api.myPets(); };
-  try { await load(); } catch (err) { showError(err); return; }
+  try { [, prof] = await Promise.all([load(), user ? api.getProfile(user.id).catch(() => null) : null]); } catch (err) { showError(err); return; }
+  const myAv = user ? cleanAvatar(prof?.avatar, user.id) : null;
   const teamIds = () => pets.filter(p => p.slot != null).sort((a, b) => a.slot - b.slot).map(p => p.id);
   const saveTeam = async ids => { try { await api.setTeam(ids); await load(); draw(); } catch (err) { showError(err); } };
 
@@ -119,7 +120,7 @@ export async function petsScreen() {
     el.querySelector('#ptBody').innerHTML = `
       <section class="card"><div class="card-head"><h3>${t('Your team', '你嘅隊伍')}</h3><span class="muted small">${team.length + 1} / 6</span></div>
         <p class="muted small">${t('You fight first; your pets come in when you switch or go down. Tower and Boss Lair only.', '你先出場；換人或者你倒低咗，寵物就會上。只限塔同 Boss 巢穴。')}</p>
-        <div class="pt-team"><div class="pt-card me"><span class="pt-you" aria-hidden="true">🙋</span><b>${t('You', '你')}</b><span class="pt-meta muted small">${t('Leader', '隊長')}</span></div>
+        <div class="pt-team"><div class="pt-card me">${myAv ? `<canvas id="ptMe" width="64" height="68" role="img" aria-label="${t('Your character', '你嘅角色')}"></canvas>` : `<span class="pt-you" aria-hidden="true">🙋</span>`}<b>${esc(prof?.display_name || t('You', '你'))}</b><span class="pt-meta muted small">${t('Leader', '隊長')}</span></div>
           ${team.map(card).join('')}${Array.from({ length: 5 - team.length }, () => `<div class="pt-card empty" aria-hidden="true">＋</div>`).join('')}</div></section>
       <section class="card"><div class="card-head"><h3>${t('Box', '寵物箱')}</h3><span class="muted small">${pets.length}</span></div>
         ${box.length ? `<div class="pt-box">${box.map(card).join('')}</div>`
@@ -133,6 +134,8 @@ export async function petsScreen() {
         <li>${t('A move scroll teaches a pet one extra move (its type or Normal). Teaching another replaces it.', '招式卷軸可以教寵物多一招（同屬性或者普通）。再教就會換走。')}</li>
         <li>${t('A bigger team makes the monsters tougher too, so it helps but doesn’t walk through everything.', '隊伍越大，怪物都會越強，所以有幫助，但唔會一路無敵。')}</li></ul></details>`;
     wireSprites(el);
+    const me = el.querySelector('#ptMe');
+    if (me) { let f = 0; drawPortrait(me, myAv, 'stand', 0); const tk = setInterval(() => { if (!document.body.contains(me)) return clearInterval(tk); if (!reduced()) { f ^= 1; drawPortrait(me, myAv, 'stand', f); } }, 560); }
     el.querySelectorAll('[data-pet]').forEach(b => b.onclick = () => petSheet(pets.find(p => p.id === b.dataset.pet)));
   }
   let bag = null, moves = null;
