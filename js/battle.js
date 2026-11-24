@@ -237,7 +237,8 @@ export async function battleScreen(user, id) {
         <canvas id="btCv" width="${BW * 2}" height="${BH * 2}" role="img" aria-label="${t('Battle', '對戰')}"></canvas>
         <div class="bt-hud them"><div class="bt-nm"><b>${esc(fighterName(snap[th]))}</b><span>Lv ${snap[th].level}</span></div><div class="bt-hp"><i id="hpThem"></i></div></div>
         <div class="bt-hud me"><div class="bt-nm"><b id="nmMe">${esc(fighterName(snap[me]))}</b><span>Lv ${snap[me].level}</span></div><div class="bt-hp"><i id="hpMe"></i></div><span class="bt-num" id="hpNum"></span>
-          ${snap.party ? `<span class="bt-party" id="btParty" aria-label="${t('Your team', '你嘅隊伍')}"></span>` : ''}</div>
+          ${snap.party ? `<span class="bt-party" id="btParty" aria-label="${t('Your team', '你嘅隊伍')}"></span>` : ''}
+          ${bt.kind === 'raid' ? `<span class="bt-left" id="btLeft"></span>` : ''}</div>
       </div>
       <div class="bt-box" id="btMsg" aria-live="polite"></div>
       <div class="bt-moves" id="btMoves"></div>
@@ -257,7 +258,10 @@ export async function battleScreen(user, id) {
     active = to; snap.a = snap.party[to]; hp.a = party[to].hp; max.a = party[to].max;
     const n = el.querySelector('#nmMe'); if (n) n.textContent = fighterName(snap.a);
   };
-  const dots = () => { const d = document.body.contains(cv) && el.querySelector('#btParty'); if (!d) return;
+  // the group boss: an attack is 8 of your team's moves (switching and the ball don't count)
+  let movesUsed = bt.state.moves || 0;
+  const leftTxt = () => { const l = el.querySelector('#btLeft'); if (l) { const n = Math.max(0, 8 - movesUsed); l.textContent = t(`${n} move${n === 1 ? '' : 's'} left in this attack`, `今次攻擊仲有 ${n} 招`); l.classList.toggle('low', n <= 2); } };
+  const dots = () => { leftTxt(); const d = document.body.contains(cv) && el.querySelector('#btParty'); if (!d) return;
     d.innerHTML = party.map((x, i) => `<i class="${(i === active ? hp.a : x.hp) <= 0 ? 'out' : ''} ${i === active ? 'on' : ''}"></i>`).join(''); };
   let frame = 0, fx = null, busyAnim = false, shownLog = bt.log.length, wasReady = false;
   const fainted = side => hp[side] <= 0;
@@ -327,7 +331,7 @@ export async function battleScreen(user, id) {
   async function sync() {
     const fresh = await api.getBattle(id); if (!fresh) return;
     const extra = fresh.log.slice(shownLog);
-    shownLog = fresh.log.length; bt = fresh;
+    shownLog = fresh.log.length; bt = fresh; movesUsed = fresh.state.moves || 0;
     if (extra.length) await play(extra);
     Object.assign(hp, fresh.state.hp); Object.assign(max, fresh.state.max);
     if (fresh.state.party) { party = fresh.state.party.map(x => ({ ...x })); active = fresh.state.active || 0; snap.a = fresh.snap.a; el.querySelector('#nmMe').textContent = fighterName(snap.a); }
@@ -474,7 +478,8 @@ export async function battleScreen(user, id) {
       body = won ? t(`+${r.xp} XP +${r.coins} 💧`, `+${r.xp} 經驗 +${r.coins} 💧`) : t('Train, get stronger, come back.', '去 gym 練勁啲再嚟。');
       btns += `<button type="button" id="btNext">${won ? t('Next floor · 1 🎟️', '下一層 · 1 🎟️') : t('Try again · 1 🎟️', '再試 · 1 🎟️')}</button>`;
     } else if (bt.kind === 'raid') {
-      head = t('Attack done!', '攻擊完成！');
+      const used8 = (bt.state.moves || 0) >= 8, out = (bt.state.party || []).every(x => x.hp <= 0) || bt.state.hp?.a <= 0 && !(bt.state.party || []).some(x => x.hp > 0);
+      head = bt.state.caught ? head : used8 ? t('8 moves used: attack done!', '用晒 8 招：今次攻擊完成！') : out ? t('Your team is down: attack done!', '成隊倒晒：今次攻擊完成！') : t('Attack done!', '攻擊完成！');
       const tb = bt.state.pets ? t(` (your ${bt.state.pets} pet${bt.state.pets > 1 ? 's' : ''} +${bt.state.pets * 10}%)`, `（${bt.state.pets} 隻寵物 +${bt.state.pets * 10}%）`) : '';
       const rc = bt.state.coins ?? (5 + Math.floor((bt.state.counts ?? 0) / 20));
       body = t(`It counts for ${bt.state.counts ?? 0} damage on the group boss${tb}${bt.state.mult > 1 ? ` (underdog ×${bt.state.mult})` : ''}. +10 XP +${rc} 💧`, `你為 group 打咗魔王 ${bt.state.counts ?? 0} 點傷害${tb}${bt.state.mult > 1 ? `（以弱勝強 ×${bt.state.mult}）` : ''}。+10 經驗 +${rc} 💧`);

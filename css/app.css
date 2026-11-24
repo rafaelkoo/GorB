@@ -1131,3 +1131,4 @@ canvas.dex-shadow { filter: brightness(0) opacity(.45); }
 .pt-add > span:first-child { font-size: 1.6rem; line-height: 1; }
 @media (prefers-reduced-motion: reduce) { .pt-slot.lifted .pt-card { transform: none; transition: none; } }
 .ut-order { margin: 0 0 8px; color: var(--dust); }
+.bt-left { display: block; margin-top: 4px; font-size: .78rem; font-weight: 600; color: #4a4a4a; } .bt-left.low { color: #c0392b; }
