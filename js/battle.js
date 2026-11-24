@@ -23,6 +23,8 @@ const monsterName = s => {
   return s.raid ? t(`Boss: ${n}`, `魔王：${n}`) : s.boss_floor ? `Boss ${n}` : s.elite ? t(`Elite ${n}`, `精英${n}`) : n;
 };
 const speciesNm = (i, evo) => { const b = BOSSES[i % BOSSES.length], n = evo && b.evo ? b.evo : b; return t(n.en, n.zh); };
+// a pet shows its own level (its growth); in the damage maths it fights at your level, since its power comes from your training
+const lvOf = s => (s?.pet ? (s.pet_level ?? 1) : s?.level);
 const fighterName = s => (s.pet ? (s.name || speciesNm(s.species, s.evolved)) : s.monster != null ? monsterName(s) : s.name || '?');
 export const towerReward = n => ({ xp: 20 + 4 * n + (n % 5 === 0 ? 30 : 0), coins: 5 + n + (n % 5 === 0 ? 15 : 0) });
 // replaying a floor you've cleared: 30% of its first-clear reward, every win
@@ -236,7 +238,7 @@ export async function battleScreen(user, id) {
       <div class="bt-stage">
         <canvas id="btCv" width="${BW * 2}" height="${BH * 2}" role="img" aria-label="${t('Battle', '對戰')}"></canvas>
         <div class="bt-hud them"><div class="bt-nm"><b>${esc(fighterName(snap[th]))}</b><span>Lv ${snap[th].level}</span></div><div class="bt-hp"><i id="hpThem"></i></div></div>
-        <div class="bt-hud me"><div class="bt-nm"><b id="nmMe">${esc(fighterName(snap[me]))}</b><span>Lv ${snap[me].level}</span></div><div class="bt-hp"><i id="hpMe"></i></div><span class="bt-num" id="hpNum"></span>
+        <div class="bt-hud me"><div class="bt-nm"><b id="nmMe">${esc(fighterName(snap[me]))}</b><span id="lvMe">Lv ${lvOf(snap[me])}</span></div><div class="bt-hp"><i id="hpMe"></i></div><span class="bt-num" id="hpNum"></span>
           ${snap.party ? `<span class="bt-party" id="btParty" aria-label="${t('Your team', '你嘅隊伍')}"></span>` : ''}
           ${bt.kind === 'raid' ? `<span class="bt-left" id="btLeft"></span>` : ''}</div>
       </div>
@@ -257,6 +259,7 @@ export async function battleScreen(user, id) {
     if (party[active]) party[active].hp = Math.max(0, hp.a);
     active = to; snap.a = snap.party[to]; hp.a = party[to].hp; max.a = party[to].max;
     const n = el.querySelector('#nmMe'); if (n) n.textContent = fighterName(snap.a);
+    const l = el.querySelector('#lvMe'); if (l) l.textContent = `Lv ${lvOf(snap.a)}`;
   };
   // the group boss: an attack is 8 of your team's moves (switching and the ball don't count)
   let movesUsed = bt.state.moves || 0;
@@ -334,7 +337,7 @@ export async function battleScreen(user, id) {
     shownLog = fresh.log.length; bt = fresh; movesUsed = fresh.state.moves || 0;
     if (extra.length) await play(extra);
     Object.assign(hp, fresh.state.hp); Object.assign(max, fresh.state.max);
-    if (fresh.state.party) { party = fresh.state.party.map(x => ({ ...x })); active = fresh.state.active || 0; snap.a = fresh.snap.a; el.querySelector('#nmMe').textContent = fighterName(snap.a); }
+    if (fresh.state.party) { party = fresh.state.party.map(x => ({ ...x })); active = fresh.state.active || 0; snap.a = fresh.snap.a; el.querySelector('#nmMe').textContent = fighterName(snap.a); el.querySelector('#lvMe').textContent = `Lv ${lvOf(snap.a)}`; }
     bars(); paint();
     drawMoves(); foot();
   }
