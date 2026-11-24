@@ -462,6 +462,115 @@ export function drawChest(canvas, state = 'shut', frame = 0, big = false) {
   ctx.drawImage(lo, (canvas.width - 40 * s) / 2, (canvas.height - 36 * s) / 2, 40 * s, 36 * s);
 }
 
+// Proper backs for the ones where hiding the face isn't enough (you'd see their back, not their front)
+function drawBackSprite(r, i, base, b, frame, crown) {
+  switch (i) {
+    case 0: case 16: {   // couch: the tall back panel, no cushions or arms
+      const y = 12 + base + b, king = i === 16;
+      r(4, y, 40, 22, king ? '#7a4c30' : '#8a5a3c'); r(4, y, 40, 3, king ? '#7c2c8c' : '#a87450');
+      for (let k = 0; k < 3; k++) r(6, y + 7 + k * 5, 36, 1, '#6b4128');   // stitching
+      r(4, y + 20, 40, 2, '#5a3620'); r(7, y + 22, 3, 3, '#3a2416'); r(38, y + 22, 3, 3, '#3a2416');
+      if (king) crown(18, y - 6);
+      return true;
+    }
+    case 3: {   // clock: red back, winding key and battery door
+      const y = 6 + base + b;
+      r(10, y + 4, 28, 26, '#d8483b'); r(12, y + 2, 24, 2, '#d8483b'); r(12, y + 30, 24, 2, '#d8483b');
+      r(8, y - 2, 8, 5, '#f2d245'); r(32, y - 2, 8, 5, '#f2d245'); r(13, y + 32, 4, 3, '#7a2c2c'); r(31, y + 32, 4, 3, '#7a2c2c');
+      r(17, y + 18, 14, 8, '#b7392a'); r(18, y + 19, 12, 6, '#c8423a');   // battery door
+      r(22, y + 8, 4, 2, '#8a8f98'); r(20, y + 6 - frame, 8, 2, '#a4abb2');   // winding key
+      return true;
+    }
+    case 5: {   // phone: the back, camera bump
+      const y = 4 + base + b;
+      r(13, y, 22, 34, '#2b2b30'); r(15, y + 2, 18, 30, '#3a3d44');
+      r(16, y + 3, 8, 8, '#2b2b30'); r(17, y + 4, 3, 3, '#5d6470'); r(21, y + 4, 2, 2, '#5d6470'); r(17, y + 8, 2, 2, '#f2d245');
+      r(8, y + 14, 5, 3, '#2b2b30'); r(35, y + 14, 5, 3, '#2b2b30');
+      return true;
+    }
+    case 7: {   // duvet burrito: the other end of the roll, back of the head
+      const y = 14 + base;
+      r(4, y + 2 + b, 40, 20, '#f3f1ea'); r(4, y + 2 + b, 40, 2, '#ffffff'); for (let k = 0; k < 4; k++) r(10 + k * 9, y + 4 + b, 2, 18, '#9ec9e8');
+      r(4, y + 22, 40, 2, '#c8d6e2');
+      r(32, y - 5 + b, 12, 12, '#5b3a22'); r(33, y - 6 + b, 10, 2, '#5b3a22'); r(34, y - 3 + b, 3, 2, '#7a5034');   // hair
+      r(28, y - 10 - frame, 3, 1, '#ffffff'); r(29, y - 9 - frame, 1, 1, '#ffffff'); r(28, y - 8 - frame, 3, 1, '#ffffff');
+      return true;
+    }
+    case 10: {   // overtime ghost: just the sheet, laptop hidden in front
+      const y = 4 + base + b;
+      r(12, y + 4, 24, 26, '#eef0ea'); r(14, y + 2, 20, 2, '#eef0ea'); r(14, y + 6, 3, 18, '#dfe3dc');
+      for (let k = 0; k < 4; k++) r(12 + k * 6 + (frame ? 3 : 0), y + 30, 3, 3, '#eef0ea');
+      r(22, y + 4, 4, 1, '#3c5bd9');   // the tie's knot strap at the neck
+      r(10, y + 16, 2, 6, '#9fd3f0');   // laptop glow round the side
+      return true;
+    }
+    case 14: {   // binge kraken: back of the head, tentacles, the TV's glow beyond
+      const y = 4 + base + b;
+      r(10, y + 20, 28, 14, frame ? 'rgba(95,211,243,.35)' : 'rgba(155,232,248,.35)');   // screen glow
+      r(12, y, 24, 18, '#8c5bd6'); r(14, y - 2, 20, 2, '#8c5bd6'); r(28, y + 2, 5, 3, '#b48ae8'); r(14, y + 12, 20, 2, '#7c4fb6');
+      for (let k = 0; k < 5; k++) { const tx = 8 + k * 8; r(tx, y + 18, 4, 14 + ((k + frame) % 2) * 2, '#7c4fb6'); r(tx + 1, y + 20, 2, 2, '#9b6ad8'); }
+      return true;
+    }
+    case 17: {   // hydra: three heads seen from behind
+      const y = 12 + base;
+      r(10, y + 10, 28, 18, '#6b3fa0'); r(12, y + 12, 24, 2, '#7c4fb6');
+      for (const [hx, off] of [[4, b], [19, -b], [34, b]]) {
+        const hy = y + (hx === 19 ? -4 : 0) + off;
+        r(hx + 3, hy + 8, 4, 6, '#6b3fa0'); r(hx, hy, 10, 9, '#7c4fb6'); r(hx + 2, hy + 1, 6, 1, '#9b6ad8'); r(hx + 4, hy - 2, 2, 2, '#c9b6e8');   // spines
+      }
+      r(40, y + 22, 6, 3, '#6b3fa0');   // tail
+      return true;
+    }
+    case 1: case 12: {   // dragons: plain back, wing nubs and a tail, no belly
+      const y = (i === 12 ? 10 : 8) + base + b, body = i === 12 ? '#c8382c' : '#4fae5a', dark = i === 12 ? '#a02a20' : '#3d8a46';
+      r(10, y + 6, 28, 22, body); r(8, y, 10, 10, body); r(30, y, 10, 10, body); r(9, y - 3, 2, 3, '#f2d245'); r(37, y - 3, 2, 3, '#f2d245');
+      for (let k = 0; k < 4; k++) r(22, y + 8 + k * 5, 4, 3, dark);   // spine plates
+      r(6, y + 10, 8, 6, dark); r(34, y + 10, 8, 6, dark);   // wings
+      r(36, y + 24, 10, 3, body); r(44, y + 22, 3, 3, dark);   // tail
+      if (i === 12) { const cy = y - 8 - frame; r(29, cy, 19, 14, '#f3f1ea'); r(29, cy, 19, 4, '#e23b3b'); }   // the calendar from behind
+      return true;
+    }
+    case 4: {   // bubble tea: the cup's back, pearls, straw
+      const y = 6 + base + b;
+      r(17, y - 6, 3, 12, '#e66fab'); r(12, y + 2, 24, 3, '#eeeeee'); r(13, y + 5, 22, 26, '#d9b48c'); r(15, y + 31, 18, 2, '#c4a07a');
+      r(16, y + 9, 16, 6, '#ece3d3'); r(18, y + 11, 12, 1, '#c4a07a');   // label
+      for (const [bx, by] of [[16, 25], [21, 27], [26, 25], [30, 27], [18, 29], [24, 29], [28, 29]]) r(bx, y + by, 3, 3, '#3a2416');
+      return true;
+    }
+    case 6: {   // takeaway goblin: back of head, cap, the big delivery box on its back
+      const y = 8 + base + b;
+      r(10, y + 8, 18, 18, '#5aa648'); r(8, y + 10, 3, 5, '#5aa648'); r(27, y + 10, 3, 5, '#5aa648');
+      r(10, y + 5, 18, 4, '#f2d245'); r(12, y + 9, 6, 2, '#e8b923');   // cap from behind
+      r(12, y + 18, 22, 18, '#d8483b'); r(12, y + 18, 22, 3, '#b7392a'); r(18, y + 25, 10, 5, '#f3f1ea'); r(16, y + 16, 2, 4, '#2b2b30'); r(28, y + 16, 2, 4, '#2b2b30');   // box + straps
+      r(12, y + 36, 4, 2, '#2b2b30'); r(28, y + 36, 4, 2, '#2b2b30');
+      return true;
+    }
+    case 11: {   // barrel: staves and hoops, no belly
+      const y = 6 + base + b;
+      r(12, y + 2, 24, 4, '#f3f1ea'); r(10, y + 4, 4, 3, '#f3f1ea'); r(34, y + 4, 4, 3, '#f3f1ea');
+      r(10, y + 6, 28, 28, '#a8743f'); for (let k = 0; k < 5; k++) r(14 + k * 5, y + 6, 1, 28, '#8a5a3c');
+      r(10, y + 10, 28, 2, '#5d6470'); r(10, y + 28, 28, 2, '#5d6470'); r(22, y + 18, 4, 4, '#6b4128');   // tap hole
+      r(4, y + 16, 6, 4, '#a8743f'); r(38, y + 16, 6, 4, '#a8743f');
+      return true;
+    }
+    case 13: {   // phoenix: back, tail feathers, wings
+      const y = 6 + base + b;
+      r(16, y + 8, 16, 18, '#e8862a'); r(18, y + 2, 12, 8, '#f19a33'); r(20, y - 2, 2, 4, '#e23b3b'); r(24, y - 4, 2, 6, '#f2d245'); r(28, y - 2, 2, 4, '#e23b3b');
+      const wy = frame ? y + 2 : y + 10;
+      r(4, wy, 12, 6, '#e23b3b'); r(2, wy + 6, 8, 3, '#f2d245'); r(32, wy, 12, 6, '#e23b3b'); r(38, wy + 6, 8, 3, '#f2d245');
+      r(18, y + 24, 3, 8, '#e23b3b'); r(22, y + 24, 4, 10, '#f2d245'); r(27, y + 24, 3, 8, '#e23b3b');   // tail
+      return true;
+    }
+    case 15: {   // excuse golem: all bricks, no sign
+      const y = 4 + base + b;
+      const brick = (x, yy, w, h) => { r(x, yy, w, h, '#b7563f'); for (let j = 0; j < h; j += 4) { r(x, yy + j, w, 1, '#8a3a2a'); for (let k = (j / 4) % 2 ? 2 : 6; k < w; k += 8) r(x + k, yy + j, 1, 4, '#8a3a2a'); } };
+      brick(14, y, 20, 10); brick(8, y + 10, 32, 16); brick(2, y + 10, 6, 14); brick(40, y + 10, 6, 14); brick(12, y + 26, 8, 8); brick(28, y + 26, 8, 8);
+      return true;
+    }
+    default: return false;
+  }
+}
+
 // From behind: paint over what's left of the face (mouths, teeth, pupils) with the body colour around it,
 // so the same sprite works as the back of your pet in a battle.
 const FACE_COLS = new Set(['255,255,255', '35,26,23', '42,31,24', '26,26,26', '242,59,59']);
@@ -533,7 +642,8 @@ export function drawBoss(canvas, idx, frame = 0, state = 'idle') {
     eyes(14, 29, y + 8);
     if (!ko) { r(16, y + 14, 16, 3, '#2a1f18'); r(17, y + 14, 2, 1, '#fff'); r(29, y + 14, 2, 1, '#fff'); }
   };
-  switch (idx % 18) {
+  const backDone = back && drawBackSprite(r, idx % 18, base, b, frame, crown);
+  switch (backDone ? -1 : idx % 18) {
     case 0: case 16: { // couch (16: the Couch King, bigger cushions and a crown)
       const king = idx % 18 === 16;
       const y = 14 + base + b;
