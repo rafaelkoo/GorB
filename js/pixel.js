@@ -571,25 +571,228 @@ function drawBackSprite(r, i, base, b, frame, crown) {
   }
 }
 
-// The evolved look, drawn over any sprite: gold outline, a red sweatband near the top, sparkles
-function evolveLook(c, frame, back) {
-  const W = 48, H = 40, d = c.getImageData(0, 0, W, H), px = d.data;
-  const solid = (x, y) => x >= 0 && y >= 0 && x < W && y < H && px[(y * W + x) * 4 + 3] === 255;
-  let top = H, x0 = W, x1 = -1;
-  for (let y = 0; y < H - 3; y++) for (let x = 0; x < W; x++) if (solid(x, y)) { top = Math.min(top, y); x0 = Math.min(x0, x); x1 = Math.max(x1, x); }
-  if (x1 < 0) return;
-  const glow = [];
-  for (let y = 0; y < H - 3; y++) for (let x = 0; x < W; x++) if (!solid(x, y) && (solid(x + 1, y) || solid(x - 1, y) || solid(x, y + 1) || solid(x, y - 1))) glow.push([x, y]);
-  c.fillStyle = frame ? 'rgba(242,210,69,.9)' : 'rgba(232,185,35,.75)';
-  for (const [x, y] of glow) c.fillRect(x, y, 1, 1);
-  // sweatband: across the body a few pixels below the top
-  const by = top + 4;
-  for (let x = x0; x <= x1; x++) if (solid(x, by)) { c.fillStyle = '#e23b3b'; c.fillRect(x, by, 1, 2); }
-  if (!back) { c.fillStyle = '#ffffff'; for (let x = x0 + 2; x <= x1; x += 6) if (solid(x, by)) c.fillRect(x, by, 1, 1); }
-  c.fillStyle = '#fff3b0';
-  for (const [sx, sy] of frame ? [[x0 - 3, top + 2], [x1 + 2, top + 10], [x0 + 2, top - 3]] : [[x1 + 1, top + 1], [x0 - 2, top + 12], [x1 - 3, top - 3]]) {
-    c.fillRect(sx, sy, 1, 1); c.fillRect(sx - 1, sy + 1, 3, 1); c.fillRect(sx, sy + 2, 1, 1);
+// ---------- evolved forms: the excuse turned into a motivation. Each one is its own drawing. ----------
+// r: rect painter on the 48×40 sprite, eyes(): front eyes (skipped from behind), back: seen from behind.
+const WH = '#f8f8f2';   // white that the back-view pass leaves alone
+function drawEvo(r, i, base, b, frame, ko, back, eyes, crown) {
+  const mouth = (x, y, w = 6) => { if (!back && !ko) { r(x, y, w, 2, OUT); r(x + 1, y, 2, 1, WH); r(x + w - 3, y, 2, 1, WH); } };
+  const smile = (x, y, w = 6) => { if (!back && !ko) { r(x, y, 1, 1, OUT); r(x + 1, y + 1, w - 2, 1, OUT); r(x + w - 1, y, 1, 1, OUT); } };
+  const band = (x, y, w) => { r(x, y, w, 2, '#e23b3b'); if (back) { r(x + w - 2, y + 2, 2, 3, '#e23b3b'); r(x + w, y + 3, 2, 2, '#e23b3b'); } };
+  switch (i) {
+    case 0: {   // Yoga Mat Guardian: a standing rolled mat, arms up in a stretch
+      const y = 4 + base + b;
+      r(13, y + 4, 22, 26, '#8c5bd6'); r(13, y + 4, 22, 3, '#b48ae8'); r(11, y, 26, 6, '#6b3fa0'); r(12, y + 1, 24, 4, '#9b6ad8'); r(13, y + 2, 22, 1, '#b48ae8');   // mat + roll on top
+      for (let k = 0; k < 5; k++) r(14, y + 9 + k * 4, 20, 1, '#7c4fb6');   // grip texture
+      // arms up in a tree-pose stretch, hands meeting overhead
+      r(7, y + 8, 6, 3, '#8c5bd6'); r(5, y + 2 - frame, 3, 7, '#8c5bd6'); r(35, y + 8, 6, 3, '#8c5bd6'); r(40, y + 2 - frame, 3, 7, '#8c5bd6');
+      r(16, y + 30, 5, 6, '#6b3fa0'); r(27, y + 30, 5, 6, '#6b3fa0'); r(15, y + 35, 7, 2, '#45b45a'); r(26, y + 35, 7, 2, '#45b45a');   // legs + green socks
+      if (!back) { eyes(17, 27, y + 12); smile(21, y + 18); r(15, y + 22, 3, 2, '#f59ab8'); r(30, y + 22, 3, 2, '#f59ab8'); r(22, y + 24, 4, 4, '#45b45a'); r(23, y + 23, 2, 1, '#6fd3a0'); }   // a leaf badge
+      else { r(18, y + 12, 12, 12, '#7c4fb6'); r(22, y + 10, 4, 3, '#45b45a'); }
+      break;
+    }
+    case 1: {   // Meal-Prep Dragon: green, a chef's hat, a stack of lunch boxes
+      const y = 10 + base + b;
+      r(12, y + 6, 24, 22, '#3d9a4c'); r(10, y, 10, 10, '#3d9a4c'); r(28, y, 10, 10, '#3d9a4c'); r(12, y + 6, 24, 2, '#5fc06a');
+      r(11, y - 8, 14, 6, WH); r(13, y - 11, 10, 4, WH); r(11, y - 3, 14, 2, '#dfe3dc');   // chef's hat
+      r(4, y + 12, 8, 5, '#2f7a3b'); r(36, y + 12, 8, 5, '#2f7a3b'); r(14, y + 28, 6, 4, '#2f7a3b'); r(28, y + 28, 6, 4, '#2f7a3b');
+      if (!back) {
+        r(16, y + 18, 16, 9, '#e8f0c8'); eyes(14, 29, y + 8); smile(19, y + 14, 10);
+        for (let k = 0; k < 3; k++) { r(36, y + 14 + k * 5, 11, 4, WH); r(37, y + 15 + k * 5, 4, 2, ['#45b45a', '#d9a14b', '#e2563b'][k]); r(42, y + 15 + k * 5, 4, 2, '#f1e1b0'); }   // meal-prep boxes
+      } else { for (let k = 0; k < 4; k++) r(22, y + 8 + k * 5, 4, 3, '#2f7a3b'); r(36, y + 24, 9, 3, '#3d9a4c'); }
+      break;
+    }
+    case 2: {   // Hustle Slime: bright, upright, headband, flexing, sweat flying
+      const y = 8 + base;
+      const w = 30 - (frame ? 2 : 0), x = 24 - w / 2;
+      r(x + 3, y + 2 - b, w - 6, 4, '#ff8a3d'); r(x, y + 6 - b, w, 22 + b, '#f26b1d'); r(x + 2, y + 28, w - 4, 2, '#c44f0f');
+      r(x + 4, y + 7 - b, 5, 3, '#ffb27a');
+      band(x, y + 8 - b, w);
+      r(x - 6, y + 14 - b - frame, 6, 5, '#f26b1d'); r(x - 8, y + 11 - b - frame, 4, 4, '#ff8a3d'); r(x + w, y + 14 - b - frame, 6, 5, '#f26b1d'); r(x + w + 4, y + 11 - b - frame, 4, 4, '#ff8a3d');   // flexed arms
+      if (!back) { eyes(x + 7, x + w - 10, y + 14 - b); mouth(x + w / 2 - 3, y + 20 - b); }
+      r(x + w + 3, y + 2 + frame * 2, 2, 3, '#9fd3f0'); r(x - 4, y + 4 - frame * 2, 2, 3, '#9fd3f0');   // sweat
+      for (let k = 0; k < 3; k++) r(2, y + 18 + k * 4, 3, 1, '#ffb27a');   // speed lines
+      break;
+    }
+    case 3: {   // Early-Bird Clock: a round yellow clock with wings and a crest, the sun rising behind
+      const y = 6 + base + b;
+      if (!back) for (let k = 0; k < 5; k++) r(4 + k * 9, y + 2 + (k % 2) * 2, 2, 5, '#ffd76a');   // sun rays
+      r(14, y + 6, 20, 24, '#f2c230'); r(12, y + 10, 24, 16, '#f2c230'); r(16, y + 4, 16, 2, '#f2c230'); r(16, y + 30, 16, 2, '#f2c230');
+      r(20, y - 2, 3, 6, '#e23b3b'); r(24, y - 4, 3, 8, '#f19a33'); r(28, y - 1, 3, 5, '#e23b3b');   // crest
+      const wy = frame ? y + 6 : y + 12; r(2, wy, 10, 6, '#f8f8f2'); r(0, wy + 4, 6, 4, '#dfe3dc'); r(36, wy, 10, 6, '#f8f8f2'); r(42, wy + 4, 6, 4, '#dfe3dc');   // wings
+      r(18, y + 32, 3, 4, '#f19a33'); r(27, y + 32, 3, 4, '#f19a33');   // bird feet
+      if (!back) { r(16, y + 10, 16, 16, '#fffbe8'); r(23, y + 11, 2, 7, OUT); r(23, y + 17, 2, 7, OUT); r(22, y + 17, 4, 2, OUT);   // 6:00
+        eyes(16, 28, y + 13, '#fff'); r(22, y + 9, 4, 2, '#f19a33'); }   // little beak
+      else { r(18, y + 12, 12, 10, '#e0ad1f'); r(22, y + 14, 4, 3, '#a4abb2'); }
+      break;
+    }
+    case 4: {   // Protein Shake Beast: a big shaker, arms like hams, a scoop
+      const y = 2 + base + b;
+      r(14, y, 20, 5, '#3c5bd9'); r(21, y - 3, 6, 3, '#3c5bd9'); r(13, y + 5, 22, 2, '#2e4ab8');   // lid
+      r(14, y + 7, 20, 28, '#dfe7ee'); r(14, y + 18, 20, 17, '#a8743f'); r(16, y + 9, 3, 8, WH);   // cup + chocolate shake
+      for (let k = 0; k < 4; k++) r(31, y + 10 + k * 5, 3, 1, '#8a8f98');
+      r(4, y + 14 - frame, 10, 7, '#c48a55'); r(2, y + 10 - frame, 6, 6, '#c48a55'); r(34, y + 14 - frame, 10, 7, '#c48a55'); r(40, y + 10 - frame, 6, 6, '#c48a55');   // flexing arms
+      if (!back) { eyes(17, 27, y + 10, '#fff'); mouth(20, y + 22, 8); r(40, y + 4 - frame, 6, 4, '#eeeeee'); r(42, y + 8 - frame, 2, 4, '#8a8f98'); }   // scoop
+      else { r(17, y + 22, 14, 8, WH); r(19, y + 24, 10, 1, '#3c5bd9'); r(19, y + 26, 7, 1, '#3c5bd9'); }   // nutrition label
+      break;
+    }
+    case 5: {   // Workout Tracker: a smartwatch with a heart-rate line, running on its strap
+      const y = 4 + base + b;
+      r(17, y - 2, 14, 8, '#2b2b30'); r(17, y + 28, 14, 6, '#2b2b30');   // strap
+      r(12, y + 6, 24, 22, '#5d6470'); r(13, y + 7, 22, 20, '#1d2125');
+      r(36, y + 12, 2, 5, '#a4abb2');   // crown button
+      if (!back) {
+        r(15, y + 9, 18, 16, '#0f3d2a');
+        const pts = [4, 4, 4, 1, 8, 4, 4, 4, 2, 4, 4, 4]; pts.forEach((h, k) => r(16 + k, y + 12 + h, 1, 1, '#45e07a'));   // heart-rate line
+        r(17, y + 20, 3, 3, '#e23b3b'); r(21, y + 21, 8, 1, '#45e07a'); eyes(18, 27, y + 13);
+      } else { r(18, y + 12, 12, 10, '#2b2b30'); r(20, y + 14, 2, 2, '#45e07a'); r(26, y + 14, 2, 2, '#45e07a'); r(23, y + 18, 2, 2, '#e23b3b'); }   // sensors
+      r(16 + frame * 4, y + 34, 5, 3, '#f2f2f2'); r(26 - frame * 4, y + 34, 5, 3, '#f2f2f2');   // running feet
+      break;
+    }
+    case 6: {   // Meal-Prep Chef: the goblin in whites, hat, apron, a carrot and a tray of boxes
+      const y = 6 + base + b;
+      r(12, y - 4, 14, 6, WH); r(14, y - 7, 10, 4, WH); r(12, y + 1, 14, 2, '#dfe3dc');   // chef's hat
+      r(12, y + 3, 14, 13, '#6fbf5a'); r(9, y + 5, 3, 5, '#6fbf5a'); r(26, y + 5, 3, 5, '#6fbf5a');
+      r(11, y + 16, 16, 16, WH); r(17, y + 16, 4, 16, '#dfe3dc');   // whites
+      r(12, y + 32, 5, 3, '#2b2b30'); r(21, y + 32, 5, 3, '#2b2b30');
+      if (!back) {
+        eyes(14, 21, y + 7); smile(16, y + 12);
+        r(13, y + 20, 12, 10, '#e23b3b'); r(14, y + 21, 10, 1, '#f3f1ea');   // apron
+        r(4, y + 14 - frame, 3, 8, '#f19a33'); r(4, y + 12 - frame, 3, 2, '#45b45a');   // carrot
+        r(30, y + 18, 16, 3, '#8a8f98'); for (let k = 0; k < 3; k++) { r(31 + k * 5, y + 13, 4, 5, WH); r(32 + k * 5, y + 14, 2, 2, ['#45b45a', '#d9a14b', '#e2563b'][k]); }   // tray
+      } else { r(17, y + 18, 4, 3, '#e23b3b'); r(15, y + 21, 3, 2, '#e23b3b'); r(20, y + 21, 3, 2, '#e23b3b'); }   // apron bow
+      break;
+    }
+    case 7: {   // Sunrise Runner: out of the duvet, wearing it as a cape, running at dawn
+      const y = 4 + base + b;
+      r(30, y - 2, 14, 7, '#f2c230'); r(28, y + 1, 18, 4, '#ffd76a');   // rising sun
+      r(14, y + 6, 18, 18, '#f8f8f2'); for (let k = 0; k < 3; k++) r(16 + k * 6, y + 8, 2, 16, '#9ec9e8');   // cape
+      r(18, y + 2, 10, 10, '#eebc94'); r(18, y + 1, 10, 3, '#5b3a22'); band(18, y + 4, 10);   // head
+      r(19, y + 14, 8, 10, '#3c5bd9');   // vest
+      const s = frame ? 4 : 0; r(17 + s, y + 24, 4, 8, '#2b2b30'); r(25 - s, y + 24, 4, 8, '#2b2b30'); r(16 + s, y + 32, 6, 3, '#e23b3b'); r(24 - s, y + 32, 6, 3, '#e23b3b');   // legs + shoes
+      if (!back) { r(20, y + 7, 2, 2, OUT); r(25, y + 7, 2, 2, OUT); r(21, y + 10, 4, 1, OUT); r(14, y + 6, 18, 2, '#dfe3dc'); }
+      else { r(18, y + 2, 10, 9, '#5b3a22'); r(14, y + 6, 18, 20, '#f8f8f2'); for (let k = 0; k < 3; k++) r(16 + k * 6, y + 8, 2, 18, '#9ec9e8'); }
+      for (let k = 0; k < 3; k++) r(4, y + 14 + k * 5, 6, 1, '#dfe3dc');   // speed lines
+      break;
+    }
+    case 8: {   // Rain-or-Shine Cloud: white and sunny, a rainbow over it, trainers on
+      const y = 6 + base + b;
+      const bands = ['#e23b3b', '#f19a33', '#f2c230', '#45b45a', '#2e9fd6'];
+      bands.forEach((c, k) => { r(4 + k, y + 6 - k + 4, 2, 10 - k, c); r(42 - k, y + 6 - k + 4, 2, 10 - k, c); r(6 + k, y + 2 + k, 36 - 2 * k, 2, c); });   // rainbow arch
+      r(10, y + 12, 28, 14, WH); r(14, y + 8, 12, 6, WH); r(24, y + 6, 12, 8, WH); r(10, y + 24, 28, 2, '#dfe3dc');
+      r(32, y + 4, 7, 7, '#f2c230');   // sun peeking out
+      r(14, y + 28, 6, 4, '#3c5bd9'); r(28, y + 28, 6, 4, '#3c5bd9'); r(14, y + 32, 7, 2, WH); r(28, y + 32, 7, 2, WH);   // trainers
+      if (!back) { eyes(16, 27, y + 15, '#fff'); smile(20, y + 20, 8); r(14, y + 19, 2, 1, '#f59ab8'); r(32, y + 19, 2, 1, '#f59ab8'); }
+      break;
+    }
+    case 9: {   // Recovery Jelly: cool mint, an ice pack on top, hugging a foam roller
+      const y = 10 + base;
+      const w = 32 + (ko ? 6 : frame * 2), x = 24 - w / 2;
+      r(x + 3, y + 2 - b, w - 6, 3, '#9fe8c8'); r(x, y + 5 - b, w, 18 + b, '#6fd3a0'); r(x + 2, y + 23, w - 4, 2, '#45a87a');
+      r(x + 4, y + 7 - b, 4, 3, '#c8f5e0');
+      r(16, y - 4 - b, 16, 6, '#9fd3f0'); r(17, y - 3 - b, 14, 1, '#d7f0fc'); r(22, y - 6 - b, 4, 2, '#5fb8f3');   // ice pack
+      if (!back) { eyes(16, 27, y + 9 - b); smile(20, y + 15 - b, 8); r(6, y + 18, 36, 6, '#2e9fd6'); for (let k = 0; k < 6; k++) r(8 + k * 6, y + 18, 1, 6, '#1d6f9a'); }   // foam roller in its arms
+      for (const [sx, sy] of frame ? [[6, y], [40, y + 6]] : [[40, y - 2], [4, y + 8]]) { r(sx, sy, 1, 3, WH); r(sx - 1, sy + 1, 3, 1, WH); }   // sparkle
+      break;
+    }
+    case 10: {   // Lunch-Break Lifter: a solid, rosy ghost pressing a dumbbell overhead, tie over the shoulder
+      const y = 6 + base + b;
+      const up = frame ? 0 : 3;
+      r(12, y + 6, 24, 24, '#f3eee8'); r(14, y + 4, 20, 2, '#f3eee8');
+      for (let k = 0; k < 4; k++) r(12 + k * 6 + (frame ? 3 : 0), y + 30, 3, 3, '#f3eee8');
+      r(8, y + 8 + up, 4, 10 - up, '#f3eee8'); r(36, y + 8 + up, 4, 10 - up, '#f3eee8');   // arms up
+      r(2, y + 2 + up, 44, 2, '#8a8f98'); r(0, y - 1 + up, 4, 8, '#2b2b30'); r(44, y - 1 + up, 4, 8, '#2b2b30');   // dumbbell bar overhead
+      band(12, y + 7, 24);
+      r(30, y + 12, 3, 2, '#3c5bd9'); r(32, y + 10, 2, 6, '#3c5bd9');   // tie flipped over
+      if (!back) { eyes(16, 26, y + 12, '#fff'); r(15, y + 15, 3, 1, '#f59ab8'); r(28, y + 15, 3, 1, '#f59ab8'); mouth(20, y + 19, 7); }
+      break;
+    }
+    case 11: {   // Six-Pack Barrel: lean barrel, carved abs, flexing
+      const y = 4 + base + b;
+      r(12, y + 2, 24, 4, '#e23b3b'); if (back) r(34, y + 5, 3, 5, '#e23b3b');   // headband instead of foam
+      r(12, y + 6, 24, 28, '#c48a55'); r(12, y + 6, 2, 28, '#a8743f'); r(34, y + 6, 2, 28, '#a8743f');
+      r(12, y + 9, 24, 2, '#5d6470'); r(12, y + 30, 24, 2, '#5d6470');
+      r(4, y + 14 - frame, 8, 6, '#c48a55'); r(2, y + 9 - frame, 5, 6, '#c48a55'); r(36, y + 14 - frame, 8, 6, '#c48a55'); r(41, y + 9 - frame, 5, 6, '#c48a55');   // flex
+      if (!back) { eyes(16, 27, y + 12); smile(21, y + 17);
+        for (let k = 0; k < 3; k++) { r(18, y + 20 + k * 3, 5, 2, '#a8743f'); r(25, y + 20 + k * 3, 5, 2, '#a8743f'); } }   // six-pack
+      else for (let k = 0; k < 5; k++) r(15 + k * 4, y + 11, 1, 19, '#a8743f');
+      break;
+    }
+    case 12: {   // Do-It-Today Dragon: fiery red, flame wings, holding a calendar with today ticked off
+      const y = 8 + base + b;
+      r(4, y + 4 - frame, 8, 12, '#f19a33'); r(2, y + 2 - frame, 4, 6, '#f2c230'); r(36, y + 4 - frame, 8, 12, '#f19a33'); r(42, y + 2 - frame, 4, 6, '#f2c230');   // flame wings
+      r(12, y + 6, 24, 24, '#d8483b'); r(10, y, 10, 10, '#d8483b'); r(28, y, 10, 10, '#d8483b'); r(12, y + 6, 24, 2, '#f06a5d');
+      r(11, y - 3, 3, 4, '#f2c230'); r(34, y - 3, 3, 4, '#f2c230'); r(22, y - 4, 4, 5, '#f2c230');   // three horns
+      r(14, y + 30, 6, 4, '#a02a20'); r(28, y + 30, 6, 4, '#a02a20');
+      if (!back) { r(16, y + 18, 16, 10, '#f1c27d'); eyes(14, 29, y + 8); smile(19, y + 14, 10);
+        r(30, y + 16, 14, 12, WH); r(30, y + 16, 14, 3, '#45b45a'); r(33, y + 22, 2, 2, '#45b45a'); r(35, y + 24, 2, 2, '#45b45a'); r(37, y + 22, 2, 2, '#45b45a'); r(39, y + 20, 2, 2, '#45b45a'); }   // ✓
+      else { for (let k = 0; k < 4; k++) r(22, y + 8 + k * 5, 4, 3, '#a02a20'); r(36, y + 26, 10, 3, '#d8483b'); r(44, y + 23, 3, 4, '#f2c230'); }   // flame-tipped tail
+      break;
+    }
+    case 13: {   // Right-Now Phoenix: white-hot, a lightning crest, a stopwatch on its chest
+      const y = 4 + base + b;
+      const wy = frame ? y + 4 : y + 10;
+      r(2, wy, 14, 6, '#f2c230'); r(0, wy + 6, 10, 3, '#fff3b0'); r(32, wy, 14, 6, '#f2c230'); r(38, wy + 6, 10, 3, '#fff3b0');   // blazing wings
+      r(16, y + 10, 16, 18, '#ffd76a'); r(18, y + 4, 12, 8, '#ffe9a0');
+      r(22, y - 4, 3, 4, '#f2f2f2'); r(24, y - 1, 3, 3, '#f2f2f2'); r(20, y - 6, 3, 3, '#f2f2f2');   // lightning crest
+      r(19, y + 28, 3, 7, '#f19a33'); r(23, y + 28, 2, 8, '#e23b3b'); r(26, y + 28, 3, 7, '#f19a33');   // tail flames
+      if (!back) { eyes(19, 26, y + 6); r(30, y + 8, 4, 2, '#f19a33');
+        r(19, y + 15, 10, 10, '#f2f2f2'); r(20, y + 16, 8, 8, '#2b2b30'); r(23, y + 13, 2, 2, '#f2f2f2'); r(23, y + 18, 1, 3, '#45e07a'); r(24, y + 20, 2, 1, '#45e07a'); }   // stopwatch
+      else r(18, y + 12, 12, 14, '#f2c230');
+      break;
+    }
+    case 14: {   // Workout-Video Kraken: a headset, a dumbbell in each tentacle, the TV now showing a workout
+      const y = 2 + base + b;
+      r(12, y, 24, 18, '#2e9fd6'); r(14, y - 2, 20, 2, '#2e9fd6'); r(15, y + 2, 5, 3, '#7fc8ef');
+      r(10, y + 4, 3, 8, '#2b2b30'); r(11, y + 11, 6, 2, '#2b2b30');   // headset + mic
+      for (let k = 0; k < 5; k++) { const tx = 6 + k * 9; r(tx, y + 18, 4, 12 + ((k + frame) % 2) * 2, '#1f7fb3'); }
+      r(2, y + 26 - frame, 8, 3, '#5d6470'); r(1, y + 24 - frame, 2, 7, '#2b2b30'); r(9, y + 24 - frame, 2, 7, '#2b2b30');   // dumbbells
+      r(38, y + 26 + frame - 1, 8, 3, '#5d6470'); r(37, y + 24 + frame - 1, 2, 7, '#2b2b30'); r(45, y + 24 + frame - 1, 2, 7, '#2b2b30');
+      if (!back) { eyes(16, 27, y + 6); smile(20, y + 12, 8);
+        r(15, y + 22, 18, 13, '#2b2b30'); r(17, y + 24, 14, 8, '#9be8f8'); r(23, y + 25, 2, 2, OUT); r(23, y + 27, 2, 3, OUT); r(20 + frame, y + 27, 3, 1, OUT); r(25 - frame, y + 27, 3, 1, OUT); }   // stick figure on TV
+      else r(14, y + 12, 20, 2, '#1f7fb3');
+      break;
+    }
+    case 15: {   // Discipline Golem: polished steel, a checklist chest plate, a barbell across the shoulders
+      const y = 4 + base + b;
+      r(0, y + 8, 48, 2, '#a4abb2'); r(0, y + 4, 4, 10, '#2b2b30'); r(44, y + 4, 4, 10, '#2b2b30');   // barbell
+      r(15, y, 18, 10, '#8a8f98'); r(17, y + 2, 14, 6, '#a4abb2');
+      r(8, y + 10, 32, 16, '#6a6f78'); r(10, y + 11, 28, 2, '#8a8f98');
+      r(3, y + 11, 6, 13, '#6a6f78'); r(39, y + 11, 6, 13, '#6a6f78');
+      r(12, y + 26, 9, 9, '#5d6470'); r(27, y + 26, 9, 9, '#5d6470');
+      if (!back) { eyes(19, 26, y + 3, '#5fd3f3');
+        r(15, y + 13, 18, 11, WH); for (let k = 0; k < 3; k++) { r(17, y + 15 + k * 3, 2, 2, '#45b45a'); r(21, y + 15 + k * 3, 10, 1, '#5d6470'); } }   // checklist
+      else { r(14, y + 14, 20, 8, '#5d6470'); r(22, y + 12, 4, 12, '#8a8f98'); }
+      break;
+    }
+    case 16: {   // Bench-Press King: the couch is now a bench; crowned, pressing a loaded bar
+      const y = 6 + base + b;
+      const up = frame ? 0 : 2;
+      r(2, y + 2 + up, 44, 2, '#a4abb2'); r(2, y - 2 + up, 5, 10, '#e23b3b'); r(41, y - 2 + up, 5, 10, '#e23b3b'); r(7, y - 1 + up, 3, 8, '#2b2b30'); r(38, y - 1 + up, 3, 8, '#2b2b30');   // loaded bar
+      r(12, y + 4 + up, 4, 10 - up, '#8a5a3c'); r(32, y + 4 + up, 4, 10 - up, '#8a5a3c');   // arms
+      r(14, y + 12, 20, 14, '#8a5a3c'); r(14, y + 12, 20, 2, '#a87450');   // body
+      r(6, y + 26, 36, 4, '#2b2b30'); r(6, y + 26, 36, 1, '#5d6470'); r(9, y + 30, 3, 5, '#5d6470'); r(36, y + 30, 3, 5, '#5d6470');   // bench
+      crown(18, y + 6);
+      if (!back) { eyes(17, 27, y + 15); smile(21, y + 20); r(24, y + 24, 2, 2, '#f2c230'); }
+      else r(16, y + 15, 16, 8, '#7a4c30');
+      break;
+    }
+    case 17: {   // Macro Hydra: three heads, each with its macro: protein, carbs, greens
+      const y = 12 + base;
+      r(10, y + 10, 28, 18, '#2e9a8a'); r(12, y + 12, 24, 2, '#45b8a8'); if (!back) r(14, y + 18, 20, 9, '#bfeee4');
+      const foods = [['#f1c27d', '#d9a14b'], ['#f8f8f2', '#dfe3dc'], ['#45b45a', '#2f7a3b']];   // chicken, rice, broccoli
+      [[4, b], [19, -b], [34, b]].forEach(([hx, off], k) => {
+        const hy = y + (hx === 19 ? -4 : 0) + off;
+        r(hx + 3, hy + 8, 4, 6, '#2e9a8a'); r(hx, hy, 10, 9, '#38b0a0');
+        if (!back) { if (ko) { r(hx + 2, hy + 3, 2, 1, OUT); r(hx + 6, hy + 3, 2, 1, OUT); } else { r(hx + 2, hy + 2, 2, 2, '#fff'); r(hx + 6, hy + 2, 2, 2, '#fff'); r(hx + 3, hy + 3, 1, 1, OUT); r(hx + 7, hy + 3, 1, 1, OUT); }
+          r(hx + 2, hy + 6, 6, 3, foods[k][0]); r(hx + 3, hy + 7, 4, 1, foods[k][1]); }   // each head holds its food
+        else { r(hx + 2, hy + 1, 6, 1, '#5fd0c0'); r(hx + 4, hy - 2, 2, 2, '#bfeee4'); }
+      });
+      r(40, y + 22, 6, 3, '#2e9a8a');
+      break;
+    }
+    default: return false;
   }
+  return true;
 }
 
 // From behind: paint over what's left of the face (mouths, teeth, pupils) with the body colour around it,
@@ -664,8 +867,9 @@ export function drawBoss(canvas, idx, frame = 0, state = 'idle', evolved = false
     eyes(14, 29, y + 8);
     if (!ko) { r(16, y + 14, 16, 3, '#2a1f18'); r(17, y + 14, 2, 1, '#fff'); r(29, y + 14, 2, 1, '#fff'); }
   };
-  const backDone = back && drawBackSprite(r, idx % 18, base, b, frame, crown);
-  switch (backDone ? -1 : idx % 18) {
+  const evoDone = evolved && drawEvo(r, idx % 18, base, b, frame, ko, back, eyes, crown);
+  const backDone = !evoDone && back && drawBackSprite(r, idx % 18, base, b, frame, crown);
+  switch (evoDone || backDone ? -1 : idx % 18) {
     case 0: case 16: { // couch (16: the Couch King, bigger cushions and a crown)
       const king = idx % 18 === 16;
       const y = 14 + base + b;
@@ -841,8 +1045,7 @@ export function drawBoss(canvas, idx, frame = 0, state = 'idle', evolved = false
     default: break;
   }
   if (ko) { r(18, 2, 2, 2, '#f2d245'); r(26, 0, 2, 2, '#f2d245'); r(32, 3, 2, 2, '#f2d245'); }   // stars
-  if (back) backView(c);
-  if (evolved && !ko) evolveLook(c, frame, back);
+  if (back && !evoDone) backView(c);
   const ctx = canvas.getContext('2d'); ctx.imageSmoothingEnabled = false; ctx.clearRect(0, 0, canvas.width, canvas.height);
   const s = Math.floor(Math.min(canvas.width / 48, canvas.height / 40));
   ctx.drawImage(lo, (canvas.width - 48 * s) / 2, (canvas.height - 40 * s) / 2, 48 * s, 40 * s);
