@@ -124,6 +124,8 @@ export const setTeam = ids => sb.rpc('set_team', { p_pets: ids }).then(must);
 export const petUpdate = (id, nickname, release = false) => sb.rpc('pet_update', { p_pet: id, p_nickname: nickname, p_release: release }).then(must);
 export const battleItem = (id, item) => sb.rpc('battle_item', { p_id: id, p_item: item }).then(must);
 export const battleSwitch = (id, to) => sb.rpc('battle_switch', { p_id: id, p_to: to }).then(must);
+export const petFeed = (id, item) => sb.rpc('pet_feed', { p_pet: id, p_item: item }).then(must);
+export const petTeach = (id, move) => sb.rpc('pet_teach', { p_pet: id, p_move: move }).then(must);
 export const petTest = id => sb.rpc('pet_test', { p_pet: id }).then(must);
 export const lairStatus = () => sb.rpc('lair_status').then(must);
 export const lairFight = (species, pay) => sb.rpc('lair_fight', { p_species: species, p_pay: pay }).then(must);

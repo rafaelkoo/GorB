@@ -4,7 +4,7 @@ import * as api from './supa.js';
 import { t } from './i18n.js';
 import { esc, render, toast, showError } from './ui.js';
 import { drawBattle, drawBoss, BOSSES, cleanAvatar, BW, BH } from './pixel.js';
-import { advNav, wireAdvNav, ivGrade } from './pets.js';
+import { advNav, wireAdvNav, ivGrade, itemIcon } from './pets.js';
 
 const reduced = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
 const sleep = ms => new Promise(r => setTimeout(r, reduced() ? Math.min(ms, 150) : ms));
@@ -70,7 +70,7 @@ const typeLine = m => typesOf(m).map(x => { const ty = MOVE_TYPES[x] || MOVE_TYP
 // ---------------- Me page: moves card ----------------
 export function movesCardHtml() {
   return `<section class="card moves-card" id="movesCard"><div class="card-head"><h3>${t('Moves', '招式')}</h3>
-    <span class="mv-links"><a class="link" href="#/pets">🐾 ${t('Pets', '寵物')}</a><a class="link" href="#/tower">🗼 ${t('Gym Tower', 'Gym 塔')} ›</a></span></div><div id="mvBody"><p class="muted small">${t('Loading…', '載入緊…')}</p></div></section>`;
+    </div><nav class="adv-quick" aria-label="${t('Adventure', '冒險')}"><a href="#/tower">🗼 ${t('Tower', '塔')}</a><a href="#/pets">🐾 ${t('Pets', '寵物')}</a><a href="#/lair">👑 Boss</a><a href="#/shop">🏪 ${t('Shop', '商店')}</a></nav><div id="mvBody"><p class="muted small">${t('Loading…', '載入緊…')}</p></div></section>`;
 }
 
 export async function mountMoves(el, user) {
@@ -363,16 +363,29 @@ export async function battleScreen(user, id) {
     let mine, shop;
     try { [mine, shop] = await Promise.all([api.myBag(), api.shopItems()]); } catch (err) { showError(err); return; }
     const usedDrinks = bt.state.items || 0, frac = hp.b / max.b, boss = !!snap.b.boss_pet;
-    const have = shop.filter(it => (mine.items?.[it.id] || 0) > 0);
-    const s = sheetOf(`<h3>🎒 ${t('Bag', '背包')}</h3>
-      ${have.length ? `<div class="bag-list">${have.map(it => {
-        const no = it.kind === 'potion' ? (usedDrinks >= 2 ? t('2 drinks used this fight', '今場用咗 2 件') : hp.a >= max.a ? t('Full HP', '血滿') : '')
-          : boss && frac > 0.3 ? t('Get it to 30% HP first', '要打到 30% 以下先') : '';
-        return `<button type="button" class="bag-it" data-it="${it.id}" ${no ? 'disabled' : ''}><span class="sh-ic ${it.kind}" data-b="${it.id}" aria-hidden="true">${it.kind === 'ball' ? '' : '🧃'}</span>
-          <b>${esc(t(it.en, it.zh))} ×${mine.items[it.id]}</b><span class="muted small">${esc(no || t(it.desc_en, it.desc_zh))}</span></button>`; }).join('')}</div>`
-        : `<p class="muted">${t('Your bag is empty. Buy balls and drinks in the shop.', '背包空嘅。去商店買球同飲品。')}</p>`}
-      <p class="muted small">${t('Using an item uses your turn.', '用嘢會用咗你呢一回合。')}</p>`, t('Bag', '背包'));
-    s.querySelectorAll('[data-it]').forEach(b => b.onclick = () => { s.remove(); act(() => api.battleItem(id, b.dataset.it)); });
+    const list = shop.filter(it => it.kind === 'ball' || it.kind === 'potion');
+    const row = it => {
+      const n = mine.items?.[it.id] || 0;
+      const no = !n ? t('None left', '冇喇') : it.kind === 'potion' ? (usedDrinks >= 2 ? t('2 drinks used this fight', '今場用咗 2 件') : hp.a >= max.a ? t('Full HP', '血滿') : '')
+        : boss && frac > 0.3 ? t('Get it to 30% HP first', '要打到 30% 以下先') : '';
+      return `<div class="bag-row"><button type="button" class="bag-it" data-it="${it.id}" ${no ? 'disabled' : ''}><span class="sh-ic ${it.kind}" data-b="${it.id}" aria-hidden="true">${itemIcon(it)}</span>
+          <b>${esc(t(it.en, it.zh))} ×${n}</b><span class="muted small">${esc(no || t(it.desc_en, it.desc_zh))}</span></button>
+        <button type="button" class="ghost bag-buy" data-buy="${it.id}" ${mine.coins < it.price ? 'disabled' : ''} aria-label="${esc(t(`Buy 1 ${it.en} for ${it.price} coins`, `用 ${it.price} 金幣買 1 個${it.zh}`))}">＋💧${it.price}</button></div>`;
+    };
+    const s = sheetOf(`<div class="bag-head"><h3>🎒 ${t('Bag', '背包')}</h3><span class="muted">💧 <b id="bagCoins">${mine.coins}</b></span></div>
+      <div class="bag-list" id="bagList">${list.map(row).join('')}</div>
+      <p class="muted small">${t('Using an item uses your turn. Buying here doesn’t.', '用嘢會用咗你呢一回合；喺度買嘢就唔會。')}</p>`, t('Bag', '背包'));
+    const wire = () => {
+      s.querySelectorAll('[data-it]').forEach(x => x.onclick = () => { s.remove(); act(() => api.battleItem(id, x.dataset.it)); });
+      s.querySelectorAll('[data-buy]').forEach(x => x.onclick = async () => {
+        x.disabled = true;
+        try {
+          const r = await api.shopBuy(x.dataset.buy, 1); mine.coins = r.coins; mine.items = { ...mine.items, [x.dataset.buy]: r.qty };
+          s.querySelector('#bagCoins').textContent = mine.coins; s.querySelector('#bagList').innerHTML = list.map(row).join(''); wire();
+        } catch (err) { x.disabled = false; showError(err); }
+      });
+    };
+    wire();
   }
   function teamSheet() {
     const s = sheetOf(`<h3>🔁 ${t('Switch to…', '換邊個上？')}</h3><div class="bag-list">${party.map((x, i) => {
@@ -413,6 +426,7 @@ export async function battleScreen(user, id) {
       head = won ? t('Boss beaten!', '打贏 Boss！') : t('The boss won this time', '今次 Boss 贏');
       body = won ? t('It got away, but you earned +15 💧 +20 XP. Catch it next time: throw a ball at 30% HP.', '佢走咗，但你攞到 +15 💧 +20 經驗。下次喺 30% 以下掟球捉佢。') : t('Train, bring a team, try again.', '練勁啲、帶埋隊伍，再嚟。');
       btns += `<a class="button" href="#/lair">👑 ${t('Boss Lair', 'Boss 巢穴')}</a>`;
+
     } else if (bt.kind === 'test') {
       head = won ? t('Test fight won', '試打贏咗') : t('Test fight over', '試打完');
       body = t('Just a test: no rewards, nothing used.', '純粹試打：冇獎勵，乜都冇用到。');
@@ -429,6 +443,7 @@ export async function battleScreen(user, id) {
       head = won ? t('You won! 🏆', '你贏咗！🏆') : t('You lost', '你輸咗');
       body = t('Friendly match: just for fun.', '友誼賽：純粹玩。');
     }
+    if (bt.state.pet_xp) body += ' ' + t(`Your pets +${bt.state.pet_xp} XP.`, `你啲寵物 +${bt.state.pet_xp} 經驗。`);
     el.querySelector('#btMoves').innerHTML = '';
     msg.textContent = head;
     f.innerHTML = `<div class="bt-result ${won ? 'won' : ''}"><b>${head}</b><span>${body}</span><div class="bt-btns">${btns}</div></div>`;

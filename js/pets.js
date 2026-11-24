@@ -16,7 +16,13 @@ export function ivGrade(iv) {
   const avg = STATS.reduce((s, [k]) => s + (+iv?.[k] || 0), 0) / STATS.length;
   return avg >= 0.12 ? 'S' : avg >= 0.05 ? 'A' : avg >= -0.05 ? 'B' : avg >= -0.12 ? 'C' : 'D';
 }
+const FOOD = { protein_bar: { icon: '🍫', en: 'Protein Bar', zh: '蛋白棒' }, steak: { icon: '🥩', en: 'Steak', zh: '牛扒' } };
 const pct = v => `${v >= 0 ? '+' : ''}${Math.round(v * 100)}%`;
+const ICON = { potion: '🧃', food: { protein_bar: '🍫', steak: '🥩' } };
+export const itemIcon = it => (it.kind === 'ball' ? '' : it.kind === 'food' ? (ICON.food[it.id] || '🍖') : ICON.potion);
+// a move scroll: same type as the pet or Normal (Normal pets learn anything); no fusion or monster-only moves
+const TEACHABLE = ['always', 'lift', 'maxlift', 'sets', 'cardio', 'climb', 'climbs'];
+export const scrollPrice = m => 60 + Math.round(1.5 * (m.power || 0));
 
 // little animated sprites: every canvas with data-sp gets its species drawn
 function wireSprites(root) {
@@ -59,12 +65,12 @@ export async function shopScreen() {
       <section class="card sh-wallet"><b>💧 ${mine.coins}</b><span class="muted small">${t('Coins come from going to the gym: chests, quests, the tower.', '金幣嚟自去 gym：寶箱、任務、塔。')}</span></section>
       <section class="card"><ul class="sh-list">${items.map(it => {
         const have = mine.items?.[it.id] || 0;
-        return `<li class="sh-item"><span class="sh-ic ${it.kind}" data-b="${it.id}" aria-hidden="true">${it.kind === 'ball' ? '' : '🧃'}</span>
+        return `<li class="sh-item"><span class="sh-ic ${it.kind}" data-b="${it.id}" aria-hidden="true">${itemIcon(it)}</span>
           <div class="sh-txt"><b>${esc(t(it.en, it.zh))}</b><span class="muted small">${esc(t(it.desc_en, it.desc_zh))}</span><span class="small">${t(`You have ${have}`, `你有 ${have} 個`)}</span></div>
           <div class="sh-buy"><button type="button" data-buy="${it.id}" data-q="1" ${mine.coins < it.price ? 'disabled' : ''}>💧 ${it.price}</button>
           <button type="button" class="ghost small-btn" data-buy="${it.id}" data-q="5" ${mine.coins < it.price * 5 ? 'disabled' : ''}>×5 · ${it.price * 5}</button></div></li>`;
       }).join('')}</ul></section>
-      <p class="muted small sh-note">${t('Balls catch monsters in the tower and the Boss Lair. Drinks heal whoever is fighting (2 per fight).', '球用嚟喺塔同 Boss 巢穴捉怪。飲品幫上緊場嗰個回血（每場最多 2 件）。')}</p>`;
+      <p class="muted small sh-note">${t('Balls catch monsters in the tower and the Boss Lair. Drinks heal whoever is fighting (2 per fight). Food levels up a pet: open it in Pets to feed it. Move scrolls are in Pets too.', '球用嚟喺塔同 Boss 巢穴捉怪。飲品幫上緊場嗰個回血（每場最多 2 件）。食物幫寵物升級：喺寵物頁撳隻寵物去餵。招式卷軸都喺寵物頁。')}</p>`;
     el.querySelectorAll('[data-buy]').forEach(b => b.onclick = async () => {
       b.disabled = true;
       try {
@@ -91,7 +97,7 @@ export async function petsScreen() {
   const saveTeam = async ids => { try { await api.setTeam(ids); await load(); draw(); } catch (err) { showError(err); } };
 
   const card = p => `<button type="button" class="pt-card" data-pet="${p.id}">${sprite(p.species, 64, petName(p))}
-      <b>${esc(petName(p))}</b><span class="pt-meta">${typeChip(p.type)}<span class="pt-grade g-${ivGrade(p.iv)}" title="${t('IV grade', 'IV 評級')}">${ivGrade(p.iv)}</span></span></button>`;
+      <b>${esc(petName(p))}</b><span class="pt-lv">Lv ${p.level || 1}</span><span class="pt-meta">${typeChip(p.type)}<span class="pt-grade g-${ivGrade(p.iv)}" title="${t('IV grade', 'IV 評級')}">${ivGrade(p.iv)}</span></span></button>`;
   function draw() {
     const team = teamIds().map(id => pets.find(p => p.id === id));
     const box = pets.filter(p => p.slot == null);
@@ -108,23 +114,34 @@ export async function petsScreen() {
         <li>${t('A pet’s stats come from yours, shaped by its species: a Kettlebell Pup is all attack, a Treadmill Turtle is all HP and defence. Train and they get stronger too.', '寵物嘅能力由你嘅能力計，再按品種調整：鐵鈴狗全攻擊，跑步機龜就高 HP 同防禦。你練勁，佢哋都會勁。')}</li>
         <li>${t('Each one has its own IVs: −20% to +20% on every stat. Catch the same species again to find a better one (S is the best).', '每隻都有自己嘅 IV：每項能力 −20% 至 +20%。再捉同一品種可以搵更好嘅（S 最好）。')}</li>
         <li>${t('The lower a monster’s HP, the easier to catch. Boss species only at 30% HP or less.', '怪物血越少越易捉。Boss 品種要打到 30% 或以下先捉得。')}</li>
+        <li>${t('Pets level up (to 10, +2% stats a level) from fights they’re in: +20 XP for a win, +5 for a loss. Food from the shop speeds it up.', '寵物喺有份打嘅戰鬥升級（最高 10 級，每級能力 +2%）：贏 +20 經驗，輸 +5。商店嘅食物可以加快。')}</li>
+        <li>${t('A move scroll teaches a pet one extra move (its type or Normal). Teaching another replaces it.', '招式卷軸可以教寵物多一招（同屬性或者普通）。再教就會換走。')}</li>
         <li>${t('A bigger team makes the monsters tougher too, so it helps but doesn’t walk through everything.', '隊伍越大，怪物都會越強，所以有幫助，但唔會一路無敵。')}</li></ul></details>`;
     wireSprites(el);
     el.querySelectorAll('[data-pet]').forEach(b => b.onclick = () => petSheet(pets.find(p => p.id === b.dataset.pet)));
   }
-  function petSheet(p) {
+  let bag = null, moves = null;
+  async function petSheet(p) {
+    try { [bag, moves] = await Promise.all([bag || api.myBag(), moves || api.allMoves()]); } catch (err) { showError(err); return; }
+    const foods = Object.entries(bag.items || {}).filter(([k, q]) => q > 0 && FOOD[k]);
+    const lv = p.level || 1, maxed = lv >= 10, span = maxed ? 1 : (p.xp_to ?? 50) - (p.xp_from ?? 0), into = maxed ? 1 : (p.xp ?? 0) - (p.xp_from ?? 0);
     const inTeam = p.slot != null, full = teamIds().length >= 5, s = p.snap || {};
     const { box, close } = sheet(`
       <div class="pt-head">${sprite(p.species, 96, petName(p))}<div><h3>${esc(petName(p))}</h3>
         <span class="pt-meta">${typeChip(p.type)}${p.boss ? `<span class="pt-boss">👑 ${t('Boss', 'Boss')}</span>` : ''}<span class="pt-grade g-${ivGrade(p.iv)}">${ivGrade(p.iv)}</span></span>
         ${p.nickname ? `<span class="muted small">${esc(speciesName(p.species))}</span>` : ''}</div></div>
+      <div class="pt-xp"><b>Lv ${lv}</b><span class="bt-hp"><i style="width:${Math.round(into / span * 100)}%"></i></span>
+        <span class="muted small">${!maxed ? `${p.xp ?? 0} / ${p.xp_to ?? 50} XP` : t('Max level', '最高級')}</span></div>
+      ${!maxed ? `<div class="pt-feed">${foods.length ? foods.map(([k, q]) => `<button type="button" class="ghost small-btn" data-feed="${k}">${FOOD[k].icon} ${t(`Feed ${FOOD[k].en}`, `餵${FOOD[k].zh}`)} ×${q}</button>`).join('')
+        : `<span class="muted small">${t('No food. Protein Bars and Steak are in the shop.', '冇食物。商店有蛋白棒同牛扒。')}</span>`}</div>` : ''}
       <table class="pt-stats"><tbody>${STATS.map(([k, en, zh]) => { const v = +p.iv?.[k] || 0;
         return `<tr><th>${t(en, zh)}</th><td>${s[k] ?? '–'}</td><td class="pt-iv ${v >= 0.1 ? 'hi' : v <= -0.1 ? 'lo' : ''}">IV ${pct(v)}</td></tr>`; }).join('')}</tbody></table>
-      <p class="muted small">${t('Moves', '招式')}: ${(s.moves || []).map(m => esc(t(m.en, m.zh))).join(' · ')}</p>
+      <p class="muted small">${t('Moves', '招式')}: ${(s.moves || []).map(m => m.id === p.extra_move ? `<b>📜 ${esc(t(m.en, m.zh))}</b>` : esc(t(m.en, m.zh))).join(' · ')}</p>
       <div class="pt-acts">
         ${inTeam ? `<button type="button" class="ghost" data-act="out">${t('Take out of team', '退出隊伍')}</button>`
           : `<button type="button" data-act="in" ${full ? 'disabled' : ''}>${full ? t('Team is full (5 pets)', '隊伍滿咗（5 隻）') : t('Add to team', '加入隊伍')}</button>`}
         <button type="button" class="ghost" data-act="test">${t('Test fight (free)', '試打（免費）')}</button>
+        <button type="button" class="ghost" data-act="teach">📜 ${p.extra_move ? t('Change scroll move', '換卷軸招式') : t('Teach a move', '教招式')}</button>
         <button type="button" class="ghost" data-act="name">${t('Rename', '改名')}</button>
         <button type="button" class="ghost danger" data-act="free">${t('Release', '放生')}</button>
       </div>
@@ -136,6 +153,15 @@ export async function petsScreen() {
       e.target.disabled = true;
       try { const id = await api.petTest(p.id); close(); location.hash = `#/battle/${id}`; } catch (err) { e.target.disabled = false; showError(err); }
     };
+    box.querySelectorAll('[data-feed]').forEach(b => b.onclick = async () => {
+      b.disabled = true;
+      try {
+        const r = await api.petFeed(p.id, b.dataset.feed); bag.items[b.dataset.feed]--;
+        toast(r.level > lv ? t(`Level up! Lv ${r.level} 🎉`, `升級！Lv ${r.level} 🎉`) : t('Yum!', '好味！'));
+        close(); await load(); draw(); petSheet(pets.find(x => x.id === p.id));
+      } catch (err) { b.disabled = false; showError(err); }
+    });
+    box.querySelector('[data-act="teach"]').onclick = () => { close(); teachSheet(p); };
     box.querySelector('[data-act="name"]').onclick = async () => {
       const n = prompt(t('Name (up to 20 letters, empty for the species name)', '名（最多 20 個字，留空就用品種名）'), p.nickname || '');
       if (n == null) return;
@@ -146,6 +172,25 @@ export async function petsScreen() {
       if (!fr.dataset.sure) { fr.dataset.sure = '1'; fr.textContent = t('Sure? It’s gone for good', '確定？放咗就冇㗎喇'); return; }
       try { await api.petUpdate(p.id, null, true); close(); await load(); draw(); toast(t('Released', '放生咗')); } catch (err) { showError(err); }
     };
+  }
+  function teachSheet(p) {
+    const known = new Set((p.snap?.moves || []).map(m => m.id).filter(id => id !== p.extra_move));
+    const list = moves.filter(m => TEACHABLE.includes(m.req_kind) && !known.has(m.id) && m.id !== p.extra_move && (p.type === 'normal' || m.type === p.type || m.type === 'normal'))
+      .sort((a, b) => scrollPrice(a) - scrollPrice(b));
+    const { box, close } = sheet(`<h3>📜 ${t(`Teach ${esc(petName(p))} a move`, `教 ${esc(petName(p))} 一招`)}</h3>
+      <p class="muted small">${t(`You have 💧 ${bag.coins}.`, `你有 💧 ${bag.coins}。`)} ${p.extra_move ? t('This replaces its current scroll move.', '會換走而家嘅卷軸招式。') : ''}</p>
+      <div class="bag-list">${list.map(m => { const c = (MOVE_TYPES[m.type] || MOVE_TYPES.normal).col, pr = scrollPrice(m);
+        return `<button type="button" class="bag-it" data-teach="${m.id}" style="--c:${c}" ${bag.coins < pr ? 'disabled' : ''}><b>${esc(t(m.en, m.zh))} · 💧 ${pr}</b>
+          <span class="muted small">${t((MOVE_TYPES[m.type] || MOVE_TYPES.normal).en, (MOVE_TYPES[m.type] || MOVE_TYPES.normal).zh)}${m.power ? ` · ${t('Power', '威力')} ${m.power}` : ''} · ${esc(t(m.desc_en || '', m.desc_zh || ''))}</span></button>`; }).join('')
+        || `<p class="muted">${t('Nothing new it can learn.', '冇新招可以學。')}</p>`}</div>
+      <button type="button" class="ghost" data-close>${t('Cancel', '取消')}</button>`, t('Teach a move', '教招式'));
+    box.querySelectorAll('[data-teach]').forEach(b => b.onclick = async () => {
+      const m = moves.find(x => x.id === b.dataset.teach);
+      if (!b.dataset.sure) { box.querySelectorAll('[data-teach]').forEach(x => { delete x.dataset.sure; x.classList.remove('sure'); }); b.dataset.sure = '1'; b.classList.add('sure'); b.querySelector('b').textContent = t(`Tap again: pay 💧 ${scrollPrice(m)}`, `再撳一次：付 💧 ${scrollPrice(m)}`); return; }
+      b.disabled = true;
+      try { const r = await api.petTeach(p.id, m.id); bag.coins = r.coins; close(); toast(t(`${petName(p)} learned ${m.en}!`, `${petName(p)} 學識咗${m.zh}！`)); await load(); draw(); }
+      catch (err) { b.disabled = false; showError(err); }
+    });
   }
   draw();
 }
