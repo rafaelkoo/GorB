@@ -237,7 +237,8 @@ export async function battleScreen(user, id) {
     <section class="bt-screen">
       <div class="bt-stage">
         <canvas id="btCv" width="${BW * 2}" height="${BH * 2}" role="img" aria-label="${t('Battle', '對戰')}"></canvas>
-        <div class="bt-hud them"><div class="bt-nm"><b>${esc(fighterName(snap[th]))}</b><span>Lv ${snap[th].level}</span></div><div class="bt-hp"><i id="hpThem"></i></div></div>
+        <div class="bt-hud them"><div class="bt-nm"><b>${esc(fighterName(snap[th]))}</b><span>Lv ${snap[th].level}</span></div><div class="bt-hp"><i id="hpThem"></i></div>
+          ${bt.kind === 'raid' ? `<span class="bt-num" id="hpThemNum"></span>` : ''}</div>
         <div class="bt-hud me"><div class="bt-nm"><b id="nmMe">${esc(fighterName(snap[me]))}</b><span id="lvMe">Lv ${lvOf(snap[me])}</span></div><div class="bt-hp"><i id="hpMe"></i></div><span class="bt-num" id="hpNum"></span>
           ${snap.party ? `<span class="bt-party" id="btParty" aria-label="${t('Your team', '你嘅隊伍')}"></span>` : ''}
           ${bt.kind === 'raid' ? `<span class="bt-left" id="btLeft"></span>` : ''}</div>
@@ -269,10 +270,28 @@ export async function battleScreen(user, id) {
   let frame = 0, fx = null, busyAnim = false, shownLog = bt.log.length, wasReady = false;
   const fainted = side => hp[side] <= 0;
   const paint = () => drawBattle(cv, { ...view(me), fainted: fainted(me) }, { ...view(th), fainted: fainted(th) }, frame, fx);
+  // the group boss: the bar is the whole group's boss this week, going down as your attack would count
+  // (70 for showing up + up to 60 for how well you fight, × your pet bonus × underdog), like the boss card
+  let grp = null;
+  if (bt.kind === 'raid' && bt.group_id) api.groupBoss(bt.group_id).then(gb => {
+    if (!gb?.hp) return;
+    const mine = (gb.members || []).find(m => m.user_id === user.id), party = snap.party || [];
+    const pets = party.filter(x => x.pet).length, evo = party.filter(x => x.pet && x.evolved).length;
+    const myHp = (party.find(x => !x.pet) || snap.a).hp;
+    grp = { hp: gb.hp, left: Math.max(0, gb.hp - gb.dmg), bonus: 1 + 0.1 * pets + 0.05 * evo, mult: mine?.mult || 1, myHp };
+    bars();
+  }).catch(() => {});
+  const grpLeft = () => {
+    const dealt = Math.max(0, max[th] - Math.max(0, hp[th])), started = dealt > 0 || (bt.state.moves || 0) > 0 || movesUsed > 0;
+    const est = started ? Math.round((70 + 60 * Math.min(1, dealt / (2 * grp.myHp))) * grp.bonus * grp.mult) : 0;
+    return Math.max(0, grp.left - est);
+  };
   const bars = () => {
     if (!document.body.contains(cv)) return;   // left the page mid-animation
     for (const [side, elId] of [[th, 'hpThem'], [me, 'hpMe']]) {
-      const p = Math.max(0, hp[side]) / max[side], bar = el.querySelector(`#${elId}`);
+      let p = Math.max(0, hp[side]) / max[side];
+      if (side === th && grp) { const l = grpLeft(); p = l / grp.hp; const n = el.querySelector('#hpThemNum'); if (n) n.textContent = `${l} / ${grp.hp}`; }
+      const bar = el.querySelector(`#${elId}`);
       bar.style.width = `${Math.round(p * 100)}%`; bar.className = p > 0.5 ? '' : p > 0.2 ? 'mid' : 'low';
     }
     el.querySelector('#hpNum').textContent = `${Math.max(0, hp[me])} / ${max[me]}`;
