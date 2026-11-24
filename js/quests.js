@@ -34,8 +34,8 @@ export async function mountQuests(el) {
     const ready = qs.filter(q => q.progress >= q.target && !q.claimed).length;
     card.querySelector('#qCount').textContent = ready ? t(`${ready} to claim`, `${ready} 個可以領`) : '';
     card.querySelector('#qBody').innerHTML = `<h4 class="q-h">${t('Today', '今日')}</h4><ul class="q-list">${day.map(row).join('')}</ul>
-      <h4 class="q-h">${t('This week', '今個星期')}</h4><ul class="q-list">${week.map(row).join('')}</ul>
-      <p class="muted small">${t('Targets follow your own usual, so they get harder as you get fitter.', '目標跟你自己平時嘅水平，你越勁目標就越高。')}</p>`;
+      <h4 class="q-h">${t('This week', '今個星期')}${week[0]?.streak ? ` <span class="q-streak">🔥 ${t(`${week[0].streak}-week streak: +${Math.min(5, week[0].streak) * 10}% coins`, `連續 ${week[0].streak} 個星期達標：金幣 +${Math.min(5, week[0].streak) * 10}%`)}</span>` : ''}</h4><ul class="q-list">${week.map(row).join('')}</ul>
+      <p class="muted small">${t('Targets follow your own usual, so they get harder as you get fitter. Hit your days target week after week for up to +50% coins on weekly quests.', '目標跟你自己平時嘅水平，你越勁目標就越高。連續每個星期達到目標日數，每週任務金幣最多 +50%。')}</p>`;
     card.querySelectorAll('[data-claim]').forEach(b => b.onclick = async () => {
       b.disabled = true;
       try {

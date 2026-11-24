@@ -1080,3 +1080,6 @@ button.danger { color: #f08a7a; border-color: #6b3a35; }
 .sm-row:first-child { border-top: 0; }
 .sm-row .face { width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; background: var(--mat-2); font-weight: 700; }
 .sm-done { color: #6fd3a0; font-weight: 600; font-size: .9rem; }
+.q-streak { font-size: .78rem; font-weight: 600; color: #f19a33; margin-left: 6px; }
+.tw-rp { display: grid; grid-template-columns: 1fr auto; gap: 8px; }
+.tw-rp select { min-width: 0; }

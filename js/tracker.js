@@ -356,8 +356,8 @@ export async function logScreen(user) {
       repPrs.forEach(p => announced.add(`rep:${p.id}:${p.kg}x${p.reps}`));
       draft.announced = [...announced];
       saveDraft(user.id, draft);
-      if (repPrs.length && !prs.length) toast(t(`Rep PR: ${repPrs.map(p => `${exName(p.id)} ${kg(p.kg)} × ${p.reps}`).join(', ')} 💪`, `次數 PR：${repPrs.map(p => `${exName(p.id)} ${kg(p.kg)} × ${p.reps}`).join('、')} 💪`));
-      if (prs.length) toast(t(`New PR: ${prs.map(p => `${exName(p.id)} ${amt(p.id, p.now)}`).join(', ')} 🏆`, `破咗 PR：${prs.map(p => `${exName(p.id)} ${amt(p.id, p.now)}`).join('、')} 🏆`));
+      if (repPrs.length && !prs.length) toast(t(`Rep PR: ${repPrs.map(p => `${exName(p.id)} ${kg(p.kg)} × ${p.reps}`).join(', ')} 💪 +10 💧`, `次數 PR：${repPrs.map(p => `${exName(p.id)} ${kg(p.kg)} × ${p.reps}`).join('、')} 💪 +10 💧`));
+      if (prs.length) toast(t(`New PR: ${prs.map(p => `${exName(p.id)} ${amt(p.id, p.now)}`).join(', ')} 🏆 +${prs.length * 10} 💧`, `破咗 PR：${prs.map(p => `${exName(p.id)} ${amt(p.id, p.now)}`).join('、')} 🏆 +${prs.length * 10} 💧`));
       showState('idle');
     } catch { showState('offline'); clearTimeout(saveTimer); saveTimer = setTimeout(doSave, 20000); }
     saving = false;

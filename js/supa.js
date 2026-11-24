@@ -114,7 +114,7 @@ export const allMoves = () => sb.from('moves').select('id, en, zh, type, stat, p
 export const characterMoves = userId => sb.rpc('character_moves', { p_user: userId }).then(must);
 export const setMoves = ids => sb.rpc('set_moves', { p_moves: ids }).then(must);
 export const myTower = () => sb.rpc('my_tower').then(must);
-export const towerFight = () => sb.rpc('tower_fight').then(must);
+export const towerFight = floor => sb.rpc('tower_fight', floor ? { p_floor: floor } : {}).then(must);
 // pets, shop and the boss lair
 export const shopItems = () => sb.from('shop_items').select('*').order('sort').then(must);
 export const myBag = () => sb.rpc('my_items').then(must);

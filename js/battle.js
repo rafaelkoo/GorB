@@ -25,6 +25,9 @@ const monsterName = s => {
 const speciesNm = i => { const b = BOSSES[i % BOSSES.length]; return t(b.en, b.zh); };
 const fighterName = s => (s.pet ? (s.name || speciesNm(s.species)) : s.monster != null ? monsterName(s) : s.name || '?');
 export const towerReward = n => ({ xp: 20 + 4 * n + (n % 5 === 0 ? 30 : 0), coins: 5 + n + (n % 5 === 0 ? 15 : 0) });
+// replaying a floor you've cleared: 30% of its first-clear reward, every win
+export const replayReward = n => { const r = towerReward(n); return { xp: Math.round(r.xp * 0.3), coins: Math.max(1, Math.round(r.coins * 0.3)) }; };
+const towerMonster = f => (f % 5 === 0 ? 12 + ((f / 5 - 1) % 6) : [0, 2, 9, 1, 6, 4, 7, 3, 10, 8, 5, 11][(f - Math.floor(f / 5) - 1) % 12]);
 
 // ---------------- what a move needs (for the locked ones) ----------------
 function needText(m, basis, learned, byId) {
@@ -163,6 +166,11 @@ export async function towerScreen() {
       <button type="button" id="twGo" ${!tw.open && tw.tickets < 1 ? 'disabled' : ''}>${tw.open ? t('Back to your fight', '返去繼續打') : t(`Fight floor ${n} · 1 🎟️`, `挑戰第 ${n} 層 · 1 🎟️`)}</button>
       ${!tw.open && tw.tickets < 1 ? `<p class="muted small">${t('No tickets left. You get 3 free tomorrow, or 3 more when you check in at the gym.', '冇券喇。聽日有 3 張免費，或者去 gym 打卡即刻多 3 張。')}</p>` : ''}
     </section>
+    ${tw.cleared > 0 ? `<section class="card tw-replay"><div class="card-head"><h3>🔁 ${t('Replay a floor', '重打舊層')}</h3></div>
+      <p class="muted small">${t('Stuck? Replay any floor you’ve cleared for 30% of its reward each win, and catch what lives there. 1 🎟️ a fight.', '卡住咗？任何過咗嘅層都可以重打，每次贏有該層獎勵嘅 30%，仲可以捉嗰層嘅怪。每場 1 🎟️。')}</p>
+      <div class="tw-rp"><select id="twRpFloor" aria-label="${t('Floor', '層數')}">${Array.from({ length: tw.cleared }, (_, i) => tw.cleared - i).map(f => { const r = replayReward(f), m = BOSSES[towerMonster(f)];
+        return `<option value="${f}">${t(`Floor ${f}`, `第 ${f} 層`)} · ${esc(t(m.en, m.zh))}${f % 5 === 0 ? ' 👑' : ''} · +${r.xp} ${t('XP', '經驗')} +${r.coins} 💧</option>`; }).join('')}</select>
+      <button type="button" class="ghost" id="twRpGo" ${tw.open || tw.tickets < 1 ? 'disabled' : ''}>${t('Replay · 1 🎟️', '重打 · 1 🎟️')}</button></div></section>` : ''}
     ${tw.best?.length ? `<section class="card"><div class="card-head"><h3>${t('Highest floors', '最高層數')}</h3></div>
       <ol class="tw-best">${tw.best.slice(0, 10).map(b => `<li><span>${esc(b.name)}</span><b>${b.floor}</b></li>`).join('')}</ol></section>` : ''}
     <details class="card cc-how"><summary>${t('How it works', '點樣玩')}</summary><ul>
@@ -173,6 +181,10 @@ export async function towerScreen() {
       <li>${t('Strength beats Climbing, Climbing beats Endurance, Endurance beats Strength.', '力量剋攀石，攀石剋耐力，耐力剋力量。')}</li></ul></details>`;
   const cv = el.querySelector('#twMon');
   if (cv) { let f = 0; drawBoss(cv, mi, 0); const tick = setInterval(() => { if (!document.body.contains(cv)) return clearInterval(tick); if (!reduced()) { f ^= 1; drawBoss(cv, mi, f); } }, 600); }
+  el.querySelector('#twRpGo')?.addEventListener('click', async e => {
+    e.target.disabled = true;
+    try { const id = await api.towerFight(+el.querySelector('#twRpFloor').value); location.hash = `#/battle/${id}`; } catch (err) { e.target.disabled = false; showError(err); }
+  });
   el.querySelector('#twGo').onclick = async e => {
     e.target.disabled = true;
     try { const id = await api.towerFight(); location.hash = `#/battle/${id}`; } catch (err) { e.target.disabled = false; showError(err); }
@@ -439,6 +451,11 @@ export async function battleScreen(user, id) {
       head = won ? t('Test fight won', '試打贏咗') : t('Test fight over', '試打完');
       body = t('Just a test: no rewards, nothing used.', '純粹試打：冇獎勵，乜都冇用到。');
       btns += snap.a.pet ? `<button type="button" id="btRetest">${t('Again', '再試')}</button>` : '';
+    } else if (bt.kind === 'tower' && bt.state.replay) {
+      const r = replayReward(bt.floor);
+      head = won ? t(`Floor ${bt.floor} again: won! 🎉`, `重打第 ${bt.floor} 層：贏咗！🎉`) : t(`Floor ${bt.floor}: not this time`, `第 ${bt.floor} 層：今次輸咗`);
+      body = won ? t(`+${r.xp} XP +${r.coins} 💧`, `+${r.xp} 經驗 +${r.coins} 💧`) : t('Train, get stronger, come back.', '去 gym 練勁啲再嚟。');
+      btns += `<button type="button" id="btReplay" data-f="${bt.floor}">${t('Again · 1 🎟️', '再打 · 1 🎟️')}</button>`;
     } else if (bt.kind === 'tower') {
       const r = towerReward(bt.floor);
       head = won ? t(`Floor ${bt.floor} cleared! 🎉`, `第 ${bt.floor} 層過咗！🎉`) : t(`Floor ${bt.floor}: not this time`, `第 ${bt.floor} 層：今次輸咗`);
@@ -448,7 +465,8 @@ export async function battleScreen(user, id) {
     } else if (bt.kind === 'raid') {
       head = t('Attack done!', '攻擊完成！');
       const tb = bt.state.pets ? t(` (your ${bt.state.pets} pet${bt.state.pets > 1 ? 's' : ''} +${bt.state.pets * 10}%)`, `（${bt.state.pets} 隻寵物 +${bt.state.pets * 10}%）`) : '';
-      body = t(`It counts for ${bt.state.counts ?? 0} damage on the group boss${tb}${bt.state.mult > 1 ? ` (underdog ×${bt.state.mult})` : ''}. +10 XP`, `你為 group 打咗魔王 ${bt.state.counts ?? 0} 點傷害${tb}${bt.state.mult > 1 ? `（以弱勝強 ×${bt.state.mult}）` : ''}。+10 經驗`);
+      const rc = bt.state.coins ?? (5 + Math.floor((bt.state.counts ?? 0) / 20));
+      body = t(`It counts for ${bt.state.counts ?? 0} damage on the group boss${tb}${bt.state.mult > 1 ? ` (underdog ×${bt.state.mult})` : ''}. +10 XP +${rc} 💧`, `你為 group 打咗魔王 ${bt.state.counts ?? 0} 點傷害${tb}${bt.state.mult > 1 ? `（以弱勝強 ×${bt.state.mult}）` : ''}。+10 經驗 +${rc} 💧`);
     } else {
       head = won ? t('You won! 🏆', '你贏咗！🏆') : t('You lost', '你輸咗');
       body = t('Friendly match: just for fun.', '友誼賽：純粹玩。');
@@ -457,6 +475,10 @@ export async function battleScreen(user, id) {
     el.querySelector('#btMoves').innerHTML = '';
     msg.textContent = head;
     f.innerHTML = `<div class="bt-result ${won ? 'won' : ''}"><b>${head}</b><span>${body}</span><div class="bt-btns">${btns}</div></div>`;
+    f.querySelector('#btReplay')?.addEventListener('click', async e => {
+      e.target.disabled = true;
+      try { const nid = await api.towerFight(+e.target.dataset.f); location.hash = `#/battle/${nid}`; } catch (err) { e.target.disabled = false; showError(err); }
+    });
     f.querySelector('#btRetest')?.addEventListener('click', async e => {
       e.target.disabled = true;
       try { const nid = await api.petTest(snap.a.pet); location.hash = `#/battle/${nid}`; } catch (err) { e.target.disabled = false; showError(err); }
