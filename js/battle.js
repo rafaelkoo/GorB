@@ -439,7 +439,7 @@ export async function battleScreen(user, id) {
     const row = it => {
       const n = mine.items?.[it.id] || 0;
       const no = !n ? t('None left', '冇喇') : it.kind === 'potion' ? (usedDrinks >= 2 ? t('2 drinks used this fight', '今場用咗 2 件') : hp.a >= max.a ? t('Full HP', '血滿') : '')
-        : raid ? t(`A legend: about ${(0.5 * it.val * (1 + 5 * (1 - gfrac))).toFixed(1)}% now (${Math.round(gfrac * 100)}% HP left this week; better as the group wears it down). One ball per attack.`, `傳說級：而家大約 ${(0.5 * it.val * (1 + 5 * (1 - gfrac))).toFixed(1)}%（今個星期仲有 ${Math.round(gfrac * 100)}% 血；group 打得越殘越易）。每次攻擊只可以掟一個。`)
+        : raid ? t(`A legend: about ${(0.2 * it.val * (1 + 6.5 * (1 - gfrac))).toFixed(2)}% now (${Math.round(gfrac * 100)}% HP left this week; better as the group wears it down). One ball per attack.`, `傳說級：而家大約 ${(0.2 * it.val * (1 + 6.5 * (1 - gfrac))).toFixed(2)}%（今個星期仲有 ${Math.round(gfrac * 100)}% 血；group 打得越殘越易）。每次攻擊只可以掟一個。`)
         : t(`Their HP is ${Math.round(frac * 100)}%: the lower, the better the chance`, `佢仲有 ${Math.round(frac * 100)}% 血：越少越易捉`);
       const blocked = !n || (it.kind === 'potion' && no);
       return `<div class="bag-row"><button type="button" class="bag-it" data-it="${it.id}" ${blocked ? 'disabled' : ''}><span class="sh-ic ${it.kind}" data-b="${it.id}" aria-hidden="true">${itemIcon(it)}</span>

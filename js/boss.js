@@ -37,7 +37,7 @@ export function bossCardHtml(b) {
       <li>${t('A new boss every Monday, one of six that only turn up here: the things that stop a whole group going. Its HP is 100 for every day of everyone’s weekly target.', '每個星期一有新魔王，係六隻只會喺度出現嘅怪之一：令成個 group 唔去 gym 嘅嘢。血量 = 大家每星期目標日數加埋 × 100。')}</li>
       <li>${t('Each gym day you get one attack: up to 8 moves against the boss. Showing up is worth 70, fighting well up to 60 more. Each attack also earns 5 💧 + 1 per 20 damage.', '每個 gym 日有一次攻擊機會，同魔王打最多 8 招。出席已經值 70，打得好再加最多 60。每次攻擊仲有 5 💧，每 20 點傷害再加 1。')}</li>
       <li>${t('Bring your pet team: each pet adds 10% (up to +50% with 5).', '可以帶寵物隊伍：每隻寵物加 10%（5 隻最多 +50%）。')}</li>
-      <li>${t('A legend: throw one ball per attack to try to catch it. The odds are tiny (0.5% × the ball at full HP, up to 3% × as your group wears it down). Catching it ends your attack (your damage still counts); the boss fights on for everyone else.', '傳說級：每次攻擊可以掟一個球試吓捉佢。機會極低（滿血時 0.5% × 球，group 打得越殘最多 3% ×）。捉到會完咗你今次攻擊（傷害照計），魔王照樣留低俾其他人繼續打。')}</li>
+      <li>${t('A legend: throw one ball per attack to try to catch it. The odds are tiny (0.2% × the ball at full HP, up to 1.5% × as your group wears it down). Catching it ends your attack (your damage still counts); the boss fights on for everyone else.', '傳說級：每次攻擊可以掟一個球試吓捉佢。機會極低（滿血時 0.2% × 球，group 打得越殘最多 1.5% ×）。捉到會完咗你今次攻擊（傷害照計），魔王照樣留低俾其他人繼續打。')}</li>
       <li>${t('The boss is matched to you, so newcomers count as much as big lifters.', '魔王會跟你嘅實力調整，新手同大隻佬一樣有份。')}</li>
       <li>${t('Lower level than the group average? Your attack counts up to 50% more (⚡).', '等級低過 group 平均？攻擊最多多計 50%（⚡）。')}</li>
       <li>${t('Beat it by Sunday and everyone gets 60 💧 and 80 XP.', '星期日之前打低佢，全部人都有 60 💧 同 80 經驗。')}</li>
