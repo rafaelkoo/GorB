@@ -222,6 +222,7 @@ export async function meScreen(user) {
       ${pushSupported() ? `<div class="setting col"><span>${t('Notifications', '通知')}</span><p id="nstate" class="muted small">…</p>
         <div class="row"><button id="non" hidden>${t('Turn on', '開')}</button><button id="ntest" class="ghost" hidden>${t('Send test', '測試')}</button><button id="noff" class="ghost" hidden>${t('Turn off', '關')}</button></div></div>` : ''}
       <button id="signout" class="ghost danger">${t('Sign out', '登出')}</button>
+      <p class="muted small" id="appVer">${t('Version', '版本')}: …</p>
     </section>
     </details>`);
 
@@ -232,6 +233,8 @@ export async function meScreen(user) {
   mountCharacterCard(el, cleanAvatar(profile.avatar, user.id), user.id);
   mountQuests(el);
   mountMoves(el, user, true);
+  // the version: the name of the app copy the service worker saved on this phone
+  try { caches.keys().then(k => { const v = k.filter(n => n.startsWith('gob-v')).sort().pop(); const p = el.querySelector('#appVer'); if (p) p.textContent = `${t('Version', '版本')}: ${v ? v.replace('gob-', '') : t('not saved yet', '未儲存')}`; }); } catch {}
   // the folded groups remember whether you left them open
   el.querySelectorAll('details.fold').forEach(d => {
     try { d.open = localStorage.getItem('gob_fold_' + d.dataset.fold) === '1'; } catch {}
