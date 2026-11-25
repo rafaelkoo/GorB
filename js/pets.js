@@ -386,7 +386,7 @@ export async function dexScreen() {
       <section class="card"><div class="card-head"><h3>🗼 ${t('Tower monsters', '塔怪物')}</h3></div><div class="dx-grid">${sp.filter(x => !x.boss).map(tile).join('')}</div></section>
       <section class="card"><div class="card-head"><h3>👑 ${t('Bosses', 'Boss')}</h3></div><div class="dx-grid">${sp.filter(x => x.boss).map(tile).join('')}</div></section>
       <section class="card"><div class="card-head"><h3>🌟 ${t('Legends', '傳說')}</h3><span class="muted small">${(dx.legend || []).filter(x => x.caught).length} / ${(dx.legend || []).length}</span></div>
-        <p class="muted small">${t('The weekly group bosses. Once your group has worn one down to 25% HP: one ball per attack, and the odds are tiny.', '每週 group 魔王。group 打到佢剩 25% 血之後：每次攻擊可以掟一個球，機會極低。')}</p>
+        <p class="muted small">${t('The weekly group bosses. One ball per attack, and the odds are tiny (better as your group wears it down).', '每週 group 魔王。每次攻擊可以掟一個球，機會極低（group 打得越殘越易）。')}</p>
         <div class="dx-grid">${(dx.legend || []).map(s => s.caught
           ? `<div class="dx-tile legend">${sprite(s.idx, 64, speciesName(s.idx))}<b>${esc(speciesName(s.idx))}</b><span class="pt-meta">${typeChip(s.type)}</span><span class="muted small">${s.have ? t(`You have ${s.have}`, `你有 ${s.have} 隻`) : t('Caught before', '捉過')}</span></div>`
           : `<div class="dx-tile unknown">${sprite(s.idx, 64, t('Not caught yet', '未捉到'), false, true)}<b>？？？</b><span class="muted small">${t('Group boss', 'Group 魔王')}</span></div>`).join('')}</div></section>`;

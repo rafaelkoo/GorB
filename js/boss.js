@@ -19,7 +19,7 @@ export function bossCardHtml(b) {
     <div class="boss-row">
       <canvas id="bossCanvas" width="96" height="80" role="img" aria-label="${esc(name)}"></canvas>
       <div class="boss-main">
-        <div class="boss-title"><b>${b.caught_by ? t(`👑 ${esc(b.caught_by.name)} caught ${name}!`, `👑 ${esc(b.caught_by.name)} 捉咗${name}！`) : b.defeated ? t(`${name} is down!`, `${name} 打低咗！`) : t(`Boss: ${name}`, `魔王：${name}`)}</b>
+        <div class="boss-title"><b>${b.defeated ? t(`${name} is down!`, `${name} 打低咗！`) : t(`Boss: ${name}`, `魔王：${name}`)}</b>
           <span class="muted small">${b.defeated ? '🎉' : t(`${daysLeft} day${daysLeft === 1 ? '' : 's'} left`, `仲有 ${daysLeft} 日`)}</span></div>
         <div class="boss-hp" role="progressbar" aria-valuemin="0" aria-valuemax="${b.hp}" aria-valuenow="${left}" aria-label="${t('Boss HP', '魔王血量')}"><i style="width:${pct}%"></i><span>HP ${left} / ${b.hp}</span></div>
         <div class="boss-act">${b.defeated ? '' : b.open ? `<a class="button small-btn" href="#/battle/${b.open}">${t('Continue', '繼續攻擊')}</a>`
@@ -31,13 +31,13 @@ export function bossCardHtml(b) {
     <ol class="boss-dmg">${b.members.map(m => `<li><span class="nm">${esc(m.name)}</span>
       ${m.mult > 1 ? `<span class="ud" title="${t('Underdog bonus: lower level than the group average', '以弱勝強：等級低過 group 平均')}">⚡ ×${m.mult}</span>` : ''}
       <span class="muted small">${t(`${m.hits ?? 0} attack${m.hits === 1 ? '' : 's'}`, `攻擊 ${m.hits ?? 0} 次`)}</span><b>${m.dmg}</b></li>`).join('')}</ol>
-    ${b.caught_by ? `<p class="muted small raid-wait">${t('Caught, so it’s gone for this week: it counts as beaten and everyone gets the loot. A new boss comes on Monday.', '捉咗即係今個星期冇咗：當打低咗計，大家都有戰利品。星期一會有新魔王。')}</p>` : ''}
+    ${b.caught_by ? `<p class="small boss-caught">👑 ${t(`${esc(b.caught_by.name)} caught one this week! The boss fights on: keep hitting it.`, `${esc(b.caught_by.name)} 今個星期捉咗一隻！魔王照打：繼續攻擊佢。`)}</p>` : ''}
     ${b.defeated && b.loot_elsewhere ? `<p class="muted small raid-wait">${t('You already got this week’s boss loot in another group (one per week).', '你今個星期已經喺另一個 group 攞咗戰利品（每星期一份）。')}</p>` : ''}
     <ul class="boss-how">
       <li>${t('A new boss every Monday, one of six that only turn up here: the things that stop a whole group going. Its HP is 100 for every day of everyone’s weekly target.', '每個星期一有新魔王，係六隻只會喺度出現嘅怪之一：令成個 group 唔去 gym 嘅嘢。血量 = 大家每星期目標日數加埋 × 100。')}</li>
       <li>${t('Each gym day you get one attack: up to 8 moves against the boss. Showing up is worth 70, fighting well up to 60 more. Each attack also earns 5 💧 + 1 per 20 damage.', '每個 gym 日有一次攻擊機會，同魔王打最多 8 招。出席已經值 70，打得好再加最多 60。每次攻擊仲有 5 💧，每 20 點傷害再加 1。')}</li>
       <li>${t('Bring your pet team: each pet adds 10% (up to +50% with 5).', '可以帶寵物隊伍：每隻寵物加 10%（5 隻最多 +50%）。')}</li>
-      <li>${t('A legend: once your group has worn it down to 25% HP, you can throw one ball per attack to catch it. The odds are tiny (1% × the ball at 25%, up to 3% × at 0). Catch it and it’s gone for the week, counting as beaten.', '傳說級：group 一齊打到佢剩 25% 血之後，每次攻擊可以掟一個球捉佢。機會極低（25% 時 1% × 球，打到 0 最多 3% ×）。捉到就當打低咗，今個星期冇咗。')}</li>
+      <li>${t('A legend: throw one ball per attack to try to catch it. The odds are tiny (0.5% × the ball at full HP, up to 3% × as your group wears it down). Catching it ends your attack (your damage still counts); the boss fights on for everyone else.', '傳說級：每次攻擊可以掟一個球試吓捉佢。機會極低（滿血時 0.5% × 球，group 打得越殘最多 3% ×）。捉到會完咗你今次攻擊（傷害照計），魔王照樣留低俾其他人繼續打。')}</li>
       <li>${t('The boss is matched to you, so newcomers count as much as big lifters.', '魔王會跟你嘅實力調整，新手同大隻佬一樣有份。')}</li>
       <li>${t('Lower level than the group average? Your attack counts up to 50% more (⚡).', '等級低過 group 平均？攻擊最多多計 50%（⚡）。')}</li>
       <li>${t('Beat it by Sunday and everyone gets 60 💧 and 80 XP.', '星期日之前打低佢，全部人都有 60 💧 同 80 經驗。')}</li>
@@ -51,8 +51,7 @@ export async function mountBoss(el, b, groupId) {
     e.target.disabled = true;
     try { const id = await api.raidFight(groupId); location.hash = `#/battle/${id}`; } catch (err) { e.target.disabled = false; showError(err); }
   });
-  const state = b.caught_by ? 'idle' : b.defeated ? 'ko' : 'idle';
-  if (b.caught_by) cv.classList.add('caught');   // gone into someone's ball
+  const state = b.defeated ? 'ko' : 'idle';
   let f = 0; drawBoss(cv, b.boss, 0, state);
   const tick = setInterval(() => { if (!document.body.contains(cv)) return clearInterval(tick); if (!reduced()) { f ^= 1; drawBoss(cv, b.boss, f, state); } }, 600);
   // loot: this week's if beaten, and last week's if it was beaten and not picked up yet

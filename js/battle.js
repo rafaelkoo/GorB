@@ -431,7 +431,7 @@ export async function battleScreen(user, id) {
       [mine, shop, gb, tester] = await Promise.all([api.myBag(), api.shopItems(), bt.kind === 'raid' && bt.group_id ? api.groupBoss(bt.group_id).catch(() => null) : null,
         bt.kind === 'raid' ? api.myCatchTest().catch(() => false) : false]);
       if (gb?.hp) gfrac = Math.max(0, gb.hp - gb.dmg) / gb.hp;
-      if (tester) gfrac = 0;   // testing account: throw any time
+      if (tester) gfrac = 0;   // testing account: always caught
     } catch (err) { showError(err); return; }
     const usedDrinks = bt.state.items || 0, frac = Math.max(0, hp.b) / max.b;
     const raid = bt.kind === 'raid';
@@ -439,10 +439,9 @@ export async function battleScreen(user, id) {
     const row = it => {
       const n = mine.items?.[it.id] || 0;
       const no = !n ? t('None left', '冇喇') : it.kind === 'potion' ? (usedDrinks >= 2 ? t('2 drinks used this fight', '今場用咗 2 件') : hp.a >= max.a ? t('Full HP', '血滿') : '')
-        : raid ? (gfrac > 0.25 ? t(`Not yet: your group has to wear it down to 25% first (${Math.round(gfrac * 100)}% left this week).`, `未得：要 group 一齊打到佢剩 25% 先（今個星期仲有 ${Math.round(gfrac * 100)}%）。`)
-          : t(`A legend: about ${(1 * it.val).toFixed(1)}–${(3 * it.val).toFixed(1)}% (${Math.round(gfrac * 100)}% left this week). One ball per attack.`, `傳說級：大約 ${(1 * it.val).toFixed(1)}–${(3 * it.val).toFixed(1)}%（今個星期仲有 ${Math.round(gfrac * 100)}%）。每次攻擊只可以掟一個。`))
+        : raid ? t(`A legend: about ${(0.5 * it.val * (1 + 5 * (1 - gfrac))).toFixed(1)}% now (${Math.round(gfrac * 100)}% HP left this week; better as the group wears it down). One ball per attack.`, `傳說級：而家大約 ${(0.5 * it.val * (1 + 5 * (1 - gfrac))).toFixed(1)}%（今個星期仲有 ${Math.round(gfrac * 100)}% 血；group 打得越殘越易）。每次攻擊只可以掟一個。`)
         : t(`Their HP is ${Math.round(frac * 100)}%: the lower, the better the chance`, `佢仲有 ${Math.round(frac * 100)}% 血：越少越易捉`);
-      const blocked = !n || (it.kind === 'potion' && no) || (raid && gfrac > 0.25);
+      const blocked = !n || (it.kind === 'potion' && no);
       return `<div class="bag-row"><button type="button" class="bag-it" data-it="${it.id}" ${blocked ? 'disabled' : ''}><span class="sh-ic ${it.kind}" data-b="${it.id}" aria-hidden="true">${itemIcon(it)}</span>
           <b>${esc(t(it.en, it.zh))} ×${n}</b><span class="muted small">${esc(no || t(it.desc_en, it.desc_zh))}</span></button>
         <button type="button" class="ghost bag-buy" data-buy="${it.id}" ${mine.coins < it.price ? 'disabled' : ''} aria-label="${esc(t(`Buy 1 ${it.en} for ${it.price} coins`, `用 ${it.price} 金幣買 1 個${it.zh}`))}">＋💧${it.price}</button></div>`;
@@ -496,7 +495,7 @@ export async function battleScreen(user, id) {
       head = t(`Caught ${fighterName(snap.b)}! 🎉`, `捉到 ${fighterName(snap.b)}！🎉`);
       body = t(`IV grade ${ivGrade(caught.iv)}. It’s in your box.`, `IV 評級 ${ivGrade(caught.iv)}。已經放咗入寵物箱。`)
         + (bt.kind === 'tower' ? ' ' + t(`Floor ${bt.floor} counts as cleared.`, `第 ${bt.floor} 層當過咗。`) : '')
-        + (bt.kind === 'raid' ? ' ' + t(`A legend! Your attack still counts for ${bt.state.counts ?? 0} damage.`, `傳說級！你今次攻擊照計 ${bt.state.counts ?? 0} 點傷害。`) : '');
+        + (bt.kind === 'raid' ? ' ' + t(`A legend! Your attack still counts for ${bt.state.counts ?? 0} damage, and the boss fights on for your group.`, `傳說級！你今次攻擊照計 ${bt.state.counts ?? 0} 點傷害，魔王照樣留低俾 group 繼續打。`) : '');
       if (bt.kind === 'raid') head = '👑 ' + head;
       btns += `<a class="button" href="#/pets">🐾 ${t('See your pets', '睇寵物')}</a>`;
     } else if (bt.kind === 'lair') {
