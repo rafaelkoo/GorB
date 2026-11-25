@@ -146,6 +146,7 @@ export const buyMove = id => sb.rpc('buy_move', { p_move: id }).then(must);
 export const petFeed = (id, item) => sb.rpc('pet_feed', { p_pet: id, p_item: item }).then(must);
 export const petTeach = (id, move) => sb.rpc('pet_teach', { p_pet: id, p_move: move }).then(must);
 export const petTest = id => sb.rpc('pet_test', { p_pet: id }).then(must);
+export const myCatchTest = () => sb.rpc('my_catch_test').then(must);
 export const userTeamOrder = id => sb.rpc('user_team_order', { p_user: id }).then(must);
 export const userTeam = id => sb.rpc('user_team', { p_user: id }).then(must);
 export const petEvoChoice = (id, choice) => sb.rpc('pet_evo_choice', { p_pet: id, p_choice: choice }).then(must);

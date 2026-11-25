@@ -427,8 +427,11 @@ export async function battleScreen(user, id) {
     let gfrac = 1;
     try {
       let gb;
-      [mine, shop, gb] = await Promise.all([api.myBag(), api.shopItems(), bt.kind === 'raid' && bt.group_id ? api.groupBoss(bt.group_id).catch(() => null) : null]);
+      let tester = false;
+      [mine, shop, gb, tester] = await Promise.all([api.myBag(), api.shopItems(), bt.kind === 'raid' && bt.group_id ? api.groupBoss(bt.group_id).catch(() => null) : null,
+        bt.kind === 'raid' ? api.myCatchTest().catch(() => false) : false]);
       if (gb?.hp) gfrac = Math.max(0, gb.hp - gb.dmg) / gb.hp;
+      if (tester) gfrac = 0;   // testing account: throw any time
     } catch (err) { showError(err); return; }
     const usedDrinks = bt.state.items || 0, frac = Math.max(0, hp.b) / max.b;
     const raid = bt.kind === 'raid';
