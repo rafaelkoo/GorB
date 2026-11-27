@@ -69,6 +69,8 @@ export function signIn(onDone) {
   const el = render(`
     <section class="welcome">
       <div class="lang-row">${langSwitchHtml()}</div>
+      <figure class="welcome-hero"><img src="assets/art/hero-banner-960.webp" srcset="assets/art/hero-banner-960.webp 960w, assets/art/hero-banner.webp 1376w" sizes="(max-width: 720px) 100vw, 720px" width="1376" height="768" decoding="async"
+        alt="${t('A lifter squats a heavy barbell in flames next to a trophy and a dog, while a slacker sleeps on a bench under a shadow monster', '一個人喺火焰入面深蹲槓鈴，旁邊有獎盃同隻狗；另一邊有人瞓喺凳上，後面有隻影子怪獸')}"></figure>
       <h2>${t('Check in. Track it. Don’t be the bitch.', '打卡、記錄、唔好做包尾嗰個。')}</h2>
       <p class="muted">${t('Snap a photo at the gym, your mates get pinged, the month table does the rest.', '去到 gym 影張相，朋友即刻收到通知，月尾排行榜話晒你知。')}</p>
     </section>

@@ -1,0 +1,194 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#1d2125">
+  <title>Gym or Bitch — Pixel Art Demo</title>
+  <link rel="stylesheet" href="css/app.css">
+  <style>
+    .demo-wrap { max-width: 720px; margin: 0 auto; padding: 20px 16px 64px; display: grid; gap: 22px; }
+    .demo-section { display: grid; gap: 10px; }
+    .demo-tag { font-size: .78rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--red); }
+    .hero-frame { position: relative; border-radius: var(--r-card); overflow: hidden; border: 1px solid var(--line); background: var(--floor); }
+    .hero-frame img { width: 100%; display: block; }
+    .hero-overlay { padding: 16px; background: linear-gradient(180deg, rgba(29,33,37,.15) 0%, #1d2125 90%); display: grid; gap: 6px; }
+    .icon-compare { display: flex; flex-wrap: wrap; align-items: center; gap: 18px; }
+    .icon-box { display: grid; justify-items: center; gap: 6px; font-size: .82rem; color: var(--dust); }
+    .icon-box img { border-radius: 22%; border: 1px solid var(--line); image-rendering: pixelated; }
+    .px-ic { display: inline-block; vertical-align: middle; image-rendering: pixelated; flex: none; }
+    .px-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(132px, 1fr)); gap: 10px; }
+    .px-tile { background: var(--floor); border: 1px solid var(--line); border-radius: var(--r-ctl); padding: 10px; display: flex; align-items: center; gap: 10px; }
+    .px-tile .old { opacity: .45; font-size: 1rem; margin-left: auto; }
+    .nav-demo { display: flex; flex-wrap: wrap; gap: 8px; }
+    .nav-pill { display: inline-flex; align-items: center; gap: 7px; padding: 8px 12px; border-radius: 999px; background: var(--floor); border: 1px solid var(--line); color: var(--chalk); font-weight: 600; font-size: .9rem; }
+    .nav-pill.on { background: var(--red); border-color: var(--red); color: #fff; }
+    .rank-demo { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+    .rank-demo li { display: flex; align-items: center; gap: 10px; background: var(--floor); border: 1px solid var(--line); border-radius: var(--r-ctl); padding: 10px 12px; }
+    .rank-demo .pts { margin-left: auto; font-weight: 700; display: inline-flex; align-items: center; gap: 5px; }
+    .brand-new { display: inline-flex; align-items: center; gap: 10px; }
+    .brand-new img { width: 36px; height: 36px; border-radius: 10px; border: 1px solid var(--line); }
+    .mon-controls { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: space-between; }
+    .mon-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 12px; }
+    .mon-card { background: var(--floor); border: 1px solid var(--line); border-radius: var(--r-ctl); padding: 12px; display: grid; gap: 8px; }
+    .mon-stage { background: radial-gradient(circle at 50% 60%, #2a3037 0%, #171a1e 100%); border: 1px solid var(--line); border-radius: 10px; display: grid; place-items: center; padding: 8px; }
+    .mon-stage canvas { image-rendering: pixelated; }
+    .mon-meta { display: flex; gap: 6px; flex-wrap: wrap; font-size: .75rem; }
+    .mon-pill { background: var(--mat-2); color: var(--dust); padding: 2px 7px; border-radius: 999px; font-weight: 600; }
+    .mon-pill.raid { background: #3d1c1b; color: #ff9c96; }
+  </style>
+</head>
+<body>
+  <header class="top">
+    <h1 class="brand-new"><img src="assets/art/app-icon.jpg" alt="GorB"> Gym <em>or</em> Bitch <span class="muted small" style="margin-left:8px">Art Demo</span></h1>
+  </header>
+
+  <div class="demo-wrap">
+    <!-- 1. Hero Banner + Login Mockup -->
+    <section class="demo-section">
+      <span class="demo-tag">1 · Login Hero &amp; OG Share Card (16:9)</span>
+      <div class="hero-frame">
+        <img src="assets/art/hero-banner.webp" alt="Gym or Bitch pixel hero banner">
+        <div class="hero-overlay">
+          <h2>Check in. Track it. Don’t be the bitch.</h2>
+          <p class="muted">Snap a photo at the gym, your mates get pinged, the month table does the rest.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- 2. App Icon Comparison -->
+    <section class="demo-section">
+      <span class="demo-tag">2 · App Icon Upgrade (Before vs After)</span>
+      <div class="card">
+        <div class="icon-compare">
+          <div class="icon-box">
+            <img src="icons/icon-512.png" width="96" height="96" alt="Current icon">
+            <span>Current (G/B)</span>
+          </div>
+          <div class="icon-box">
+            <img src="assets/art/app-icon.jpg" width="96" height="96" alt="New 96px">
+            <span>New (96px)</span>
+          </div>
+          <div class="icon-box">
+            <img src="assets/art/app-icon.jpg" width="48" height="48" alt="New 48px">
+            <span>48px</span>
+          </div>
+          <div class="icon-box">
+            <img src="assets/art/app-icon.jpg" width="32" height="32" alt="New 32px">
+            <span>32px favicon</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 3. Pixel-Art SVG Icon Kit -->
+    <section class="demo-section">
+      <span class="demo-tag">3 · 16×16 Pixel-Art SVG Icons (Zero System Emojis)</span>
+      <div class="card">
+        <h3>Adventure Nav &amp; Shop Items</h3>
+        <div class="nav-demo" id="navDemo"></div>
+        <div class="px-grid" id="itemGrid"></div>
+      </div>
+
+      <div class="card">
+        <h3>Rankings &amp; History Preview</h3>
+        <ol class="rank-demo" id="rankDemo"></ol>
+      </div>
+    </section>
+
+    <!-- 4. New Monster Concepts -->
+    <section class="demo-section">
+      <span class="demo-tag">4 · New Monster Concepts (48×40 Pixel Canvas · Live Animation)</span>
+      <div class="card">
+        <div class="mon-controls">
+          <h3>6 New Gym-Excuse Monsters</h3>
+          <div class="seg" role="group" aria-label="Monster State">
+            <button type="button" class="on" data-mstate="idle">Wild / Idle</button>
+            <button type="button" data-mstate="evo">Evolved (Gym Form)</button>
+            <button type="button" data-mstate="ko">KO’d</button>
+          </div>
+        </div>
+        <div class="mon-grid" id="monGrid"></div>
+      </div>
+    </section>
+  </div>
+
+  <script type="module">
+    import { pxIcon } from './js/pixel-icons.js';
+    import { NEW_MONSTERS, drawNewMonster } from './js/demo-monsters.js';
+
+    const navs = [
+      ['tower', 'Tower', true],
+      ['pets', 'Pets', false],
+      ['dex', 'Dex', false],
+      ['lair', 'Boss Lair', false],
+      ['shop', 'Shop', false],
+    ];
+    document.getElementById('navDemo').innerHTML = navs.map(([k, label, on]) =>
+      `<span class="nav-pill ${on ? 'on' : ''}">${pxIcon(k, 20)} ${label}</span>`
+    ).join('');
+
+    const items = [
+      ['coin', 'Sweat Coin', '💧'],
+      ['protein_bar', 'Protein Bar', '🍫'],
+      ['steak', 'Steak', '🥩'],
+      ['potion', 'Energy Drink', '🧃'],
+      ['shield', 'Shield', '🛡️'],
+      ['scroll', 'Move Scroll', '📜'],
+      ['trophy', 'Champion', '🏆'],
+      ['bitch_dog', 'The Bitch', '🐶'],
+    ];
+    document.getElementById('itemGrid').innerHTML = items.map(([k, name, old]) =>
+      `<div class="px-tile">${pxIcon(k, 28, name)}<span><b>${name}</b></span><span class="old">${old}</span></div>`
+    ).join('');
+
+    const ranks = [
+      ['medal_1', 'Alex', '22 days · Top lifter', 'trophy'],
+      ['medal_2', 'Sam', '18 days', null],
+      ['medal_3', 'Chris', '14 days', null],
+      ['bitch_dog', 'Jordan', '2 days · Monthly Bitch', null],
+    ];
+    document.getElementById('rankDemo').innerHTML = ranks.map(([ic, name, sub, badge]) =>
+      `<li>${pxIcon(ic, 26, name)}<div><b>${name}</b><div class="muted small">${sub}</div></div><span class="pts">${badge ? pxIcon(badge, 20) : ''} ${pxIcon('coin', 18)} 120</span></li>`
+    ).join('');
+
+    let mMode = 'idle', mFrame = 0;
+    const renderMonGrid = () => {
+      const isEvo = mMode === 'evo';
+      const st = mMode === 'ko' ? 'ko' : 'idle';
+      document.getElementById('monGrid').innerHTML = NEW_MONSTERS.map((m, i) => {
+        const showEvo = isEvo && m.evo;
+        const title = showEvo ? m.evo.en : m.en;
+        const zh = showEvo ? m.evo.zh : m.zh;
+        const mv = showEvo ? m.evo.move : m.move;
+        return `<div class="mon-card">
+          <div class="mon-stage"><canvas data-mon="${i}" width="144" height="120"></canvas></div>
+          <div><b>${title}</b><div class="muted small">${zh}${isEvo && !m.evo ? ' (Legend · No Evo)' : ''}</div></div>
+          <div class="mon-meta">
+            <span class="mon-pill ${m.tier.includes('Raid') ? 'raid' : ''}">${m.tier}</span>
+            <span class="mon-pill">${m.type}</span>
+            <span class="mon-pill">${mv}</span>
+          </div>
+          <p class="muted small">${m.desc}</p>
+        </div>`;
+      }).join('');
+      drawAllMonsters();
+    };
+    const drawAllMonsters = () => {
+      const isEvo = mMode === 'evo';
+      const st = mMode === 'ko' ? 'ko' : 'idle';
+      document.querySelectorAll('canvas[data-mon]').forEach(cv => {
+        const idx = +cv.dataset.mon;
+        drawNewMonster(cv, idx, mFrame, st, isEvo && !!NEW_MONSTERS[idx].evo);
+      });
+    };
+    renderMonGrid();
+    setInterval(() => { mFrame ^= 1; drawAllMonsters(); }, 550);
+    document.querySelectorAll('[data-mstate]').forEach(btn => btn.onclick = () => {
+      mMode = btn.dataset.mstate;
+      document.querySelectorAll('[data-mstate]').forEach(b => b.classList.toggle('on', b === btn));
+      renderMonGrid();
+    });
+  </script>
+</body>
+</html>

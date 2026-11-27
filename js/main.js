@@ -10,6 +10,9 @@ import { libraryScreen, closeExercise } from './exsheet.js';
 import { reviewScreen } from './review.js';
 import { stopGym } from './gym.js';
 import { historyScreen } from './history.js';
+import { startPxSwap } from './pxswap.js';
+
+startPxSwap();   // game emoji → pixel icons
 import { chatScreen, closeChat } from './chat.js';
 import { towerScreen, battleScreen, closeBattle, movesScreen } from './battle.js';
 import { shopScreen, petsScreen, lairScreen, dexScreen } from './pets.js';

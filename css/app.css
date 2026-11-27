@@ -1150,3 +1150,9 @@ canvas.dex-shadow { filter: brightness(0) opacity(.45); }
 @media (prefers-reduced-motion: reduce) { .fold-chev { transition: none; } }
 .today-what { margin-left: 6px; font-size: .75rem; color: var(--dust); font-weight: 500; }
 .boss-caught { margin: 0; color: #c98bff; }
+/* pixel icons standing in for game emoji (js/pxswap.js) */
+.px-wrap { display: inline-flex; vertical-align: -0.15em; line-height: 1; }
+.px-wrap .px-ic { display: inline-block; flex: none; width: 1.1em; height: 1.1em; }
+/* sign-in hero banner */
+.welcome-hero { margin: 0 0 4px; border-radius: var(--r-card); overflow: hidden; border: 1px solid var(--line); background: var(--floor); aspect-ratio: 1376 / 768; }
+.welcome-hero img { width: 100%; height: 100%; display: block; object-fit: cover; }

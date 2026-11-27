@@ -59,6 +59,8 @@ Web app (PWA) first, Android app later via TWA.
 - **History**: the gym/bitch board restarts on the 1st of each month (London time); finished months are on the History page (link on the board) with 🏆 most days, 🐶 the bitch, all-time counts, and each month's full table. Members only count from the month they joined (group_history).
 - **Character card** (battle phase 1): the Me page shows Lv, type, XP bar, sweat coins and five stats, all worked out on the server by character_card (migration 022) from real records. Stats use the last 60 days (HP gym days, Attack = average of 3 best one-rep maxes, Defence sets, Speed cardio minutes, Technique variety + hardest climb), so they drop if you stop going. Level never drops. Tapping someone in the gym shows their level and type. Next: turn-based battles (phase 2), coin bets (phase 3).
 
+- **Pixel art** (`assets/art/`, `js/pixel-icons.js`, `js/pxswap.js`): the game emoji in the app's own text (💧 🍫 🥩 🧃 🛡️ 📜 🥇 🥈 🥉 🏆 🐶 🗼 🐾 📖 👑 🏪) are swapped on screen for 16×16 pixel SVG icons, each with an aria-label in the current language. Chat, captions, reactions and inputs keep real emoji. The sign-in page shows the hero banner (WebP, 960 px and full size); `og-card.jpg` (1200×630) is the link preview when the app is shared. `demo-art.html` shows the icons and six monster ideas (`js/demo-monsters.js`, not in the game yet). The app icon stays G/B for now.
+
 Later: running times (5K…marathon).
 
 ## Setup
