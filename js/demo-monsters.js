@@ -1,4 +1,4 @@
-// 6 new monster concepts drawn in the exact 48x40 pixel-art style of js/pixel.js (drawBoss).
+// 10 new monster concepts drawn in the exact 48x40 pixel-art style of js/pixel.js (drawBoss).
 const OUT = '#231a17';
 
 export const NEW_MONSTERS = [
@@ -37,6 +37,30 @@ export const NEW_MONSTERS = [
     tier: 'Weekly Raid Legend', type: 'Boss', move: 'Mala Temptation',
     desc: 'Turns a post-gym dinner plan into skipping the gym altogether.',
     evo: null
+  },
+  {
+    en: 'Mirror-Flex Peacock', zh: '鏡前自拍孔雀',
+    tier: 'Tower Wild', type: 'Technique', move: 'Flash Pose',
+    desc: 'Spends 20 minutes flexing in the mirror for a story, zero sets logged.',
+    evo: { en: 'PR-Day Peacock', zh: '破紀錄孔雀', move: 'Plate Fan' }
+  },
+  {
+    en: 'Pre-Workout Crab', zh: '發抖蟹',
+    tier: 'Tower Wild', type: 'Speed', move: 'Beta Tingle',
+    desc: 'Took two scoops of pre-workout, now just scratching its shell and pacing.',
+    evo: { en: 'Espresso Crab', zh: '黑咖啡鐵蟹', move: 'Clean Pinch' }
+  },
+  {
+    en: 'Traffic Snail', zh: '塞車蝸牛',
+    tier: 'Tower Wild', type: 'Defence', move: 'Red Light',
+    desc: '"Gym is too far and traffic is brutal, I\'ll go tomorrow."',
+    evo: { en: 'Spin-Bike Snail', zh: '飛輪蝸牛', move: 'Turbo Cadence' }
+  },
+  {
+    en: 'Nap-Stretch Snake', zh: '拉筋瞓著蛇',
+    tier: 'Tower Wild', type: 'HP', move: 'Foam-Roll Nap',
+    desc: 'Rolled out the yoga mat to "stretch for 5 minutes", woke up 2 hours later.',
+    evo: { en: 'Mobility Python', zh: '靈活性巨蟒', move: 'Deep Squat' }
   }
 ];
 
@@ -213,6 +237,112 @@ export function drawNewMonster(canvas, idx, frame = 0, state = 'idle', evolved =
       // menacing fiery face on pot
       eyes(16, 28, y + 14, '#f2c230');
       if (!ko) { r(18, y + 21, 12, 3, '#e0342f'); r(20, y + 21, 2, 2, '#f2c230'); r(26, y + 21, 2, 2, '#f2c230'); }
+      break;
+    }
+    case 6: { // Mirror-Flex Peacock -> PR-Day Peacock
+      const y = 4 + base + b;
+      if (evolved) {
+        // Tail fan made of iron weight plates + barbell
+        r(6, y + 4, 36, 18, '#3c414a');
+        r(9, y + 6, 30, 14, '#5d6470');
+        r(12, y + 8, 24, 10, '#e0342f');
+        r(17, y + 12, 14, 18, '#2e9fd6'); // chest
+        r(20, y + 4, 8, 9, '#2e9fd6'); // head
+        r(19, y + 5, 10, 2, '#f2c230'); // gold headband
+        eyes(21, 25, y + 7);
+        r(22, y + 10, 4, 2, '#f2c230'); // beak
+        // barbell overhead
+        r(6, y + 1, 36, 2, '#9aa3ad');
+        r(4, y - 1, 3, 6, '#e0342f'); r(41, y - 1, 3, 6, '#e0342f');
+        r(19, y + 30, 3, 4, '#f2c230'); r(26, y + 30, 3, 4, '#f2c230');
+      } else {
+        // Peacock tail with camera-flash eyes + holding selfie phone
+        r(6, y + 4, 36, 18, '#1f6b40'); r(10, y + 6, 28, 14, '#35a565');
+        for (const [fx, fy] of [[9, y + 7], [22, y + 5], [35, y + 7], [13, y + 14], [31, y + 14]]) {
+          r(fx, fy, 4, 4, '#4d8df0'); r(fx + 1, fy + 1, 2, 2, frame ? '#eef0ea' : '#f2c230');
+        }
+        r(18, y + 13, 12, 16, '#2e9fd6'); // body
+        r(20, y + 5, 8, 9, '#2e9fd6'); // head
+        eyes(21, 25, y + 8);
+        r(22, y + 11, 4, 2, '#f2c230');
+        // selfie phone & wing
+        r(32, y + 13 - frame, 5, 8, '#2b2b30'); r(33, y + 14 - frame, 3, 5, '#93c5fd');
+        if (frame) { r(31, y + 11, 2, 2, '#eef0ea'); r(37, y + 11, 2, 2, '#eef0ea'); }
+        r(20, y + 29, 2, 5, '#f2c230'); r(26, y + 29, 2, 5, '#f2c230');
+      }
+      break;
+    }
+    case 7: { // Pre-Workout Crab -> Espresso Crab
+      const y = 9 + base + b;
+      const sh = evolved ? '#6e4429' : '#e0342f', shL = evolved ? '#9b6a3a' : '#f19a33';
+      // legs
+      for (const lx of [8, 12, 32, 36]) r(lx, y + 22, 3, 5, sh);
+      // shell
+      r(11, y + 9, 26, 15, sh); r(14, y + 7, 20, 4, shL);
+      eyes(17, 28, y + 13);
+      if (evolved) {
+        // espresso crab lifting dumbbell cleanly
+        r(4, y + 6 - frame, 6, 8, sh); r(38, y + 6 - frame, 6, 8, sh);
+        r(3, y + 3 - frame, 42, 2, '#9aa3ad');
+        r(2, y + 1 - frame, 3, 6, '#3c414a'); r(43, y + 1 - frame, 3, 6, '#3c414a');
+        r(19, y + 18, 10, 5, '#eef0ea'); r(21, y + 19, 6, 3, '#2a1f18'); // coffee cup badge
+      } else {
+        // jittery claws + tingle sparks + shaker
+        const jit = frame ? 1 : -1;
+        r(4 + jit, y + 8, 6, 8, sh); r(38 - jit, y + 8, 6, 8, sh);
+        r(4 + jit, y + 4, 2, 4, shL); r(42 - jit, y + 4, 2, 4, shL);
+        r(19, y + 17, 10, 8, '#4d8df0'); r(20, y + 15, 8, 2, '#eef0ea'); // shaker
+        // tingle sparks
+        r(8, y + 2 + frame, 2, 2, '#e66fab'); r(38, y + 3 - frame, 2, 2, '#f2c230');
+      }
+      break;
+    }
+    case 8: { // Traffic Snail -> Spin-Bike Snail
+      const y = 7 + base + b;
+      const bodyCol = '#d99d6c';
+      // snail body & eyestalks
+      r(8, y + 22, 32, 8, bodyCol); r(34, y + 16, 7, 10, bodyCol);
+      r(35, y + 11, 2, 6, bodyCol); r(39, y + 11, 2, 6, bodyCol);
+      eyes(34, 38, y + 8);
+      if (evolved) {
+        // spin-bike wheel shell + red pedal
+        r(9, y + 6, 22, 20, '#3c414a'); r(11, y + 8, 18, 16, '#9aa3ad');
+        r(14, y + 11, 12, 10, '#1d2125'); r(18, y + 14, 4, 4, '#e0342f');
+        // speed lines
+        r(2, y + 10 + frame, 5, 2, '#4d8df0'); r(3, y + 16 - frame, 4, 2, '#4d8df0');
+      } else {
+        // shell with traffic light stuck on top
+        r(10, y + 8, 20, 16, '#8a6948'); r(13, y + 11, 14, 10, '#c98a5a');
+        r(17, y - 1, 6, 11, '#2b2b30');
+        r(19, y + 1, 2, 2, '#e0342f'); // red light
+        r(19, y + 4, 2, 2, '#5d6470');
+        r(19, y + 7, 2, 2, '#5d6470');
+      }
+      break;
+    }
+    case 9: { // Nap-Stretch Snake -> Mobility Python
+      const y = 7 + base + b;
+      const snk = evolved ? '#35a565' : '#8fcf7a', snkD = '#2d6b45';
+      // yoga mat under it
+      r(5, y + 26, 38, 4, '#4d8df0'); r(7, y + 27, 34, 2, '#93c5fd');
+      if (evolved) {
+        // upright strong cobra/python with headband & kettlebell
+        r(13, y + 18, 22, 8, snk); r(16, y + 8, 16, 12, snk);
+        r(18, y + 2, 12, 8, snk);
+        r(18, y + 3, 12, 2, '#e0342f'); // sweatband
+        eyes(19, 27, y + 5);
+        r(22, y + 11, 4, 12, '#f2d245'); // belly
+        r(34, y + 17 - frame, 7, 8, '#3c414a'); r(36, y + 14 - frame, 3, 3, '#9aa3ad'); // kettlebell
+      } else {
+        // curled up snoozing on mat with Zzz
+        r(10, y + 17, 28, 9, snk); r(13, y + 13, 22, 6, snkD);
+        r(26, y + 12, 11, 8, snk);
+        // sleepy closed eyes + drool
+        r(28, y + 15, 3, 1, OUT); r(33, y + 15, 3, 1, OUT);
+        r(35, y + 18, 2, 4 + frame, '#93c5fd'); // drool
+        // Zzz
+        r(33, y + 4 - frame, 4, 1, '#eef0ea'); r(35, y + 5 - frame, 1, 1, '#eef0ea'); r(33, y + 6 - frame, 4, 1, '#eef0ea');
+      }
       break;
     }
   }
