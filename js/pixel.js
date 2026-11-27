@@ -9,6 +9,9 @@ import { EX, isClimb } from './exercises.js';
 
 // ---------- parts ----------
 // Colour lists only ever grow at the end, so a saved index always means the same colour.
+import { drawDec } from './pixel-dec.js';
+const DEC_ART = [0, 1, 2, 3, 6, 7, 8, 9, 4, 5];   // species 24–33 → drawing in pixel-dec.js (the demo's order)
+
 export const SKINS = ['#f7d9bf', '#eebc94', '#d99d6c', '#b5794b', '#8c5634', '#5f3a22',
   '#fde6d6', '#e3b483', '#c98a5a', '#6e4429', '#462a1a',                  // more natural tones
   '#8fcf7a', '#86b3ea', '#b8bccb', '#c79be8', '#f2a3c0'];                 // fun: green, blue, robot grey, purple, pink
@@ -849,7 +852,18 @@ export const BOSSES = [
   { en: 'Winter Night Wraith', zh: '冬夜幽靈' },
   { en: 'Hangover Ogre', zh: '宿醉食人魔' },
   { en: 'Gym-Closed Gargoyle', zh: '休館石像鬼' },
-  { en: 'Flake Fox', zh: '放飛機狐' }
+  { en: 'Flake Fox', zh: '放飛機狐' },
+  // 24–31: December tower monsters, 32: December tower boss, 33: December group-boss legend (js/pixel-dec.js)
+  { en: 'Skip-Leg-Day Flamingo', zh: '走佬腳雞', evo: { en: 'Squatting Flamingo', zh: '深蹲巨鳥' } },
+  { en: 'Bench-Hog Mimic', zh: '霸機寶箱怪', evo: { en: 'Free-Weight Knight', zh: '自由重量騎士' } },
+  { en: 'One-More-Game Gremlin', zh: '打多鋪先小鬼', evo: { en: 'IRL Grinder', zh: '現實升級勇者' } },
+  { en: 'Laundry-Pile Golem', zh: '污糟衫山怪', evo: { en: 'Gear-Ready Golem', zh: '潔癖裝備師' } },
+  { en: 'Mirror-Flex Peacock', zh: '鏡前自拍孔雀', evo: { en: 'PR-Day Peacock', zh: '破紀錄孔雀' } },
+  { en: 'Pre-Workout Crab', zh: '發抖蟹', evo: { en: 'Espresso Crab', zh: '黑咖啡鐵蟹' } },
+  { en: 'Traffic Snail', zh: '塞車蝸牛', evo: { en: 'Spin-Bike Snail', zh: '飛輪蝸牛' } },
+  { en: 'Nap-Stretch Snake', zh: '拉筋瞓著蛇', evo: { en: 'Mobility Python', zh: '靈活性巨蟒' } },
+  { en: 'All-You-Can-Eat Whale', zh: '放題巨鯨', evo: { en: 'Bulking Whale', zh: '增肌巨鯨' } },
+  { en: 'Hotpot Cauldron', zh: '宵夜邊爐鍋怪' }
 ];
 // state: 'idle' | 'ko' | 'back' (seen from behind: your pet in a battle). 48×40 scene pixels.
 // evolved: the excuse turned motivation: a sweatband, a gold glow and sparkles.
@@ -874,9 +888,10 @@ export function drawBoss(canvas, idx, frame = 0, state = 'idle', evolved = false
     eyes(14, 29, y + 8);
     if (!ko) { r(16, y + 14, 16, 3, '#2a1f18'); r(17, y + 14, 2, 1, '#fff'); r(29, y + 14, 2, 1, '#fff'); }
   };
-  const evoDone = evolved && drawEvo(r, idx % 18, base, b, frame, ko, back, eyes, crown);
-  const backDone = !evoDone && back && drawBackSprite(r, idx % 18, base, b, frame, crown);
-  switch (evoDone || backDone ? -1 : idx % BOSSES.length) {
+  const decDone = idx >= 24 && drawDec(r, DEC_ART[idx - 24], base, b, frame, ko, back, evolved, eyes);   // December monsters, own file
+  const evoDone = !decDone && evolved && drawEvo(r, idx % 18, base, b, frame, ko, back, eyes, crown);
+  const backDone = !decDone && !evoDone && back && drawBackSprite(r, idx % 18, base, b, frame, crown);
+  switch (decDone || evoDone || backDone ? -1 : idx % BOSSES.length) {
     case 0: case 16: { // couch (16: the Couch King, bigger cushions and a crown)
       const king = idx % 18 === 16;
       const y = 14 + base + b;
@@ -1120,7 +1135,7 @@ export function drawBoss(canvas, idx, frame = 0, state = 'idle', evolved = false
     default: break;
   }
   if (ko) { r(18, 2, 2, 2, '#f2d245'); r(26, 0, 2, 2, '#f2d245'); r(32, 3, 2, 2, '#f2d245'); }   // stars
-  if (back && !evoDone) backView(c);
+  if (back && !evoDone && !decDone) backView(c);
   const ctx = canvas.getContext('2d'); ctx.imageSmoothingEnabled = false; ctx.clearRect(0, 0, canvas.width, canvas.height);
   const s = Math.floor(Math.min(canvas.width / 48, canvas.height / 40));
   ctx.drawImage(lo, (canvas.width - 48 * s) / 2, (canvas.height - 40 * s) / 2, 48 * s, 40 * s);

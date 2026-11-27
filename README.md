@@ -61,6 +61,8 @@ Web app (PWA) first, Android app later via TWA.
 
 - **Pixel art** (`assets/art/`, `js/pixel-icons.js`, `js/pxswap.js`): the game emoji in the app's own text (💧 🍫 🥩 🧃 🛡️ 📜 🥇 🥈 🥉 🏆 🐶 🗼 🐾 📖 👑 🏪) are swapped on screen for 16×16 pixel SVG icons, each with an aria-label in the current language. Chat, captions, reactions and inputs keep real emoji. The sign-in page shows the hero banner (WebP, 960 px and full size); `og-card.jpg` (1200×630) is the link preview when the app is shared. `demo-art.html` shows the icons and six monster ideas (`js/demo-monsters.js`, not in the game yet). The app icon stays G/B for now.
 
+- **December monsters** (migration 061, `js/pixel-dec.js`): ten new species, hidden until 1 Dec 2026 London time (`dec_live()`). 24–31 tower monsters (Skip-Leg-Day Flamingo, Bench-Hog Mimic, One-More-Game Gremlin, Laundry-Pile Golem, Mirror-Flex Peacock, Pre-Workout Crab, Traffic Snail, Nap-Stretch Snake), 32 the All-You-Can-Eat Whale (tower boss, floor 35, then the Boss Lair), 33 the Hotpot Cauldron (group-boss legend, in the weekly rotation from the week of 7 Dec). Each has its own monster move and, evolved, a signature move. From December the tower's wild floors cycle through 20 species and its boss floors through 7 (`tower_monster_idx`), so old floors can show new monsters. Dex: new "December monsters" set (9, 300 💧 + 200 XP); the old sets count only the old species; the dex shows each species' floors (`species_floors`).
+
 Later: running times (5K…marathon).
 
 ## Setup

@@ -363,11 +363,11 @@ export async function dexScreen() {
   let dx;
   const load = async () => { dx = await api.myDex(); };
   try { await load(); } catch (err) { showError(err); return; }
-  const SET = { normal: ['Every tower monster', '全部塔怪物'], boss: ['Every boss', '全部 Boss'], evo: ['6 different evolutions', '6 種唔同嘅進化'] };
+  const SET = { normal: ['The first 12 tower monsters', '最初 12 隻塔怪物'], boss: ['The first 6 bosses', '最初 6 隻 Boss'], evo: ['6 different evolutions', '6 種唔同嘅進化'], dec: ['December monsters', '十二月新怪物'] };
   const draw = () => {
     const sp = dx.species || [];
     const tile = s => {
-      const where = (TOWER_FLOORS[s.idx] || []).slice(0, 3).join(', ');
+      const where = (s.floors || TOWER_FLOORS[s.idx] || []).slice(0, 3).join(', ');
       if (!s.caught) return `<div class="dx-tile unknown">${sprite(s.idx, 64, t('Not caught yet', '未捉到'), false, true)}<b>？？？</b>
         <span class="muted small">${s.boss ? t(`Boss · floor ${where}`, `Boss · 第 ${where} 層`) : t(`Tower floor ${where}…`, `塔第 ${where} 層…`)}</span></div>`;
       const grade = s.best_iv != null ? ivGrade({ hp: s.best_iv, atk: s.best_iv, def: s.best_iv, spd: s.best_iv, tec: s.best_iv }) : null;
