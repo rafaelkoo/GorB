@@ -383,9 +383,10 @@ export async function battleScreen(user, id) {
     const myTurn = bt.turn === user.id;
     if (!myTurn && !busyAnim) { msg.textContent = t(`Waiting for ${fighterName(snap[th])}…`, `等緊 ${fighterName(snap[th])} 出招…`); }
     else if (myTurn && !busyAnim) msg.textContent = t('What will you do?', '你想點？');
-    const used = bt.state.used?.[me] || {};
+    // with a team, each member has its own counts (server key "<team slot>:<move>", migration 062)
+    const used = bt.state.used?.[me] || {}, slot = me === 'a' && bt.state.party && bt.state.active != null ? `${bt.state.active}:` : '';
     box.innerHTML = (snap[me].moves || []).map(m => {
-      const cap = usesOf(m), left = cap == null ? null : cap - (used[m.id] || 0);
+      const cap = usesOf(m), left = cap == null ? null : cap - (used[slot + m.id] || 0);
       const fu = (m.types?.length || 0) > 1;
       return `<button type="button" class="bt-mv ${fu ? 'fusion' : ''}" data-mv="${m.id}" style="--c:${moveCol(m)}" ${!myTurn || busyAnim || left === 0 ? 'disabled' : ''}>
         <b>${fu ? '✦ ' : ''}${esc(moveName(m))}</b><span>${typeLine(m)}${m.power > 0 ? ` · ${t('Power', '威力')} ${m.power}` : ''}${left != null ? ` · ${left}/${cap}` : ''}</span>
